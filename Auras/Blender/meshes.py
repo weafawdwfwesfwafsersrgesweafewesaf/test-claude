@@ -2,7 +2,7 @@
 import os as _os
 HERE = _os.path.dirname(_os.path.abspath(__file__))
 AURAS = _os.path.dirname(HERE) + '/'
-import bpy, bmesh, math
+import bpy, bmesh, math, sys
 
 OUT = AURAS + 'Meshes/'
 
@@ -68,3 +68,28 @@ if __name__ == '__main__':
     bpy.ops.wm.read_factory_settings(use_empty=True)
     for o in (helix('AuraHelix'), ring('AuraRing')):
         export(o)
+
+
+def export_fbx(o):
+    """FBX avec la texture AuraStreak intégrée. 1 unité = 1 stud (choisir « Studs » à l'import)."""
+    mat = bpy.data.materials.new(o.name + 'Mat')
+    mat.use_nodes = True
+    tex = mat.node_tree.nodes.new('ShaderNodeTexImage')
+    tex.image = bpy.data.images.load(AURAS + 'Textures/AuraStreak.png')
+    bsdf = mat.node_tree.nodes['Principled BSDF']
+    mat.node_tree.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
+    mat.node_tree.links.new(tex.outputs['Alpha'], bsdf.inputs['Alpha'])
+    o.data.materials.append(mat)
+    bpy.ops.object.select_all(action='DESELECT')
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.export_scene.fbx(filepath=OUT + o.name + '.fbx', use_selection=True,
+                             axis_forward='-Z', axis_up='Y', apply_scale_options='FBX_SCALE_NONE',
+                             apply_unit_scale=False, global_scale=1.0, mesh_smooth_type='FACE',
+                             path_mode='COPY', embed_textures=True, bake_space_transform=True)
+
+
+if __name__ == '__main__' and '--fbx' in sys.argv:
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    for o in (helix('AuraHelix'), ring('AuraRing')):
+        export_fbx(o)

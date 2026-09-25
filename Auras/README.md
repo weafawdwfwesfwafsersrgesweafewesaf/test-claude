@@ -15,8 +15,8 @@ Tous les réglages sont dans **un seul fichier** (`AuraConfig`). Un changement s
 | | `AuraSmoke_8x8.png` | Fumée animée (64 images) |
 | | `AuraStreak.png` | Traînée d'énergie (traînées + meshes) |
 | | `AuraSpark.png`, `AuraGlow.png` | Étincelle, halo |
-| `Meshes/` | `AuraHelix.obj` | Double spirale autour du vélo |
-| | `AuraRing.obj` | Anneau au sol |
+| `Meshes/` | `AuraHelix.fbx` / `.obj` | Double spirale autour du vélo (FBX avec texture intégrée) |
+| | `AuraRing.fbx` / `.obj` | Anneau au sol (FBX avec texture intégrée) |
 | `Scripts/` | `AuraConfig.lua` | Réglages + thèmes (ModuleScript) |
 | | `AuraServer.server.lua` | Pose l'aura sur les vélos (Script) |
 | | `AuraClient.client.lua` | Anime l'aura (LocalScript) |
@@ -27,7 +27,7 @@ Les textures sont **blanches** : la couleur vient du thème, donc les mêmes ima
 ## Installation dans Roblox Studio (10 minutes environ)
 
 1. **Images.** Ouvre **Window → Asset Manager → Bulk Import** et importe les 6 PNG du dossier `Textures/`. Ensuite, fais un clic droit sur chaque image → **Copy Asset ID** et colle l'ID au bon endroit dans `AuraConfig` (section `Textures`).
-2. **Meshes.** Fais **File → Import 3D**, choisis `AuraHelix.obj`, puis `AuraRing.obj`. Crée un dossier **`AuraAssets`** dans **ReplicatedStorage** et range les deux MeshParts dedans, nommées exactement `AuraHelix` et `AuraRing`. La spirale doit faire environ 5,8 studs de haut. Si elle est minuscule ou énorme, réimporte en changeant l'échelle dans la fenêtre d'import.
+2. **Meshes.** Fais **File → Import 3D**, choisis `AuraHelix.fbx`, puis `AuraRing.fbx` (ou les `.obj`). Dans la fenêtre d'import, règle **File Dimensions** sur **Studs**. Crée un dossier **`AuraAssets`** dans **ReplicatedStorage** et range les deux MeshParts dedans, nommées exactement `AuraHelix` et `AuraRing`. La spirale doit faire environ 5,8 studs de haut. Si elle est minuscule ou énorme, réimporte en changeant l'échelle dans la fenêtre d'import.
 3. **Scripts.** Crée ces trois scripts et colle le contenu du fichier correspondant :
    - **ReplicatedStorage** → ModuleScript `AuraConfig` ← `AuraConfig.lua`
    - **ServerScriptService** → Script `AuraServer` ← `AuraServer.server.lua`
@@ -55,6 +55,7 @@ MonTheme = { C1 = Color3.fromRGB(255, 255, 255), C2 = Color3.fromRGB(0, 200, 255
 
 ```bash
 blender -b --python Auras/Blender/textures.py        # toutes les textures
-blender -b --python Auras/Blender/meshes.py          # spirale + anneau
+blender -b --python Auras/Blender/meshes.py          # spirale + anneau (.obj)
+blender -b --python Auras/Blender/meshes.py -- --fbx # spirale + anneau (.obj + .fbx)
 blender -b --python Auras/Blender/preview.py         # image d'aperçu
 ```
