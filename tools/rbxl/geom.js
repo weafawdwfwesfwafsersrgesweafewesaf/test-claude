@@ -28,7 +28,7 @@ function readProp(g, c) {
 }
 const [file, out, ...roots] = process.argv.slice(2);
 const g = parse(fs.readFileSync(file));
-const WANT = new Set(['CFrame', 'size', 'Size', 'Color3uint8', 'Transparency', 'CanQuery', 'shape', 'Shape']);
+const WANT = new Set(['CFrame', 'size', 'Size', 'Color3uint8', 'Transparency', 'CanQuery', 'shape', 'Shape', 'Material']);
 const BASE = new Set(['Part', 'MeshPart', 'WedgePart', 'TrussPart', 'UnionOperation', 'CornerWedgePart', 'Seat', 'SpawnLocation']);
 const P = {};
 for (const c of g.chunks) {
@@ -45,7 +45,7 @@ for (const rp of roots) {
   const top = findPath(rp);
   (function walk(o, tag) {
     const q = P[o.ref];
-    if (q && q.cframe && q.size) res.push({ t: tag, c: o.cls, n: name(o), m: q.cframe.m, p: q.cframe.p, s: q.size, col: q.color3uint8 || [160, 160, 160], tr: q.transparency || 0, q: q.canquery !== false, sh: q.shape });
+    if (q && q.cframe && q.size) res.push({ t: tag, c: o.cls, n: name(o), m: q.cframe.m, p: q.cframe.p, s: q.size, col: q.color3uint8 || [160, 160, 160], tr: q.transparency || 0, q: q.canquery !== false, sh: q.shape, mat: q.material });
     for (const ch of o.children) walk(ch, tag === rp ? name(ch) : tag);
   })(top, rp);
 }

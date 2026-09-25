@@ -5,6 +5,12 @@ const { parse, R, name } = require('./rbxl.js');
 
 const SIZES = { 0x02: 1, 0x09: 1, 0x0A: 1, 0x03: 4, 0x04: 4, 0x0B: 4, 0x12: 4, 0x1C: 4, 0x1B: 8, 0x21: 8, 0x1F: 16 };
 
+function cframes(r, n) {
+  const rots = [];
+  for (let i = 0; i < n; i++) { const id = r.u8(); if (id === 0) { rots.push(Buffer.concat([Buffer.from([0]), r.b.subarray(r.p, r.p + 36)])); r.p += 36; } else rots.push(Buffer.from([id])); }
+  const xs = r.interleaved(n), ys = r.interleaved(n), zs = r.interleaved(n);
+  return rots.map((rot, i) => ({ rot, pos: [xs[i], ys[i], zs[i]] }));
+}
 function splitProp(data, n) {
   const r = new R(data);
   const classId = r.u32(), pname = r.str().toString(), type = r.u8();
@@ -13,6 +19,19 @@ function splitProp(data, n) {
   else if (type === 0x13) { vals = r.refs(n); }
   else if (SIZES[type] === 1) { vals = []; for (let i = 0; i < n; i++) vals.push(Buffer.from([r.u8()])); }
   else if (SIZES[type]) { vals = r.interleaved(n, SIZES[type]); }
+  else if (type === 0x0E || type === 0x0C) { const xs = r.interleaved(n), ys = r.interleaved(n), zs = r.interleaved(n); vals = xs.map((x, i) => [x, ys[i], zs[i]]); }
+  else if (type === 0x10) { vals = cframes(r, n); }
+  else if (type === 0x1A) { const b = r.b; vals = []; for (let i = 0; i < n; i++) vals.push(Buffer.from([b[r.p + i], b[r.p + n + i], b[r.p + 2 * n + i]])); r.p += 3 * n; }
+  else if (type === 0x19) {
+    vals = [];
+    for (let i = 0; i < n; i++) { const f = r.b[r.p]; const len = (f === 0 || f === 2) ? 1 : f === 1 ? 21 : f === 3 ? 25 : -1; if (len < 0) return null; vals.push(Buffer.from(r.b.subarray(r.p, r.p + len))); r.p += len; }
+  }
+  else if (type === 0x1E) {
+    if (r.u8() !== 0x10) return null;
+    const c = cframes(r, n);
+    if (r.u8() !== 0x02) return null;
+    vals = c.map(v => ({ rot: v.rot, pos: v.pos, has: r.u8() }));
+  }
   else return null; // type non géré : chunk non modifiable
   if (r.p !== data.length) throw new Error(`taille inattendue pour ${pname} (type ${type})`);
   return { classId, pname, type, vals };
@@ -31,13 +50,33 @@ function encRefs(refs) {
 }
 function joinProp(p) {
   const head = Buffer.concat([u32(p.classId), strb(p.pname), Buffer.from([p.type])]);
+  const v = p.vals;
   let body;
-  if (p.type === 0x01) body = Buffer.concat(p.vals.map(strb));
-  else if (p.type === 0x13) body = encRefs(p.vals);
-  else if (SIZES[p.type] === 1) body = Buffer.concat(p.vals);
-  else body = interleave(p.vals, SIZES[p.type]);
+  if (p.type === 0x01) body = Buffer.concat(v.map(strb));
+  else if (p.type === 0x13) body = encRefs(v);
+  else if (SIZES[p.type] === 1) body = Buffer.concat(v);
+  else if (SIZES[p.type]) body = interleave(v, SIZES[p.type]);
+  else if (p.type === 0x0E || p.type === 0x0C) body = Buffer.concat([interleave(v.map(t => t[0]), 4), interleave(v.map(t => t[1]), 4), interleave(v.map(t => t[2]), 4)]);
+  else if (p.type === 0x10) body = Buffer.concat([...v.map(c => c.rot), interleave(v.map(c => c.pos[0]), 4), interleave(v.map(c => c.pos[1]), 4), interleave(v.map(c => c.pos[2]), 4)]);
+  else if (p.type === 0x1A) body = Buffer.concat([Buffer.from(v.map(c => c[0])), Buffer.from(v.map(c => c[1])), Buffer.from(v.map(c => c[2]))]);
+  else if (p.type === 0x19) body = Buffer.concat(v);
+  else if (p.type === 0x1E) body = Buffer.concat([Buffer.from([0x10]), ...v.map(c => c.rot), interleave(v.map(c => c.pos[0]), 4), interleave(v.map(c => c.pos[1]), 4), interleave(v.map(c => c.pos[2]), 4), Buffer.from([0x02]), Buffer.from(v.map(c => c.has))]);
   return Buffer.concat([head, body]);
 }
+
+// Encodeurs de valeurs neuves
+function rbxFloat(x) { const b = Buffer.alloc(4); b.writeFloatBE(x); let u = b.readUInt32BE(0); u = ((u << 1) | (u >>> 31)) >>> 0; const o = Buffer.alloc(4); o.writeUInt32BE(u); return o; }
+const enc = {
+  str: s => Buffer.from(s, 'utf8'),
+  bool: b => Buffer.from([b ? 1 : 0]),
+  float: x => rbxFloat(x),
+  enumv: e => { const b = Buffer.alloc(4); b.writeUInt32BE(e); return b; },
+  vec3: v => v.map(rbxFloat),
+  cframe: m => { const rot = Buffer.alloc(37); rot[0] = 0; for (let i = 0; i < 9; i++) rot.writeFloatLE(m[3 + i], 1 + i * 4); return { rot, pos: [rbxFloat(m[0]), rbxFloat(m[1]), rbxFloat(m[2])] }; },
+  optcf: m => Object.assign(enc.cframe(m), { has: 1 }),
+  rgb8: c => Buffer.from(c),
+  attrs: o => { const parts = [u32(Object.keys(o).length)]; for (const [k, v] of Object.entries(o)) { const d = Buffer.alloc(8); d.writeDoubleLE(v); parts.push(strb(k), Buffer.from([0x06]), d); } return Buffer.concat(parts); },
+};
 
 class Place {
   constructor(file) {
@@ -86,6 +125,29 @@ class Place {
     this.dirty.add(c);
   }
   setParent(inst, parent) { this.reparent.set(inst.ref, parent.ref); }
+  classChunks(k) {
+    if (!k.chunks) k.chunks = this.g.chunks.filter(c => c.name === 'PROP' && this.g.classes[c.data.readUInt32LE(0)] === k).map(c => { this.dirty.add(c); return this.split(c); });
+    return k.chunks;
+  }
+  // Nouvelle instance : copie des props du modèle `template`, puis `values` (déjà encodées) par-dessus.
+  addNew(template, parentRef, values) {
+    const k = Object.values(this.g.classes).find(k => k.cls === template.cls);
+    if (k.tplIdx === undefined || k.tplRef !== template.ref) { k.tplIdx = k.refs.indexOf(template.ref); k.tplRef = template.ref; }
+    const ref = this.nextRef++;
+    for (const s of this.classChunks(k)) {
+      let v;
+      if (s.pname in values) v = values[s.pname];
+      else {
+        v = s.vals[k.tplIdx];
+        if (s.type === 0x1F) { v = Buffer.from(v); crypto.randomBytes(8).copy(v, 8); }
+      }
+      s.vals.push(v);
+    }
+    k.refs.push(ref);
+    k.dirtyInst = true;
+    this.added.push({ ref, parent: parentRef });
+    return ref;
+  }
   // Nouvelle instance de la même classe que `template`, props copiées puis surchargées.
   addLike(template, parent, overrides) {
     const k = Object.values(this.g.classes).find(k => k.cls === template.cls);
@@ -132,4 +194,4 @@ class Place {
     fs.writeFileSync(file, Buffer.concat(out));
   }
 }
-module.exports = { Place };
+module.exports = { Place, enc };

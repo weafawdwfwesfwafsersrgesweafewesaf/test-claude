@@ -30,7 +30,8 @@ def neon_palm():
     pts = [(0.02 * i * i, 0, i * 0.7) for i in range(10)]
     for i in range(9):
         ps.append(seg(palmtrunk, pts[i], pts[i + 1], 0.3 - i * 0.015, 7))
-        ps.append(torus(pinkn, (pts[i][0], 0, pts[i][2] + 0.35), 0.29 - i * 0.015, 0.035, 8, 3))
+        if i % 2 == 0:
+            ps.append(torus(pinkn, (pts[i][0], 0, pts[i][2] + 0.35), 0.29 - i * 0.015, 0.035, 8, 3))
     top = pts[-1]
     for k in range(7):  # palmes
         a = k / 7 * math.tau

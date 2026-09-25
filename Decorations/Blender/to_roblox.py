@@ -62,7 +62,7 @@ def convert(prims, colors):
                     emit(out, 'C', ci, Mk, (h / n * 1.02, 2 * rk, 2 * rk), Z, X)
         elif p.kind == 'torus':
             R, r, s = p.dims
-            n = 8 if R < 0.8 else 12
+            n = 6 if R < 0.5 else (8 if R < 1.3 else 10)
             L = 2 * math.pi * R / n * 1.15
             for k in range(n):
                 a = (k + 0.5) / n * math.tau

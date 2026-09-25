@@ -11,9 +11,9 @@ choco = color('choco', '#6b3b24'); choco2 = color('choco2', '#8f5434'); wafer = 
 
 def lollipop():
     ps = [cyl(white, (0, 0, 2.6), 0.15, 5.2, 6)]
-    cols = [pink, white, mint, white, lemon, white, grape]
+    cols = [pink, mint, lemon, grape, white]
     for i, c in enumerate(cols):  # disque en spirale : anneaux emboîtés
-        R = 2.0 - i * 0.28
+        R = 2.0 - i * 0.38
         ps.append(place(torus(c, (0, 0, 0), R, 0.17, 16, 4, scl=(1, 1, 1.6)), (90, 0, 0), (0, 0, 6.8)))
     ps.append(place(cyl(pink, (0, 0, 0), 0.25, 0.5, 10), (90, 0, 0), (0, 0, 6.8)))
     ps.append(cyl(pink2, (0, 0, 0.12), 1.0, 0.24, 10))
