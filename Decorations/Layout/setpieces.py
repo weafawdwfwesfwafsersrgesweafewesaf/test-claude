@@ -122,8 +122,8 @@ def level(i):
 @level(1)
 def build_1(L):
     L.poser('EcranGeant', (950, 1230), (95, 130), scales=(1.0, 0.9, 0.8))
-    for zr, sd in (((250, 520), 1), ((700, 950), -1)):
-        L.poser('SourisGeante', zr, (95, 140), scales=(1.6, 1.45, 1.3, 1.15), tilt_yaw=40, side=sd)
+    for zr, sd, col in (((250, 520), 1, 'noir'), ((700, 950), -1, 'blanc')):
+        L.poser('SourisGeante', zr, (95, 140), kw={'couleur': col}, scales=(1.6, 1.45, 1.3, 1.15), tilt_yaw=40, side=sd)
     for zr, sd in (((120, 350), -1), ((500, 800), 1)):                                    # câbles du côté opposé aux souris
         L.poser('CableUSB', zr, (100, 145), scales=(1.2, 1.0, 0.85), tilt_yaw=0, side=sd)
     for n, (lettre, zr) in enumerate(zip('WASDQERF', slots(8, 150, 1200))):

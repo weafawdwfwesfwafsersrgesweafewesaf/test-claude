@@ -150,36 +150,31 @@ def _interp(pts, t):
 SOURIS_H = [(0.0, 5.5), (0.12, 10.2), (0.28, 12.5), (0.4, 12.8), (0.55, 12.1), (0.7, 10.9), (0.85, 9.4), (1.0, 7.4)]
 SOURIS_W = [(0.0, 15.5), (0.14, 19.4), (0.3, 20.3), (0.45, 20.0), (0.62, 18.9), (0.8, 18.4), (1.0, 16.4)]
 
-RGB_DEG = ['ff3cac', 'd84cff', '9b5cff', '5a78ff', '2bb8ff', '2bf0e0']
-def rgb_deg(t):
-    """Couleur d'un dégradé RGB (rose -> violet -> bleu -> cyan), t de 0 à 1."""
-    return RGB_DEG[min(len(RGB_DEG) - 1, max(0, int(t * len(RGB_DEG))))]
-
-@modele('SourisGeante', view=(0.9, 0.55, 0.8))
-def souris_geante():
-    """Souris gamer haut de gamme aux proportions d'une vraie (40 x 20,3 x 12,8 studs) : coque noire,
-    dessus en nid d'abeille éclairé en RGB, grips striés, bande RGB, boutons DPI. L'avant regarde +Z."""
-    BODY, BTN, GRIP, DARK, PAD = '1b1e28', '222634', '2e3344', '0b0d12', '151923'
+@modele('SourisGeante', view=(0.9, 0.5, 0.8))
+def souris_geante(couleur='noir'):
+    """Souris de compétition sobre (ultralégère, symétrique, sans fil), proportions d'une vraie :
+    40 x 20,3 x 12,8 studs, sur un grand tapis en tissu. L'avant regarde +Z."""
+    if couleur == 'blanc':
+        BODY, BTN, SEAM, SIDE, LOGO = 'f1f2f5', 'f7f8fa', 'b9bdc7', 'e3e5ea', 'c9ccd4'
+    else:
+        BODY, BTN, SEAM, SIDE, LOGO = '1e2027', '23252d', '090a0d', '2a2d36', '3a3e4a'
+    WHEEL, WHEEL_L, SKATE, PAD, PAD_E = '15161b', '2b2e37', '0d0e11', '24272f', '8a8f9c'
     k = []
-    # ---------------------------------------------------------------- tapis : coins arrondis, liseré RGB en dégradé
-    W, D, T = 38, 58, 0.8
+    # ---------------------------------------------------------------- tapis en tissu : coins arrondis, bord cousu
+    W, D, T = 40, 60, 0.6
     k += [box(PAD, (0, T / 2, 2), (W, T, D - 6)), box(PAD, (0, T / 2 + 0.01, 2), (W - 6, T + 0.02, D))]
     for sx in (-1, 1):
         for sz in (-1, 1):
             k.append(cyl(PAD, (sx * (W / 2 - 3), 0, 2 + sz * (D / 2 - 3)), 3, T - 0.01))
-    n = 10
-    for i in range(n):                                                                    # côtés longs : dégradé de l'arrière vers l'avant
-        z0_, z1_ = 2 - (D / 2 - 3) + i * (D - 6) / n, 2 - (D / 2 - 3) + (i + 1) * (D - 6) / n
-        for sx in (-1, 1):
-            k.append(box(rgb_deg(i / n), (sx * (W / 2 + 0.1), T / 2, (z0_ + z1_) / 2), (0.3, 0.5, (D - 6) / n + 0.02), neon=True))
-    for sz, t in ((-1, 0.0), (1, 0.99)):
-        k.append(box(rgb_deg(t), (0, T / 2, 2 + sz * (D / 2 + 0.1)), (W - 6, 0.5, 0.3), neon=True))
-    k += transform(pixel_text('GG', (0, 0, 0), 0.9, '2a3044', depth=0.05, neon=False), (0, 0, 0), Rx(-90), 1.0, (0, T + 0.03, 25))   # imprimé sur le tapis
+        k.append(box(PAD_E, (sx * (W / 2 - 0.45), T + 0.03, 2), (0.3, 0.06, D - 6.4)))
+    for sz in (-1, 1):
+        k.append(box(PAD_E, (0, T + 0.03, 2 + sz * (D / 2 - 0.45)), (W - 6.4, 0.06, 0.3)))
+    k += transform(pixel_text('PRO', (0, 0, 0), 0.55, '3a3e4a', depth=0.05, neon=False), (0, 0, 0), Rx(-90), 1.0, (W / 2 - 7, T + 0.04, D / 2 - 2))
     # ---------------------------------------------------------------- coque : tranches ellipsoïdales très chevauchées
     y0, L, zb = T, 40, -20
     H = lambda t: _interp(SOURIS_H, t)
     Wd = lambda t: _interp(SOURIS_W, t)
-    S = []                                                                                # (zc, yc, rx, ry, rz)
+    S = []
     for i in range(17):
         t = 0.1 + 0.8 * i / 16
         z = zb + t * L
@@ -195,7 +190,6 @@ def souris_geante():
         zc, yc, rx, ry, rz = max(S, key=lambda s: 1 - (p[0] / s[2]) ** 2 - ((p[1] - s[1]) / s[3]) ** 2 - ((p[2] - s[0]) / s[4]) ** 2)
         return norm((p[0] / rx ** 2, (p[1] - yc) / ry ** 2, (p[2] - zc) / rz ** 2))
     def surface(o, d):
-        """Point de la coque sur le rayon o + s*d (o à l'intérieur)."""
         lo_, hi_ = 0.0, 30.0
         for _ in range(40):
             mid = (lo_ + hi_) / 2
@@ -211,67 +205,45 @@ def souris_geante():
     def pose(piece, p, lift=0.0):
         nrm = normale(p)
         return orient(piece, nrm, tuple(p[i] + nrm[i] * lift for i in range(3)))
-    def trait(pts, col, w=0.35, h=0.3, lift=0.08, neon=False):
-        out = []
+    def trait(pts, col, w=0.3, h=0.2, lift=0.04):
         pts = [tuple(p[i] + normale(p)[i] * lift for i in range(3)) for p in pts]
-        for a_, b_ in zip(pts, pts[1:]):
-            out.append(beam(col, a_, b_, w, h, neon=neon))
-        return out
+        return [beam(col, a_, b_, w, h) for a_, b_ in zip(pts, pts[1:])]
 
-    # ---------------------------------------------------------------- boutons : fente centrale, séparation avec la paume, encoche du nez
-    zs = zb + 0.56 * L
-    k += trait([dessus(0, zs + (20 - zs) * i / 12) for i in range(12)], DARK, w=0.5)
-    k += trait([dessus(x, zs + 0.4 * abs(x) / 10) for x in [-9 + 1.5 * i for i in range(13)]], DARK, w=0.4)
-    # ---------------------------------------------------------------- molette RGB striée et ses deux boutons DPI
-    zw = zb + 0.63 * L
+    # ---------------------------------------------------------------- joints des boutons (fins, continus)
+    zs = zb + 0.55 * L                                                                    # fin des boutons côté paume
+    k += trait([dessus(0, zs + (19.6 - zs) * i / 14) for i in range(15)], SEAM)          # fente entre gauche et droite
+    k += trait([dessus(x, zs - 0.03 * x * x) for x in [-8.6 + 8.6 * i / 8 for i in range(17)]], SEAM)   # séparation avec la paume
+    for sx in (-1, 1):                                                                    # le joint descend et file le long du flanc jusqu'au nez
+        hs = lambda t: y0 + H(t) * 0.68
+        pts = [cote(sx, hs(0.55), zs - 0.03 * 8.6 ** 2)]
+        pts += [cote(sx, hs(t), zb + t * L) for t in [0.58 + 0.39 * i / 9 for i in range(10)]]
+        k += trait(pts, SEAM, w=0.28)
+    # ---------------------------------------------------------------- molette caoutchouc dans sa fente
+    zw = zb + 0.64 * L
     pw = dessus(0, zw)
-    wc = (0, pw[1] - 0.8, zw)
-    k.append(box(DARK, (0, pw[1] - 0.1, zw), (2.8, 0.6, 6)))
-    k.append(disc('3a4050', wc, 2.2, 1.7, axis=(1, 0, 0)))
-    for s_, col in ((-0.55, 'ff3cac'), (0.55, '2bf0e0')):
-        k.append(disc(col, (s_, wc[1], wc[2]), 2.3, 0.28, axis=(1, 0, 0), neon=True))
-    for j in range(14):
-        a_ = j * math.tau / 14
-        k.append(box('4a5164', (0, wc[1] + math.sin(a_) * 2.18, wc[2] + math.cos(a_) * 2.18), (1.2, 0.28, 0.35), pitch=-math.degrees(a_)))
-    for dz in (-4.2, -6.2):                                                               # boutons DPI
-        k.append(pose([bevel_box(BTN, (0, 0.2, 0), (1.3, 0.6, 1.5), 0.2)][0], dessus(0, zw + dz), 0.02)[0])
-    for j in range(3):                                                                    # voyants DPI
-        k.append(pose([ball(rgb_deg(0.2 + j * 0.3), (0, 0, 0), 0.28, neon=True)], dessus(-2.2, zw - 4.2 - j * 1.1), 0.05)[0])
-    # ---------------------------------------------------------------- paume en nid d'abeille, RGB qui passe au travers
-    pl = dessus(0, -9)
-    for r_ in range(7):
-        for c_ in range(-3, 4):
-            x = c_ * 2.25 + (r_ % 2) * 1.125
-            z = -15 + r_ * 1.95
-            if abs(x) > 6.2 or (x * x + (z + 9) ** 2) < 3.3 ** 2:
-                continue
-            p = dessus(x, z)
-            k.append(pose([disc(DARK, (0, 0, 0), 0.9, 0.3)], p, -0.05)[0])
-            k.append(pose([disc(rgb_deg((z + 15) / 13), (0, 0, 0), 0.62, 0.3, neon=True)], p, -0.02)[0])
-    # logo : anneau RGB et griffes
-    k.append(pose([disc(DARK, (0, 0, 0), 2.9, 0.3)], pl, -0.04)[0])
-    k.append(pose([disc('ff3cac', (0, 0, 0), 2.4, 0.3, neon=True, light=('b44cff', 24, 1.4))], pl, -0.01)[0])
-    k.append(pose([disc(BODY, (0, 0, 0), 1.8, 0.3)], pl, 0.02)[0])
-    for j in range(3):
-        k += pose([box('2bf0e0', ((j - 1) * 0.9, 0.2, 0), (0.35, 0.3, 2.4), yaw=12 - j * 12, neon=True)], pl, 0.02)
-    # ---------------------------------------------------------------- grips striés de chaque côté
+    k.append(box(SEAM, (0, pw[1] - 0.25, zw), (2.6, 0.6, 5.6)))
+    wc = (0, pw[1] - 0.9, zw)
+    k.append(disc(WHEEL, wc, 2.2, 1.6, axis=(1, 0, 0)))
+    k.append(disc(WHEEL_L, wc, 2.25, 0.4, axis=(1, 0, 0)))
+    for j in range(16):
+        a_ = j * math.tau / 16
+        k.append(box(WHEEL_L, (0, wc[1] + math.sin(a_) * 2.17, wc[2] + math.cos(a_) * 2.17), (1.45, 0.22, 0.3), pitch=-math.degrees(a_)))
+    # ---------------------------------------------------------------- deux boutons latéraux fins (côté gauche)
+    for zc_ in (-1.2, 3.6):
+        p = cote(-1, y0 + 8.4, zc_)
+        k += pose([ell(SEAM, (0, 0, 0), 2.25, 0.3, 0.85), ell(SIDE, (0, 0.08, 0), 2.1, 0.3, 0.72)], p, -0.05)
+    # ---------------------------------------------------------------- petit logo discret sur la paume
+    pl = dessus(0, zb + 0.24 * L)
+    logo = [disc(LOGO, (0, 0, 0), 1.25, 0.2)]
+    logo.append(disc(BODY, (0, 0.05, 0), 0.75, 0.22))
+    logo.append(box(LOGO, (0.45, 0.06, 0.3), (0.9, 0.22, 0.28)))
+    k += pose(logo, pl, 0.0)
+    # ---------------------------------------------------------------- patins : liseré sombre au ras du tapis
     for sx in (-1, 1):
-        for y in (3.6, 5.1, 6.6):
-            k += trait([cote(sx, y0 + y, z) for z in [-6 + 1.5 * i for i in range(9)]], GRIP, w=0.55, h=0.35, lift=0.03)
-    # boutons latéraux (gauche) avec liseré lumineux
-    for zz in (-1.5, 4.0):
-        p = cote(-1, y0 + 9.2, zz)
-        k.append(pose([ell(BTN, (0, 0, 0), 1.0, 0.45, 2.5)], p, 0.05)[0])
-    k += trait([cote(-1, y0 + 8.1, z) for z in (-4.5, -1, 2.5, 6.5)], '2bb8ff', w=0.25, h=0.2, lift=0.06, neon=True)
-    # ---------------------------------------------------------------- bande RGB tout autour, au ras du tapis
-    for sx in (-1, 1):
-        pts = [cote(sx, y0 + 1.5, z) for z in [-17 + 34 * i / 16 for i in range(17)]]
-        pts = [tuple(p[i] + normale(p)[i] * 0.06 for i in range(3)) for p in pts]
-        for i, (a_, b_) in enumerate(zip(pts, pts[1:])):
-            k.append(beam(rgb_deg(i / 16), a_, b_, 0.35, 0.5, neon=True))
-    for zend, t in ((-1, 0.0), (1, 0.99)):                                                # arrière et nez
-        pts = [surface((0, y0 + 1.5, zend * 10), norm((math.sin(a_), 0, zend * math.cos(a_)))) for a_ in [(-0.9 + 1.8 * i / 6) for i in range(7)]]
-        k += trait(pts, rgb_deg(t), w=0.35, h=0.5, lift=0.06, neon=True)
+        k += trait([cote(sx, y0 + 0.35, z) for z in [-17.5 + 35 * i / 14 for i in range(15)]], SKATE, w=0.3, h=0.5, lift=0.02)
+    for zend in (-1, 1):
+        k += trait([surface((0, y0 + 0.35, zend * 10), norm((math.sin(a_), 0, zend * math.cos(a_)))) for a_ in [(-1.0 + 2.0 * i / 8) for i in range(9)]],
+                   SKATE, w=0.3, h=0.5, lift=0.02)
     return k
 
 @modele('CableUSB', view=(1.0, 0.35, 0.3))
