@@ -188,7 +188,25 @@ class Place {
       if (s.vals.some(r => gone.has(r))) { s.vals = s.vals.map(r => gone.has(r) ? -1 : r); this.dirty.add(c); }
     }
   }
+  // Après des suppressions, Roblox exige des identifiants continus (0 .. N-1) : on renumérote tout.
+  compact() {
+    const all = [];
+    for (const k of Object.values(this.g.classes)) all.push(...k.refs);
+    all.sort((a, b) => a - b);
+    const map = new Map(all.map((r, i) => [r, i]));
+    const m = r => (r === -1 ? -1 : (map.has(r) ? map.get(r) : -1));
+    for (const k of Object.values(this.g.classes)) { k.refs = k.refs.map(m); k.dirtyInst = true; }
+    for (const c of this.g.chunks) {
+      if (c.name !== 'PROP' || c.data[8 + c.data.readUInt32LE(4)] !== 0x13) continue;
+      const s = this.split(c);
+      s.vals = s.vals.map(m);
+      this.dirty.add(c);
+    }
+    this.refMap = m;
+  }
   save(file) {
+    if (this.removed && !this.refMap) this.compact();
+    const M = this.refMap || (r => r);
     const out = [];
     const h = Buffer.from(this.g.header);
     h.writeInt32LE(h.readInt32LE(20) + this.added.length - (this.removed || 0), 20);
@@ -205,6 +223,7 @@ class Place {
         let ch = r.refs(n), pa = r.refs(n).map((p, i) => this.reparent.has(ch[i]) ? this.reparent.get(ch[i]) : p);
         if (this.gone) { const keep = ch.map(x => !this.gone.has(x)); ch = ch.filter((_, i) => keep[i]); pa = pa.filter((_, i) => keep[i]); }
         for (const a of this.added) { ch.push(a.ref); pa.push(a.parent); }
+        ch = ch.map(M); pa = pa.map(M);
         data = Buffer.concat([Buffer.from([ver]), u32(ch.length), encRefs(ch), encRefs(pa)]);
       }
       if (!data) { out.push(c.raw); continue; }
