@@ -146,43 +146,40 @@ def _interp(pts, t):
             return v0 + (v1 - v0) * u
     return pts[-1][1] if t > pts[-1][0] else pts[0][1]
 
-# profil d'une souris gamer symétrique (125 x 63,5 x 40 mm) : t = 0 à l'arrière, 1 au nez
-SOURIS_H = [(0.0, 5.5), (0.12, 10.2), (0.28, 12.5), (0.4, 12.8), (0.55, 12.1), (0.7, 10.9), (0.85, 9.4), (1.0, 7.4)]
-SOURIS_W = [(0.0, 15.5), (0.14, 19.4), (0.3, 20.3), (0.45, 20.0), (0.62, 18.9), (0.8, 18.4), (1.0, 16.4)]
+# profil d'une souris de compétition galbée (t = 0 à l'arrière, 1 au nez) : hauteur et largeur en studs
+SOURIS_H = [(0.0, 3.0), (0.07, 8.0), (0.18, 11.6), (0.32, 12.8), (0.46, 12.3), (0.62, 10.6), (0.78, 8.7), (0.91, 6.8), (1.0, 4.0)]
+SOURIS_W = [(0.0, 10.0), (0.08, 16.5), (0.22, 20.0), (0.36, 20.3), (0.52, 18.6), (0.62, 18.2), (0.78, 18.7), (0.9, 17.2), (1.0, 11.0)]
 
-@modele('SourisGeante', view=(0.9, 0.5, 0.8))
-def souris_geante(couleur='noir'):
-    """Souris de compétition sobre (ultralégère, symétrique, sans fil), proportions d'une vraie :
-    40 x 20,3 x 12,8 studs, sur un grand tapis en tissu. L'avant regarde +Z."""
-    if couleur == 'blanc':
-        BODY, BTN, SEAM, SIDE, LOGO = 'f1f2f5', 'f7f8fa', 'b9bdc7', 'e3e5ea', 'c9ccd4'
-    else:
-        BODY, BTN, SEAM, SIDE, LOGO = '1e2027', '23252d', '090a0d', '2a2d36', '3a3e4a'
-    WHEEL, WHEEL_L, SKATE, PAD, PAD_E = '15161b', '2b2e37', '0d0e11', '24272f', '8a8f9c'
+@modele('SourisGeante', view=(0.9, 0.55, 0.8))
+def souris_geante():
+    """Souris de compétition blanche, galbée, sans fil (proportions d'une vraie : 40 x 20,3 x 12,8 studs),
+    sur son tapis au liseré néon. L'avant regarde +Z."""
+    WHITE, SEAM, DARK, GREY, PAD, PAD_L, CYAN = 'f4f6fb', 'aeb3bf', '1d2233', '3a4050', '20263a', '2b3350', '4dfcff'
     k = []
-    # ---------------------------------------------------------------- tapis en tissu : coins arrondis, bord cousu
-    W, D, T = 40, 60, 0.6
+    # ---------------------------------------------------------------- tapis : coins arrondis, liseré néon
+    W, D, T = 38, 58, 0.8
     k += [box(PAD, (0, T / 2, 2), (W, T, D - 6)), box(PAD, (0, T / 2 + 0.01, 2), (W - 6, T + 0.02, D))]
     for sx in (-1, 1):
         for sz in (-1, 1):
             k.append(cyl(PAD, (sx * (W / 2 - 3), 0, 2 + sz * (D / 2 - 3)), 3, T - 0.01))
-        k.append(box(PAD_E, (sx * (W / 2 - 0.45), T + 0.03, 2), (0.3, 0.06, D - 6.4)))
+        k.append(box(CYAN, (sx * (W / 2 + 0.1), T / 2, 2), (0.3, 0.5, D - 6), neon=True))
     for sz in (-1, 1):
-        k.append(box(PAD_E, (0, T + 0.03, 2 + sz * (D / 2 - 0.45)), (W - 6.4, 0.06, 0.3)))
-    k += transform(pixel_text('PRO', (0, 0, 0), 0.55, '3a3e4a', depth=0.05, neon=False), (0, 0, 0), Rx(-90), 1.0, (W / 2 - 7, T + 0.04, D / 2 - 2))
-    # ---------------------------------------------------------------- coque : tranches ellipsoïdales très chevauchées
+        k.append(box(CYAN, (0, T / 2, 2 + sz * (D / 2 + 0.1)), (W - 6, 0.5, 0.3), neon=True))
+    k.append(box(PAD_L, (0, T + 0.02, 24), (9, 0.05, 2.4)))
+    # ---------------------------------------------------------------- coque galbée : tranches ellipsoïdales très chevauchées
     y0, L, zb = T, 40, -20
     H = lambda t: _interp(SOURIS_H, t)
     Wd = lambda t: _interp(SOURIS_W, t)
     S = []
-    for i in range(17):
-        t = 0.1 + 0.8 * i / 16
+    n = 21
+    for i in range(n):
+        t = 0.05 + 0.9 * i / (n - 1)
         z = zb + t * L
-        S.append((z, y0 + H(t) * 0.42, Wd(t) / 2, H(t) * 0.58, min(9.0, 20.4 - abs(z))))
-    for t in (0.06, 0.96):
-        S.append((zb + t * L, y0 + H(t) * 0.42, Wd(t) / 2 * 0.96, H(t) * 0.58, 2.6))
+        h, w = H(t), Wd(t)
+        rz = min(8.0, (min(t, 1 - t) * L) + 1.2)                                            # bouts bien arrondis
+        S.append((z, y0 + h * 0.4, w / 2, h * 0.6, rz))
     for zc, yc, rx, ry, rz in S:
-        k.append(ell(BODY, (0, yc, zc), rx, ry, rz))
+        k.append(ell(WHITE, (0, yc, zc), rx, ry, rz))
 
     def F(p):
         return max(1 - (p[0] / rx) ** 2 - ((p[1] - yc) / ry) ** 2 - ((p[2] - zc) / rz) ** 2 for zc, yc, rx, ry, rz in S)
@@ -205,45 +202,41 @@ def souris_geante(couleur='noir'):
     def pose(piece, p, lift=0.0):
         nrm = normale(p)
         return orient(piece, nrm, tuple(p[i] + nrm[i] * lift for i in range(3)))
-    def trait(pts, col, w=0.3, h=0.2, lift=0.04):
+    def trait(pts, col, w=0.3, h=0.2, lift=0.05):
         pts = [tuple(p[i] + normale(p)[i] * lift for i in range(3)) for p in pts]
         return [beam(col, a_, b_, w, h) for a_, b_ in zip(pts, pts[1:])]
 
-    # ---------------------------------------------------------------- joints des boutons (fins, continus)
-    zs = zb + 0.55 * L                                                                    # fin des boutons côté paume
-    k += trait([dessus(0, zs + (19.6 - zs) * i / 14) for i in range(15)], SEAM)          # fente entre gauche et droite
-    k += trait([dessus(x, zs - 0.03 * x * x) for x in [-8.6 + 8.6 * i / 8 for i in range(17)]], SEAM)   # séparation avec la paume
-    for sx in (-1, 1):                                                                    # le joint descend et file le long du flanc jusqu'au nez
-        hs = lambda t: y0 + H(t) * 0.68
-        pts = [cote(sx, hs(0.55), zs - 0.03 * 8.6 ** 2)]
-        pts += [cote(sx, hs(t), zb + t * L) for t in [0.58 + 0.39 * i / 9 for i in range(10)]]
+    # ---------------------------------------------------------------- joints des boutons
+    zs = zb + 0.5 * L                                                                     # les boutons commencent au milieu
+    znose = zb + 0.975 * L
+    k += trait([dessus(0, zs + (znose - zs) * i / 14) for i in range(15)], SEAM, w=0.35)  # fente gauche / droite
+    k += trait([dessus(x, zs - 0.035 * x * x) for x in [-8.4 + 8.4 * i / 8 for i in range(17)]], SEAM)
+    for sx in (-1, 1):                                                                    # le joint file le long du flanc jusqu'au nez
+        hs = lambda t: y0 + H(t) * 0.66
+        pts = [cote(sx, hs(t), zb + t * L) for t in [0.5 - 0.035 * 8.4 ** 2 / L + (0.47 + 0.035 * 8.4 ** 2 / L) * i / 10 for i in range(11)]]
         k += trait(pts, SEAM, w=0.28)
-    # ---------------------------------------------------------------- molette caoutchouc dans sa fente
-    zw = zb + 0.64 * L
+    # ---------------------------------------------------------------- molette, bien vers l'avant, dans sa fente
+    tw = 0.73
+    zw = zb + tw * L
     pw = dessus(0, zw)
-    k.append(box(SEAM, (0, pw[1] - 0.25, zw), (2.6, 0.6, 5.6)))
-    wc = (0, pw[1] - 0.9, zw)
-    k.append(disc(WHEEL, wc, 2.2, 1.6, axis=(1, 0, 0)))
-    k.append(disc(WHEEL_L, wc, 2.25, 0.4, axis=(1, 0, 0)))
+    nw = normale(pw)
+    k.append(box(DARK, (0, pw[1] - 0.2, zw), (2.6, 0.6, 5.4), pitch=math.degrees(math.atan2(nw[2], nw[1]))))   # fente dans l'axe
+    wc = (0, pw[1] - 0.75, zw)
+    k.append(disc(DARK, wc, 2.2, 1.6, axis=(1, 0, 0)))
+    k.append(disc(CYAN, wc, 2.3, 0.35, axis=(1, 0, 0), neon=True))
     for j in range(16):
         a_ = j * math.tau / 16
-        k.append(box(WHEEL_L, (0, wc[1] + math.sin(a_) * 2.17, wc[2] + math.cos(a_) * 2.17), (1.45, 0.22, 0.3), pitch=-math.degrees(a_)))
-    # ---------------------------------------------------------------- deux boutons latéraux fins (côté gauche)
-    for zc_ in (-1.2, 3.6):
-        p = cote(-1, y0 + 8.4, zc_)
-        k += pose([ell(SEAM, (0, 0, 0), 2.25, 0.3, 0.85), ell(SIDE, (0, 0.08, 0), 2.1, 0.3, 0.72)], p, -0.05)
-    # ---------------------------------------------------------------- petit logo discret sur la paume
-    pl = dessus(0, zb + 0.24 * L)
-    logo = [disc(LOGO, (0, 0, 0), 1.25, 0.2)]
-    logo.append(disc(BODY, (0, 0.05, 0), 0.75, 0.22))
-    logo.append(box(LOGO, (0.45, 0.06, 0.3), (0.9, 0.22, 0.28)))
-    k += pose(logo, pl, 0.0)
+        k.append(box(GREY, (0, wc[1] + math.sin(a_) * 2.17, wc[2] + math.cos(a_) * 2.17), (1.3, 0.22, 0.3), pitch=-math.degrees(a_)))
+    # ---------------------------------------------------------------- boutons latéraux fins, à fleur (côté gauche)
+    for t in (0.47, 0.6):
+        p = cote(-1, y0 + H(t) * 0.62, zb + t * L)
+        k += pose([ell(SEAM, (0, 0, 0), 2.25, 0.3, 0.8), ell('e6e9f0', (0, 0.08, 0), 2.1, 0.3, 0.68)], p, -0.05)
+    # ---------------------------------------------------------------- logo lumineux sur la paume
+    pl = dessus(0, zb + 0.27 * L)
+    k += pose([disc(CYAN, (0, 0, 0), 1.7, 0.3, neon=True, light=(CYAN, 22, 1.2)), disc(WHITE, (0, 0.06, 0), 1.0, 0.32)], pl, 0.0)
     # ---------------------------------------------------------------- patins : liseré sombre au ras du tapis
     for sx in (-1, 1):
-        k += trait([cote(sx, y0 + 0.35, z) for z in [-17.5 + 35 * i / 14 for i in range(15)]], SKATE, w=0.3, h=0.5, lift=0.02)
-    for zend in (-1, 1):
-        k += trait([surface((0, y0 + 0.35, zend * 10), norm((math.sin(a_), 0, zend * math.cos(a_)))) for a_ in [(-1.0 + 2.0 * i / 8) for i in range(9)]],
-                   SKATE, w=0.3, h=0.5, lift=0.02)
+        k += trait([cote(sx, y0 + 0.35, z) for z in [-17 + 34 * i / 14 for i in range(15)]], DARK, w=0.3, h=0.5, lift=0.02)
     return k
 
 @modele('CableUSB', view=(1.0, 0.35, 0.3))
