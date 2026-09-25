@@ -1,7 +1,7 @@
 # Monde SQUELETTE : os, tombes, bougies
 import math, random
 from kit import *
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 TITLE = 'Skeleton'
 SHOT = dict(bg=(0.16, 0.17, 0.2), floor=(0.22, 0.2, 0.19), light_col=(0.92, 0.95, 1), sun=2.2)
@@ -19,8 +19,7 @@ def skull(c=None, loc=(0, 0, 0), s=1.0):
     for i in range(5):
         ps.append(cube(bone2, (-0.4 + i * 0.2, -1.06, 0.45), (0.14, 0.05, 0.22)))
     o = join(ps, 'sk')
-    for v in o.data.vertices:
-        v.co *= s
+    o.data.transform(Matrix.Scale(s, 4))
     return place(o, (0, 0, 0), loc)
 
 def big_skull():
