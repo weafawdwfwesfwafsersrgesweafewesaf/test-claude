@@ -56,6 +56,7 @@ const tplFolder = template('Folder', o => noAttr(o));
 const tplModel = template('Model', o => noAttr(o) && o.props.ScaleFactor !== undefined && o.children.length > 0 && o.children.every(c => c.cls === 'Part'));
 const tplPart = template('Part', o => noAttr(o) && o.props.Material && o.props.Material.v === 272 && o.props.shape && o.props.shape.v === 1 && o.props.CanCollide && o.props.CanCollide.v === false);
 const tplMesh = template('SpecialMesh', () => true);
+const tplLight = template('PointLight', noAttr);
 log(`modèles : Folder ${name(tplFolder)}, Model ${name(tplModel)}, Part ${name(tplPart)}, SpecialMesh ${name(tplMesh)}`);
 const IDENT = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1];
 const counts = {};
@@ -67,6 +68,9 @@ function add(node, parentRef) {
   } else if (node.c === 'Model') {
     ref = P.addNew(tplModel, parentRef, { Name: enc.str(node.n), AttributesSerialize: enc.str(''), WorldPivotData: enc.optcf(node.pivot), PrimaryPart: -1,
       ScaleFactor: enc.float(1), NeedsPivotMigration: enc.bool(false) });
+  } else if (node.c === 'PointLight') {
+    ref = P.addNew(tplLight, parentRef, { Name: enc.str(node.n), AttributesSerialize: enc.str(''), Brightness: enc.float(node.brightness),
+      Range: enc.float(node.range), Color: enc.vec3(node.rgb.map(c => c / 255)), Shadows: enc.bool(false), Enabled: enc.bool(true) });
   } else {
     const v = {
       Name: enc.str(node.n), CFrame: enc.cframe(node.cf), size: enc.vec3(node.size), Color3uint8: enc.rgb8(node.rgb), Material: enc.enumv(node.mat),
@@ -76,6 +80,8 @@ function add(node, parentRef) {
       MaterialVariantSerialized: enc.str(''), PivotOffset: enc.cframe(IDENT), Velocity: enc.vec3([0, 0, 0]), RotVelocity: enc.vec3([0, 0, 0]),
       AttributesSerialize: node.attrs ? enc.attrs(node.attrs) : enc.str(''), CustomPhysicalProperties: Buffer.from([2]),
     };
+    if (node.studs) { v.Material = enc.enumv(256); v.MaterialVariantSerialized = enc.str('Studs_2'); }
+    if (node.transp) v.Transparency = enc.float(node.transp);
     ref = P.addNew(tplPart, parentRef, v);
     if (node.sphere) {
       counts.SpecialMesh = (counts.SpecialMesh || 0) + 1;

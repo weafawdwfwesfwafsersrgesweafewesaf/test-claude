@@ -19,8 +19,8 @@ sc.world.node_tree.nodes['Background'].inputs[0].default_value = (0.55, 0.75, 1.
 sc.world.node_tree.nodes['Background'].inputs[1].default_value = 0.8
 B = lambda x, y, z: Vector((x, -z, y))          # Roblox -> Blender
 mats = {}
-def mat(rgb, glow=False):
-    k = (tuple(rgb), glow)
+def mat(rgb, glow=False, alpha=1.0):
+    k = (tuple(rgb), glow, alpha)
     if k not in mats:
         m = bpy.data.materials.new(str(k)); m.use_nodes = True
         bs = m.node_tree.nodes['Principled BSDF']
@@ -28,6 +28,9 @@ def mat(rgb, glow=False):
         bs.inputs['Base Color'].default_value = (*c, 1); bs.inputs['Roughness'].default_value = 0.7
         if glow:
             bs.inputs['Emission Color'].default_value = (*c, 1); bs.inputs['Emission Strength'].default_value = 1.5
+        if alpha < 1:
+            bs.inputs['Alpha'].default_value = alpha
+            m.blend_method = 'BLEND'
         mats[k] = m
     return mats[k]
 # un seul mesh par matériau pour aller vite
@@ -80,7 +83,8 @@ def walk(n):
         m = n['cf']
         right, up = (m[3], m[6], m[9]), (m[4], m[7], m[10])
         shp = 'S' if (n['shape'] == 0 or n.get('sphere')) else ('C' if n['shape'] == 2 else 'B')
-        add_box(rbx_matrix(m[:3], right, up), n['size'], mat(n['rgb'], n['mat'] == 288), shp)
+        alpha = 1 - n.get('transp', 0) * (1 if n['mat'] != 1568 else 1) - (0.3 if n['mat'] == 1568 and not n.get('transp') else 0)
+        add_box(rbx_matrix(m[:3], right, up), n['size'], mat(n['rgb'], n['mat'] == 288, alpha), shp)
     for k in n.get('k', []):
         walk(k)
 walk(json.load(open(TREE)))

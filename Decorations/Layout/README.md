@@ -1,34 +1,41 @@
-# Mise en scène des décors (posés en vrai dans le jeu)
+# Décors des 12 niveaux (posés en vrai dans le jeu)
 
-Les décors ne sont PAS posés par un script : ils sont écrits directement dans le fichier du jeu, dans
-`Workspace > DecorMondes`, comme des pièces normales qu'on peut déplacer, copier ou supprimer dans Studio.
+Les décors sont écrits directement dans le fichier du jeu, dans `Workspace > DecorMondes > LevelN` :
+des Models normaux, avec leur pivot à la base, qu'on peut déplacer, copier ou supprimer dans Studio.
+Aucun script ne les pose.
 
-```
-DecorMondes
-├ Lobby                 3 décors derrière chaque tapis à thème
-└ Level1 … Level12
-   ├ Scenes             îlots mis en scène (ex. Scene_Campement : Ilot + Igloo + Snowman + sapins…)
-   ├ Rebord             groupes posés sur le haut du canyon
-   └ Murs               stalactites, cascades de lave, engrenages qui tournent, côtes géantes, bannières…
-```
+Principes :
+- **rien sur les bords du canyon**, rien sur le parcours : chaque élément est placé là où aucune pièce
+  du niveau ne passe (vérifié sur la vraie géométrie, `levels.json`) ;
+- **peu d'éléments, grands, qui racontent le thème du niveau** : un repère au fond, quelques pièces
+  maîtresses sur les côtés, et des éléments qui flottent ou bougent ;
+- **le style de la map** : grosses masses en studs (`Plastic` + `Studs_2`), néon pour ce qui brille
+  (avec une `PointLight`), verre pour les cristaux et les bulles ;
+- **le mouvement** passe par les attributs que `DecorController` anime déjà : `DecorBob` (flotte),
+  `DecorTurn` (tourne autour d'un centre).
 
-| Niveau | Thème du niveau | Décors |
+| Niveau | Thème | Décors |
 |---|---|---|
-| 1, 12 | Clavier, Dernier clic | Rétro / arcade + bandes néon sur les murs |
-| 2, 3, 5 | sol de lave orange | Volcans, obsidienne, forêt calcinée, bassins + cascades de lave |
-| 4, 11 | Écraseurs, Galaxie | Dépôts de robots + engrenages géants qui tournent dans les murs |
-| 6 | Mer de squishies | Îlots bonbons + glaçage qui coule du rebord |
-| 7 | Lave rose | Volcans (lave teintée en rose) + antre du dragon + cascades roses |
-| 8 | Beurre | Trésors de dragon + bannières |
-| 9 | Rivière gelée | Campements, forêts de sapins, cristaux, arches + stalactites |
-| 10 | Pont d'os | Cimetières, coin de sorcière, ossuaire + côtes géantes dans les murs |
-
-Les engrenages tournent et les fantômes flottent grâce aux attributs `DecorTurn` / `DecorBob` que le
-`DecorController` du jeu anime déjà : aucun script ajouté.
+| 1 | Clavier | Le bureau géant : écran « GO! », souris, câbles USB, touches W A S D E R F G qui flottent |
+| 2 | Papier bulle | Colis en fuite : carton « FRAGILE » qui déborde, cartons engloutis, bulles de verre |
+| 3 | Chocolat | La chocolaterie : fontaine de chocolat et fraises, tablettes plantées, chantilly, guimauves |
+| 4 | Écraseurs | L'usine : presse géante qui cogne, cheminées qui fument, pylônes à engrenages qui tournent |
+| 5 | Pop it | Pop-it géant, pop-its plantés, hand spinners qui tournent |
+| 6 | Mer de squishies | Baleine qui souffle, méduses, canards en plastique |
+| 7 | Lave rose | Le cœur du volcan : volcan et coulées, œuf du dragon, geysers, obsidienne, rochers flottants |
+| 8 | Beurre | Le petit-déjeuner : grille-pain (les tartines sautent), pancakes, beurre fondant, tartines volantes |
+| 9 | Rivière gelée | Arche de glacier, icebergs et sapins, cristaux, rideaux d'aurore boréale |
+| 10 | Pont d'os | Le dragon endormi : crâne géant aux yeux verts, colonne et côtes, feux follets |
+| 11 | Galaxie | Planète à anneaux, station spatiale, soucoupe, lunes, comète, astéroïdes |
+| 12 | Dernier clic | Soleil synthwave, écran « 99 % », curseurs géants, cœurs pixel |
 
 ## Régénérer
 
-1. `node tools/rbxl/geom.js <jeu.rbxl> levels.json Workspace/BikeASMR/Map/Levels` (géométrie réelle des niveaux)
-2. `python3 decor_layout.py levels.json DecorLayout.lua layout.json` (mise en scène, places libres vérifiées)
-3. `python3 build_tree.py DecorShapes.lua layout.json tree.json` (arbre d'instances)
-4. `node tools/rbxl/bake.js <récent> <original> <rééquilibré> tree.json <sortie.rbxl>`
+```bash
+node tools/rbxl/geom.js <jeu.rbxl> levels.json Workspace/BikeASMR/Map/Levels   # géométrie réelle
+python3 setpieces.py levels.json tree.json                                       # décors -> arbre d'instances
+node tools/rbxl/bake.js <récent> <original> <rééquilibré> tree.json <sortie.rbxl>
+```
+
+`setpieces.py` contient un constructeur par niveau (`build_1` … `build_12`) : c'est là qu'on ajoute ou
+modifie un décor.
