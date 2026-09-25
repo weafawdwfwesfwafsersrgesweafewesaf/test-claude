@@ -215,7 +215,16 @@ class Place {
       let data = null;
       if (c.name === 'INST') {
         const id = c.data.readUInt32LE(0), k = this.g.classes[id];
-        if (k.dirtyInst) data = Buffer.concat([u32(id), strb(k.cls), Buffer.from([k.fmt]), u32(k.refs.length), encRefs(k.refs)]);
+        if (k.dirtyInst) {
+          // classes de service (fmt = 1) : un octet « isServiceRooted » par instance après les références
+          let tail = Buffer.alloc(0);
+          if (k.fmt) {
+            const n0 = c.data.readUInt32LE(4 + 4 + c.data.readUInt32LE(4) + 1);
+            if (n0 !== k.refs.length) throw new Error(`service ${k.cls} : nombre d'instances changé`);
+            tail = Buffer.from(c.data.subarray(c.data.length - n0));
+          }
+          data = Buffer.concat([u32(id), strb(k.cls), Buffer.from([k.fmt]), u32(k.refs.length), encRefs(k.refs), tail]);
+        }
       } else if (c.name === 'PROP' && this.dirty.has(c)) {
         data = joinProp(this.props.get(c));
       } else if (c.name === 'PRNT' && (this.added.length || this.reparent.size || this.removed)) {
