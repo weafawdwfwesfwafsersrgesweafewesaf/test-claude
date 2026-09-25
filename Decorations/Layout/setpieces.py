@@ -57,7 +57,7 @@ class Level:
         self.kids = []
         self.placed = []          # boîtes des décors déjà posés
 
-    def libre(self, lo, hi, margin=5, gap=4):
+    def libre(self, lo, hi, margin=5, gap=14):
         if lo[0] < -WALL or hi[0] > WALL:
             return False
         if lo[1] < self.floor - 12:
@@ -122,10 +122,10 @@ def level(i):
 @level(1)
 def build_1(L):
     L.poser('EcranGeant', (950, 1230), (95, 130), scales=(1.0, 0.9, 0.8))
-    for zr in ((250, 520), (700, 950)):
-        L.poser('SourisGeante', zr, (95, 140), scales=(1.6, 1.4, 1.2), tilt_yaw=45)
-    for zr in ((120, 350), (520, 800)):
-        L.poser('CableUSB', zr, (100, 145), scales=(1.2, 1.0, 0.85), tilt_yaw=0)
+    for zr, sd in (((250, 520), 1), ((700, 950), -1)):
+        L.poser('SourisGeante', zr, (95, 140), scales=(1.6, 1.45, 1.3, 1.15), tilt_yaw=40, side=sd)
+    for zr, sd in (((120, 350), -1), ((500, 800), 1)):                                    # câbles du côté opposé aux souris
+        L.poser('CableUSB', zr, (100, 145), scales=(1.2, 1.0, 0.85), tilt_yaw=0, side=sd)
     for n, (lettre, zr) in enumerate(zip('WASDQERF', slots(8, 150, 1200))):
         L.poser('Touche', zr, (95, 145), y=(60, 95), kw={'lettre': lettre}, scales=(1.0, 0.85), nom='Touche_' + lettre,
                 attrs=lambda x, y, z: bob(3, 4 + (z % 3), (z % 7) / 7))

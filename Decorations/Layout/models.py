@@ -138,28 +138,74 @@ def barre_espace():
         k += [box('e0303a', (sx, -2.2, 0), (1.3, 3.4, 4.2)), box('e0303a', (sx, -2.2, 0), (4.2, 3.4, 1.3))]
     return transform(k, (0, 0, 0), Rx(58))
 
-@modele('SourisGeante', view=(0.9, 0.55, 0.7))
+def _interp(pts, t):
+    for (t0, v0), (t1, v1) in zip(pts, pts[1:]):
+        if t0 <= t <= t1:
+            u = (t - t0) / (t1 - t0)
+            u = u * u * (3 - 2 * u)
+            return v0 + (v1 - v0) * u
+    return pts[-1][1] if t > pts[-1][0] else pts[0][1]
+
+# profil d'une souris gamer symétrique (125 x 63,5 x 40 mm) : t = 0 à l'arrière, 1 au nez
+SOURIS_H = [(0.0, 5.5), (0.12, 10.2), (0.28, 12.5), (0.4, 12.8), (0.55, 12.1), (0.7, 10.9), (0.85, 9.4), (1.0, 7.4)]
+SOURIS_W = [(0.0, 15.5), (0.14, 19.4), (0.3, 20.3), (0.45, 20.0), (0.62, 18.9), (0.8, 18.4), (1.0, 16.4)]
+
+@modele('SourisGeante', view=(0.9, 0.55, 0.8))
 def souris_geante():
-    WHITE, WHITE2, DARK, SOLE = 'f4f6fb', 'e3e7f0', '2a2f3a', '3a404d'
-    RGB = ['ff4fd8', 'a06eff', '4dfcff', '34d399', 'ffd23c', 'ff7a3a']
-    k = bevel_box(SOLE, (0, 1, 0), (24, 2, 36), 0.6, top=True)                             # semelle
-    for i in range(24):                                                                    # liseré RGB
-        a0, a1 = i * math.tau / 24, (i + 1) * math.tau / 24
-        p0 = (math.sin(a0) * 12.3, 2.3, math.cos(a0) * 18.3)
-        p1 = (math.sin(a1) * 12.3, 2.3, math.cos(a1) * 18.3)
-        k.append(beam(RGB[i // 4], p0, p1, 0.9, 0.7, neon=True))
-    k.append(ell(WHITE2, (0, 2.4, -1), 12, 11, 17.6))                                     # coque
-    for sx in (-1, 1):                                                                     # boutons
-        k.append(ell(WHITE, (sx * 5.6, 3.2, 6.5), 6.3, 10.2, 11))
-    for zz in (3, -2.5):                                                                   # boutons latéraux
-        k.append(ell(DARK, (-11.6, 6.5, zz), 0.9, 1.3, 2.2))
-    k.append(box(DARK, (0, 11.4, 9.5), (0.6, 2.4, 13), pitch=16))                          # fente entre les boutons
-    k.append(disc(DARK, (0, 12.6, 8.5), 2.4, 1.8, axis=(1, 0, 0)))                          # molette
-    k.append(disc('4dfcff', (0, 12.6, 8.5), 2.5, 0.5, axis=(1, 0, 0), neon=True))
-    k.append(disc('4dfcff', (0, 11.6, -11.5), 2.2, 0.3, axis=norm((0, 0.6, -1)), neon=True, light=('4dfcff', 20, 1)))  # logo
-    pts = bezier((0, 3, 17), (0, 9, 26), (0, 14, 36), (0, -3, 48), 8)                      # câble qui plonge
-    k.append(rod(DARK, (0, 3, 16), (0, 3, 20), 1.9))
-    k += curve(DARK, [(0, 3, 19)] + pts[1:], 1.3)
+    """Souris gamer sans fil aux proportions d'une vraie (40 x 20,3 x 12,8 studs), sur son tapis. L'avant regarde +Z."""
+    WHITE, DARK, GREY, PAD, PAD_L, CYAN = 'f4f6fb', '1d2233', '3a4050', '20263a', '2b3350', '4dfcff'
+    k = []
+    # tapis : rectangle aux coins arrondis, liseré néon
+    W, D, T = 38, 58, 0.8
+    k += [box(PAD, (0, T / 2, 2), (W, T, D - 6)), box(PAD, (0, T / 2 + 0.01, 2), (W - 6, T + 0.02, D))]
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            k.append(cyl(PAD, (sx * (W / 2 - 3), 0, 2 + sz * (D / 2 - 3)), 3, T - 0.01))
+        k.append(box(CYAN, (sx * (W / 2 + 0.1), T / 2, 2), (0.3, 0.5, D - 6), neon=True))
+    for sz in (-1, 1):
+        k.append(box(CYAN, (0, T / 2, 2 + sz * (D / 2 + 0.1)), (W - 6, 0.5, 0.3), neon=True))
+    k.append(box(PAD_L, (0, T + 0.02, 24), (9, 0.05, 2.4)))
+    y0 = T
+    L, zb = 40, -20                                                                        # longueur, arrière
+    H = lambda t: _interp(SOURIS_H, t)
+    Wd = lambda t: _interp(SOURIS_W, t)
+    # coque : tranches ellipsoïdales très chevauchées (pas de 2 studs, 9 de long) : surface lisse, sans anneaux
+    n = 17
+    slices = []
+    for i in range(n):
+        t = 0.1 + 0.8 * i / (n - 1)
+        z = zb + t * L
+        rz = min(9.0, 20.0 - abs(z) + 0.4)
+        h, w = H(t), Wd(t)
+        k.append(ell(WHITE, (0, y0 + h * 0.42, z), w / 2, h * 0.58, rz))
+        slices.append((z, y0 + h * 0.42, h * 0.58, rz))
+    def dessus(z):                                                                        # hauteur réelle de la coque en x = 0
+        return max((y + ry * math.sqrt(max(0.0, 1 - ((z - zc) / rz_) ** 2)) for zc, y, ry, rz_ in slices))
+    # fente entre les deux boutons, qui suit le dessus, de la molette jusqu'au nez
+    prev = None
+    for i in range(13):
+        t = 0.66 + 0.3 * i / 12
+        p = (0, dessus(zb + t * L) + 0.1, zb + t * L)
+        if prev:
+            k.append(beam(DARK, prev, p, 0.45, 0.3))
+        prev = p
+    # molette : caoutchouc sombre strié et anneau lumineux
+    tw = 0.6
+    wc = (0, dessus(zb + tw * L) - 0.7, zb + tw * L)
+    k.append(disc(DARK, wc, 2.2, 1.7, axis=(1, 0, 0)))
+    k.append(disc(CYAN, wc, 2.3, 0.35, axis=(1, 0, 0), neon=True))
+    for j in range(12):
+        a = j * math.tau / 12
+        k.append(box(GREY, (0, wc[1] + math.sin(a) * 2.15, wc[2] + math.cos(a) * 2.15), (1.75, 0.3, 0.3), pitch=-math.degrees(a)))
+    k.append(box(DARK, (0, dessus(wc[2]) - 0.15, wc[2]), (2.6, 0.5, 5.6)))                      # logement de la molette
+    # deux boutons latéraux sous le pouce (côté gauche)
+    for t in (0.5, 0.64):
+        z = zb + t * L
+        k.append(ell(GREY, (-Wd(t) / 2 - 0.1, y0 + H(t) * 0.45, z), 0.7, 1.0, 2.4))
+    # logo lumineux sur la paume
+    tl = 0.3
+    k.append(disc(CYAN, (0, dessus(zb + tl * L) + 0.02, zb + tl * L), 1.8, 0.3, axis=norm((0, 1, -0.12)), neon=True, light=(CYAN, 22, 1.2)))
+    k.append(disc(WHITE, (0, dessus(zb + tl * L) + 0.12, zb + tl * L), 1.0, 0.3, axis=norm((0, 1, -0.12))))
     return k
 
 @modele('CableUSB', view=(1.0, 0.35, 0.3))
