@@ -4,15 +4,15 @@ from mathutils import Vector, Matrix
 sys.path.insert(0, '/home/user/test-claude/Decorations/Blender')
 args = sys.argv[sys.argv.index('--') + 1:]
 lvl, out = int(args[0]), args[1]
-TREE = args[6] if len(args) > 6 else '/tmp/claude-0/rbx/tree_l7.json'
+TREE = args[6]
 cam_z = float(args[2]) if len(args) > 2 else 60
 cam_x = float(args[3]) if len(args) > 3 else 0
 cam_h = float(args[4]) if len(args) > 4 else 22
 look_x = float(args[5]) if len(args) > 5 else 0
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
-sc.render.engine = 'CYCLES'; sc.cycles.samples = 28; sc.cycles.use_denoising = False
-sc.render.resolution_x, sc.render.resolution_y = 1600, 900
+sc.render.engine = 'CYCLES'; sc.cycles.samples = 12; sc.cycles.use_denoising = False
+sc.render.resolution_x, sc.render.resolution_y = 1280, 720
 sc.view_settings.view_transform = 'Standard'
 sc.world = bpy.data.worlds.new('w'); sc.world.use_nodes = True
 sc.world.node_tree.nodes['Background'].inputs[0].default_value = (0.55, 0.75, 1.0, 1)
@@ -39,10 +39,10 @@ buckets = {}
 def add_box(m4, size, material, shape='B'):
     bm = buckets.setdefault(material.name, (bmesh.new(), material))[0]
     if shape == 'C':
-        r = bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.5, radius2=0.5, depth=1)
+        r = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.5, radius2=0.5, depth=1)
         vs = r['verts']; rot = Matrix.Rotation(math.pi / 2, 4, 'Y')
     elif shape == 'S':
-        r = bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=6, radius=0.5); vs = r['verts']; rot = Matrix()
+        r = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=8, radius=0.5); vs = r['verts']; rot = Matrix()
     else:
         r = bmesh.ops.create_cube(bm, size=1); vs = r['verts']; rot = Matrix()
     bmesh.ops.transform(bm, matrix=m4 @ Matrix.Diagonal((*size, 1)) @ rot, verts=vs)
@@ -52,7 +52,7 @@ def rbx_matrix(p, right, up):
     R = Matrix((b(right), b(up), b(back))).transposed().to_4x4()
     return Matrix.Translation(B(*p)) @ R
 # géométrie du niveau
-parts = json.load(open('/tmp/claude-0/rbx/levels.json'))
+parts = json.load(open(args[7] if len(args) > 7 else 'levels.json'))
 for p in parts:
     if p['t'] != f'Level{lvl}' or p['tr'] > 0.8:
         continue
@@ -70,21 +70,27 @@ for side in (-1, 1):
         add_box(Matrix.Translation(B(cx, (bot + t - 8) / 2, (z0 + z1) / 2)), (x1 - x0, (t - 8) - bot, z1 - z0 + 400), mat((158, 104, 64)))
         add_box(Matrix.Translation(B(cx - side, t - 4, (z0 + z1) / 2)), (x1 - x0 + 2, 8, z1 - z0 + 400), mat((92, 190, 72)))
 # décorations
-txt = open('/tmp/claude-0/rbx/new/DecorShapes.lua').read()
-def world_data(w):
-    blk = txt[txt.index(f'\t{w} = {{'):]; blk = blk[:blk.index('\n\t},')]
-    cols = [(tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)), g == 'true') for h, g in re.findall(r'\{ "([0-9a-f]{6})", (true|false) \}', blk.split('Props')[0])]
-    props = {n: [float(x) for x in body.split(', ')] for n, body in re.findall(r'Name = "(\w+)", Height = [\d.]+, Parts = \{ ([^}]*) \}', blk)}
-    return cols, props
-WD = {w: world_data(w) for w in ['Lava', 'Ice', 'Candy', 'Robot', 'Dragon', 'Skeleton', 'Retro', 'Ghost']}
 # décors lus dans un arbre d'instances (tree.json), exactement comme ils seront écrits dans le jeu
 def walk(n):
     if n['c'] == 'Part':
         m = n['cf']
         right, up = (m[3], m[6], m[9]), (m[4], m[7], m[10])
-        shp = 'S' if (n['shape'] == 0 or n.get('sphere')) else ('C' if n['shape'] == 2 else 'B')
-        alpha = 1 - n.get('transp', 0) * (1 if n['mat'] != 1568 else 1) - (0.3 if n['mat'] == 1568 and not n.get('transp') else 0)
-        add_box(rbx_matrix(m[:3], right, up), n['size'], mat(n['rgb'], n['mat'] == 288, alpha), shp)
+        shp = 'S' if (n['shape'] == 0 or n.get('sphere')) else ('C' if n['shape'] == 2 else ('W' if n['shape'] == 3 else 'B'))
+        alpha = 1 - n.get('transp', 0)
+        mt = mat(n['rgb'], n['mat'] == 288, alpha)
+        if shp == 'W':
+            bm = buckets.setdefault(mt.name, (bmesh.new(), mt))[0]
+            back = (right[1] * up[2] - right[2] * up[1], right[2] * up[0] - right[0] * up[2], right[0] * up[1] - right[1] * up[0])
+            sx, sy, sz = n['size']
+            pts = [(-.5, -.5, -.5), (.5, -.5, -.5), (-.5, -.5, .5), (.5, -.5, .5), (-.5, .5, .5), (.5, .5, .5)]
+            vs = [bm.verts.new(B(*[m[i] + a * sx * right[i] + b_ * sy * up[i] + c_ * sz * back[i] for i in range(3)])) for (a, b_, c_) in pts]
+            cen = sum((v.co for v in vs), Vector()) / 6
+            for f in ((0, 2, 3, 1), (2, 4, 5, 3), (0, 4, 2), (1, 3, 5), (0, 1, 5, 4)):
+                fa = bm.faces.new([vs[i] for i in f]); fa.normal_update()
+                if fa.normal.dot(fa.calc_center_median() - cen) < 0:
+                    fa.normal_flip()
+        else:
+            add_box(rbx_matrix(m[:3], right, up), n['size'], mt, shp)
     for k in n.get('k', []):
         walk(k)
 walk(json.load(open(TREE)))

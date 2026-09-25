@@ -4,30 +4,40 @@ Les décors sont écrits directement dans le fichier du jeu, dans `Workspace > D
 des Models normaux, avec leur pivot à la base, qu'on peut déplacer, copier ou supprimer dans Studio.
 Aucun script ne les pose.
 
-Principes :
-- **rien sur les bords du canyon**, rien sur le parcours : chaque élément est placé là où aucune pièce
-  du niveau ne passe (vérifié sur la vraie géométrie, `levels.json`) ;
-- **peu d'éléments, grands, qui racontent le thème du niveau** : un repère au fond, quelques pièces
-  maîtresses sur les côtés, et des éléments qui flottent ou bougent ;
-- **le style de la map** : grosses masses en studs (`Plastic` + `Studs_2`), néon pour ce qui brille
-  (avec une `PointLight`), verre pour les cristaux et les bulles ;
-- **le mouvement** passe par les attributs que `DecorController` anime déjà : `DecorBob` (flotte),
-  `DecorTurn` (tourne autour d'un centre).
+## Principes
+
+- **Tout en studs** : chaque part est en `Plastic` avec le MaterialVariant `Studs_2`, celui que le plugin
+  Resurface a créé dans `MaterialService` et qu'utilise déjà la map. Seul ce qui brille reste en néon.
+- **Rien sur le parcours** (ni au-dessus, ni en dessous : toute la hauteur est vérifiée), **rien sur les
+  bords du canyon** (|x| ≤ 166), pas de décors qui se chevauchent. Le mouvement est compris dans ces
+  vérifications (rotation `DecorTurn`, flottement `DecorBob`).
+- **Pas de z-fighting** : les pièces qui se chevauchent n'ont jamais de faces au même niveau.
+- **Mise en scène** : un grand repère au fond de chaque niveau, quelques pièces maîtresses sur les côtés,
+  et des éléments qui flottent ou bougent.
+
+## Fichiers
+
+| Fichier | Rôle |
+|---|---|
+| `kit.py` | Boîte à outils : pièces (bloc, coin, cylindre, boule…), formes composées (chanfrein en marches, prisme octogonal, sphère en tranches, anneau, engrenage, cristal, rocher, cratère), texte pixel |
+| `models.py` | Les modèles, construits en parts à l'origine (base à y = 0, face avant vers +Z) |
+| `setpieces.py` | La mise en scène : où poser chaque modèle dans chaque niveau |
+| `tools/rbxl/render_models.py` | Atelier : rend chaque modèle seul, de près, avec le relief des studs |
 
 | Niveau | Thème | Décors |
 |---|---|---|
-| 1 | Clavier | Le bureau géant : écran « GO! », souris, câbles USB, touches W A S D E R F G qui flottent |
-| 2 | Papier bulle | Colis en fuite : carton « FRAGILE » qui déborde, cartons engloutis, bulles de verre |
-| 3 | Chocolat | La chocolaterie : fontaine de chocolat et fraises, tablettes plantées, chantilly, guimauves |
-| 4 | Écraseurs | L'usine : presse géante qui cogne, cheminées qui fument, pylônes à engrenages qui tournent |
-| 5 | Pop it | Pop-it géant, pop-its plantés, hand spinners qui tournent |
-| 6 | Mer de squishies | Baleine qui souffle, méduses, canards en plastique |
-| 7 | Lave rose | Le cœur du volcan : volcan et coulées, œuf du dragon, geysers, obsidienne, rochers flottants |
-| 8 | Beurre | Le petit-déjeuner : grille-pain (les tartines sautent), pancakes, beurre fondant, tartines volantes |
-| 9 | Rivière gelée | Arche de glacier, icebergs et sapins, cristaux, rideaux d'aurore boréale |
-| 10 | Pont d'os | Le dragon endormi : crâne géant aux yeux verts, colonne et côtes, feux follets |
-| 11 | Galaxie | Planète à anneaux, station spatiale, soucoupe, lunes, comète, astéroïdes |
-| 12 | Dernier clic | Soleil synthwave, écran « 99 % », curseurs géants, cœurs pixel |
+| 1 | Clavier | Écran géant (fenêtre « GO! », barre des tâches, curseur, webcam), souris gamer RGB, câbles USB, touches rétroéclairées W A S D Q E R F et barre espace qui flottent |
+| 2 | Papier bulle | Carton « FRAGILE » ouvert qui déborde de papier bulle, piles de colis étiquetés, rouleaux de papier bulle, grosses bulles |
+| 3 | Chocolat | Fontaine de chocolat à trois vasques, tablettes à moitié déballées, cupcakes, guimauves |
+| 4 | Écraseurs | Presse hydraulique « DANGER » qui cogne, cheminées en briques qui fument, pylônes à engrenages qui tournent |
+| 5 | Pop it | Pop-it géant en cœur, pop-its (carré, rond, étoile), hand spinners qui tournent |
+| 6 | Mer de squishies | Baleine qui souffle, pieuvre, méduses, canards en plastique |
+| 7 | Lave rose | Volcan en terrasses et coulées, œuf du dragon sur son piton, geysers, aiguilles d'obsidienne, rochers flottants à cristaux |
+| 8 | Beurre | Grille-pain (les tartines sautent), piles de pancakes au sirop, beurre qui fond, œufs au plat, tartines volantes |
+| 9 | Rivière gelée | Arche de glacier à stalactites, icebergs avec sapins et pingouin, cristaux, bonshommes de neige, aurore boréale |
+| 10 | Pont d'os | Crâne de dragon aux yeux verts, squelettes à côtes courbes, lanternes du marais, feux follets |
+| 11 | Galaxie | Planète à anneaux, station spatiale (modules, treillis, panneaux solaires, antenne), soucoupe et son rayon, lunes à cratères, comète, astéroïdes à cristaux |
+| 12 | Dernier clic | Soleil synthwave, écran « LOADING 99 % », bouton d'arcade « CLICK », curseurs géants, cœurs pixel |
 
 ## Régénérer
 
@@ -37,5 +47,5 @@ python3 setpieces.py levels.json tree.json                                      
 node tools/rbxl/bake.js <récent> <original> <rééquilibré> tree.json <sortie.rbxl>
 ```
 
-`setpieces.py` contient un constructeur par niveau (`build_1` … `build_12`) : c'est là qu'on ajoute ou
-modifie un décor.
+Pour voir un modèle : `python3 models.py galerie.json NomDuModele` puis
+`blender -b --python tools/rbxl/render_models.py -- galerie.json dossier_sortie`.
