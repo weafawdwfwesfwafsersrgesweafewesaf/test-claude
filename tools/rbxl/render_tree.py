@@ -4,7 +4,7 @@ from mathutils import Vector, Matrix
 sys.path.insert(0, '/home/user/test-claude/Decorations/Blender')
 args = sys.argv[sys.argv.index('--') + 1:]
 lvl, out = int(args[0]), args[1]
-TREE = args[6]
+TREE = args[6] if len(args) > 6 else '/tmp/claude-0/rbx/tree_l7.json'
 cam_z = float(args[2]) if len(args) > 2 else 60
 cam_x = float(args[3]) if len(args) > 3 else 0
 cam_h = float(args[4]) if len(args) > 4 else 22
@@ -52,7 +52,7 @@ def rbx_matrix(p, right, up):
     R = Matrix((b(right), b(up), b(back))).transposed().to_4x4()
     return Matrix.Translation(B(*p)) @ R
 # géométrie du niveau
-parts = json.load(open(args[7] if len(args) > 7 else 'levels.json'))
+parts = json.load(open('/tmp/claude-0/rbx/levels.json'))
 for p in parts:
     if p['t'] != f'Level{lvl}' or p['tr'] > 0.8:
         continue
@@ -60,16 +60,30 @@ for p in parts:
     right, up = (m[0], m[3], m[6]), (m[1], m[4], m[7])
     shp = {0: 'S', 2: 'C'}.get(p.get('sh'), 'B') if p['c'] == 'Part' else 'B'
     add_box(rbx_matrix(p['p'], right, up), p['s'], mat(p['col'], p['n'] in ('Nappe',)), shp)
-# canyon simplifié (World.Border : trois gradins, dessus d'herbe)
-rideY = (lvl - 1) * 50; z0 = 300 + (lvl - 1) * 1300; z1 = z0 + 1300
-h1 = {7: 215, 11: 280}.get(lvl, 150)
-for side in (-1, 1):
-    for x0, x1, top in ((170, 250, h1), (250, 370, h1 + 60), (370, 530, h1 + 140)):
-        cx = side * (x0 + x1) / 2
-        bot = rideY - 220; t = rideY + top
-        add_box(Matrix.Translation(B(cx, (bot + t - 8) / 2, (z0 + z1) / 2)), (x1 - x0, (t - 8) - bot, z1 - z0 + 400), mat((158, 104, 64)))
-        add_box(Matrix.Translation(B(cx - side, t - 4, (z0 + z1) / 2)), (x1 - x0 + 2, 8, z1 - z0 + 400), mat((92, 190, 72)))
-# décorations
+# canyon : relu dans un fichier (args[8]) ou simplifié (trois gradins, dessus d'herbe)
+if len(args) > 8:
+    rideY = (lvl - 1) * 50; z0 = 300 + (lvl - 1) * 1300; z1 = z0 + 1300
+    for q in json.load(open(args[8])):
+        if z0 - 250 < q['p'][2] < z1 + 250:
+            add_box(rbx_matrix(q['p'], (1, 0, 0), (0, 1, 0)), q['s'], mat(q['c']))
+else:
+    rideY = (lvl - 1) * 50; z0 = 300 + (lvl - 1) * 1300; z1 = z0 + 1300
+    h1 = {7: 215, 11: 280}.get(lvl, 150)
+    for side in (-1, 1):
+        for x0, x1, top in ((170, 250, h1), (250, 370, h1 + 60), (370, 530, h1 + 140)):
+            cx = side * (x0 + x1) / 2
+            bot = rideY - 220; t = rideY + top
+            add_box(Matrix.Translation(B(cx, (bot + t - 8) / 2, (z0 + z1) / 2)), (x1 - x0, (t - 8) - bot, z1 - z0 + 400), mat((158, 104, 64)))
+            add_box(Matrix.Translation(B(cx - side, t - 4, (z0 + z1) / 2)), (x1 - x0 + 2, 8, z1 - z0 + 400), mat((92, 190, 72)))
+    # décorations
+    txt = open('/tmp/claude-0/rbx/new/DecorShapes.lua').read()
+    def world_data(w):
+        blk = txt[txt.index(f'\t{w} = {{'):]; blk = blk[:blk.index('\n\t},')]
+        cols = [(tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)), g == 'true') for h, g in re.findall(r'\{ "([0-9a-f]{6})", (true|false) \}', blk.split('Props')[0])]
+        props = {n: [float(x) for x in body.split(', ')] for n, body in re.findall(r'Name = "(\w+)", Height = [\d.]+, Parts = \{ ([^}]*) \}', blk)}
+        return cols, props
+    WD = {w: world_data(w) for w in ['Lava', 'Ice', 'Candy', 'Robot', 'Dragon', 'Skeleton', 'Retro', 'Ghost']}
+
 # décors lus dans un arbre d'instances (tree.json), exactement comme ils seront écrits dans le jeu
 def walk(n):
     if n['c'] == 'Part':
@@ -102,7 +116,7 @@ sun.rotation_euler = (math.radians(50), math.radians(10), math.radians(30)); sc.
 cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam); sc.camera = cam
 cam.data.lens = 22; cam.data.clip_end = 5000
 cam.location = B(cam_x, rideY + cam_h, z0 + cam_z)
-tgt = bpy.data.objects.new('t', None); sc.collection.objects.link(tgt); tgt.location = B(look_x, rideY + 5, z0 + cam_z + 200)
+tgt = bpy.data.objects.new('t', None); sc.collection.objects.link(tgt); tgt.location = B(look_x, rideY + (float(args[9]) if len(args) > 9 else 5), z0 + cam_z + 200)
 cam.constraints.new('TRACK_TO').target = tgt
 sc.render.filepath = out
 bpy.ops.render.render(write_still=True)

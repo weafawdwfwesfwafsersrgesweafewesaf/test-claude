@@ -39,12 +39,24 @@ Aucun script ne les pose.
 | 11 | Galaxie | Planète à anneaux, station spatiale (modules, treillis, panneaux solaires, antenne), soucoupe et son rayon, lunes à cratères, comète, astéroïdes à cristaux |
 | 12 | Dernier clic | Soleil synthwave, écran « LOADING 99 % », bouton d'arcade « CLICK », curseurs géants, cœurs pixel |
 
+## Bordure de la map (canyon)
+
+`canyon.py` refait le canyon cuit dans le jeu (`Workspace.BikeASMR.Map.Canyon`) dans le même style étagé
+(terre en studs, dessus d'herbe, gouttes d'herbe) mais avec un relief irrégulier : tronçons de hauteurs
+différentes, retraits en haut de falaise, strates, buttes d'herbe. La face intérieure reste à |x| = 170 et le
+premier gradin n'est jamais plus bas qu'avant (toujours hors de portée d'un double saut). Seuls le premier
+gradin et les socles sont solides ; les gradins du fond sont décoratifs.
+
+Attention : reconstruire la map avec `WorldRunner` régénérerait l'ancien canyon régulier (`World.Border`).
+
 ## Régénérer
 
 ```bash
 node tools/rbxl/geom.js <jeu.rbxl> levels.json Workspace/BikeASMR/Map/Levels   # géométrie réelle
 python3 setpieces.py levels.json tree.json                                       # décors -> arbre d'instances
-node tools/rbxl/bake.js <récent> <original> <rééquilibré> tree.json <sortie.rbxl>
+node tools/rbxl/geom.js <jeu.rbxl> canyon_actuel.json Workspace/BikeASMR/Map/Canyon    # canyon actuel
+python3 canyon.py canyon_actuel.json canyon_neuf.json                             # nouveau canyon
+node tools/rbxl/bake.js <récent> <original> <rééquilibré> tree.json <sortie.rbxl> canyon_neuf.json
 ```
 
 Pour voir un modèle : `python3 models.py galerie.json NomDuModele` puis

@@ -4,7 +4,7 @@
 //  3) décors posés EN VRAI dans Workspace.DecorMondes (Folders / Models / Parts), sans script.
 const fs = require('fs');
 const { Place, enc } = require('./writer.js'); const { parse, name } = require('./rbxl.js');
-const [RECENT, ORIG, REBAL, TREE, OUT] = process.argv.slice(2);
+const [RECENT, ORIG, REBAL, TREE, OUT, CANYON] = process.argv.slice(2);
 const P = new Place(RECENT);
 const O = parse(fs.readFileSync(ORIG)), B = parse(fs.readFileSync(REBAL));
 const log = m => console.log(m);
@@ -95,5 +95,22 @@ const tree = JSON.parse(fs.readFileSync(TREE));
 if (P.g.roots.some(r => r.cls === 'Workspace' && r.children.some(c => name(c) === 'DecorMondes'))) throw new Error('DecorMondes existe déjà');
 add(tree, P.find('Workspace').ref);
 log('décors : ' + JSON.stringify(counts));
+
+// ---------------------------------------------------------------- bordure : nouveau canyon (relief irrégulier), cuit à la place de l'ancien
+if (CANYON) {
+  const canyon = P.find('Workspace/BikeASMR/Map/Canyon');
+  const old = canyon.children.filter(c => c.cls === 'Part');
+  if (old.length !== canyon.children.length) throw new Error('Canyon : contenu inattendu');
+  const tplWall = old.find(o => o.props.CanCollide.v === true);
+  const tplDeco = old.find(o => o.props.CanCollide.v === false);
+  const parts = JSON.parse(fs.readFileSync(CANYON));
+  for (const q of parts) {
+    const tpl = q.collide ? tplWall : tplDeco;
+    P.addNew(tpl, canyon.ref, { Name: enc.str('Bloc'), CFrame: enc.cframe([q.p[0], q.p[1], q.p[2], 1, 0, 0, 0, 1, 0, 0, 0, 1]), size: enc.vec3(q.s),
+      Color3uint8: enc.rgb8(q.c), CanCollide: enc.bool(q.collide), CanQuery: enc.bool(q.collide) });
+  }
+  P.remove(old.map(o => o.ref));
+  log(`canyon : ${old.length} anciennes parts remplacées par ${parts.length} (${parts.filter(q => q.collide).length} solides)`);
+}
 P.save(OUT);
 log('écrit : ' + OUT);

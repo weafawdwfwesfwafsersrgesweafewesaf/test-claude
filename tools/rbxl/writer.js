@@ -168,10 +168,30 @@ class Place {
     this.added.push({ ref, parent: parent.ref });
     return ref;
   }
+  // Supprime des instances (et leurs propriétés). À appeler après les ajouts qui s'en servent comme modèles.
+  remove(refs) {
+    const gone = new Set(refs);
+    this.removed = (this.removed || 0) + gone.size;
+    this.gone = gone;
+    for (const k of Object.values(this.g.classes)) {
+      if (!k.refs.some(r => gone.has(r))) continue;
+      const keep = k.refs.map(r => !gone.has(r));
+      for (const s of this.classChunks(k)) s.vals = s.vals.filter((_, i) => keep[i]);
+      k.refs = k.refs.filter(r => !gone.has(r));
+      k.dirtyInst = true;
+      k.tplIdx = undefined;
+    }
+    // aucune propriété Ref ne doit plus pointer vers une instance supprimée
+    for (const c of this.g.chunks) {
+      if (c.name !== 'PROP' || c.data[8 + c.data.readUInt32LE(4)] !== 0x13) continue;
+      const s = this.split(c);
+      if (s.vals.some(r => gone.has(r))) { s.vals = s.vals.map(r => gone.has(r) ? -1 : r); this.dirty.add(c); }
+    }
+  }
   save(file) {
     const out = [];
     const h = Buffer.from(this.g.header);
-    h.writeInt32LE(h.readInt32LE(20) + this.added.length, 20);
+    h.writeInt32LE(h.readInt32LE(20) + this.added.length - (this.removed || 0), 20);
     out.push(h);
     for (const c of this.g.chunks) {
       let data = null;
@@ -180,9 +200,10 @@ class Place {
         if (k.dirtyInst) data = Buffer.concat([u32(id), strb(k.cls), Buffer.from([k.fmt]), u32(k.refs.length), encRefs(k.refs)]);
       } else if (c.name === 'PROP' && this.dirty.has(c)) {
         data = joinProp(this.props.get(c));
-      } else if (c.name === 'PRNT' && (this.added.length || this.reparent.size)) {
+      } else if (c.name === 'PRNT' && (this.added.length || this.reparent.size || this.removed)) {
         const r = new R(c.data); const ver = r.u8(); const n = r.u32();
-        const ch = r.refs(n), pa = r.refs(n).map((p, i) => this.reparent.has(ch[i]) ? this.reparent.get(ch[i]) : p);
+        let ch = r.refs(n), pa = r.refs(n).map((p, i) => this.reparent.has(ch[i]) ? this.reparent.get(ch[i]) : p);
+        if (this.gone) { const keep = ch.map(x => !this.gone.has(x)); ch = ch.filter((_, i) => keep[i]); pa = pa.filter((_, i) => keep[i]); }
         for (const a of this.added) { ch.push(a.ref); pa.push(a.parent); }
         data = Buffer.concat([Buffer.from([ver]), u32(ch.length), encRefs(ch), encRefs(pa)]);
       }
