@@ -29,7 +29,7 @@ Aucun script ne les pose.
 | 1 | Clavier | Écran géant (fenêtre « GO! », barre des tâches, curseur, webcam), souris gamer RGB, câbles USB, touches rétroéclairées W A S D Q E R F et barre espace qui flottent |
 | 2 | Papier bulle | Carton « FRAGILE » ouvert qui déborde de papier bulle, piles de colis étiquetés, rouleaux de papier bulle, grosses bulles |
 | 3 | Chocolat | Fontaine de chocolat à trois vasques, tablettes à moitié déballées, cupcakes, guimauves |
-| 4 | Écraseurs | Presse hydraulique « DANGER » qui cogne, cheminées en briques qui fument, pylônes à engrenages qui tournent |
+| 4 | Écraseurs | Sur le parcours : vraies presses (mâchoires d'acier rayées jaune/noir, vérins, carters, portique « DANGER », gyrophare, lignes rouges au sol) qui se referment complètement et tuent (`niveau4.py`). Autour : presse hydraulique « DANGER » qui cogne, cheminées en briques qui fument, pylônes à engrenages qui tournent |
 | 5 | Pop it | Pop-it géant en cœur, pop-its (carré, rond, étoile), hand spinners qui tournent |
 | 6 | Mer de squishies | Baleine qui souffle, pieuvre, méduses, canards en plastique |
 | 7 | Lave rose | Volcan en terrasses et coulées, œuf du dragon sur son piton, geysers, aiguilles d'obsidienne, rochers flottants à cristaux |
@@ -44,10 +44,23 @@ Aucun script ne les pose.
 `canyon.py` refait le canyon cuit dans le jeu (`Workspace.BikeASMR.Map.Canyon`) dans le même style étagé
 (terre en studs, dessus d'herbe, gouttes d'herbe) mais avec un relief irrégulier : tronçons de hauteurs
 différentes, retraits en haut de falaise, strates, buttes d'herbe. La face intérieure reste à |x| = 170 et le
-premier gradin n'est jamais plus bas qu'avant (toujours hors de portée d'un double saut). Seuls le premier
-gradin et les socles sont solides ; les gradins du fond sont décoratifs.
+premier gradin n'est jamais plus bas qu'avant (toujours hors de portée d'un double saut).
+Dans le jeu livré, seul le premier gradin (le plus proche de la map) est gardé (`tools/rbxl/step_canyon.js`).
 
 Attention : reconstruire la map avec `WorldRunner` régénérerait l'ancien canyon régulier (`World.Border`).
+
+## Niveaux 10 à 12 plus durs
+
+`niveaux_10_12.py` refait le parcours des trois derniers niveaux, chacun avec son twist :
+
+- **10 — Pont d'os** : ponts d'os qui s'effondrent sous les roues, crâne qui roule vers toi, vertèbres
+  étroites balayées par la queue du dragon, pont des mâchoires qui claquent, dernier pont friable.
+- **11 — Galaxie** (gravité basse) : astéroïdes qui dérivent, étoiles qui s'allument en vague, plateaux
+  qui tournent, comète en pendule, atterrissage sur la planète.
+- **12 — Dernier clic** : les doigts tapent plus vite (8 au lieu de 5), les mâchoires claquent plus vite,
+  les deux souris de la fin glissent de gauche à droite.
+
+Attention : reconstruire la map avec `WorldRunner` régénérerait l'ancien parcours et l'ancien canyon.
 
 ## Régénérer
 

@@ -32,6 +32,20 @@ function splitProp(data, n) {
     if (r.u8() !== 0x02) return null;
     vals = c.map(v => ({ rot: v.rot, pos: v.pos, has: r.u8() }));
   }
+  else if (type === 0x0D || type === 0x06 || type === 0x07) {
+    // Vector2 (x, y), UDim (échelle, décalage), UDim2 (échelle x, échelle y, décalage x, décalage y) : champs de 4 octets entrelacés
+    const nf = type === 0x07 ? 4 : 2;
+    const f = []; for (let j = 0; j < nf; j++) f.push(r.interleaved(n));
+    vals = []; for (let i = 0; i < n; i++) vals.push(f.map(x => x[i]));
+  }
+  else if (type === 0x20) {
+    // Font : famille (chaîne), graisse (u16), style (u8), identifiant en cache (chaîne), à la suite
+    vals = [];
+    for (let i = 0; i < n; i++) {
+      const st = r.p; const l1 = r.b.readUInt32LE(r.p); r.p += 4 + l1 + 2 + 1; const l2 = r.b.readUInt32LE(r.p); r.p += 4 + l2;
+      vals.push(Buffer.from(r.b.subarray(st, r.p)));
+    }
+  }
   else return null; // type non géré : chunk non modifiable
   if (r.p !== data.length) throw new Error(`taille inattendue pour ${pname} (type ${type})`);
   return { classId, pname, type, vals };
@@ -60,6 +74,8 @@ function joinProp(p) {
   else if (p.type === 0x10) body = Buffer.concat([...v.map(c => c.rot), interleave(v.map(c => c.pos[0]), 4), interleave(v.map(c => c.pos[1]), 4), interleave(v.map(c => c.pos[2]), 4)]);
   else if (p.type === 0x1A) body = Buffer.concat([Buffer.from(v.map(c => c[0])), Buffer.from(v.map(c => c[1])), Buffer.from(v.map(c => c[2]))]);
   else if (p.type === 0x19) body = Buffer.concat(v);
+  else if (p.type === 0x0D || p.type === 0x06 || p.type === 0x07) { const nf = p.type === 0x07 ? 4 : 2; const parts = []; for (let j = 0; j < nf; j++) parts.push(interleave(v.map(t => t[j]), 4)); body = Buffer.concat(parts); }
+  else if (p.type === 0x20) body = Buffer.concat(v);
   else if (p.type === 0x1E) body = Buffer.concat([Buffer.from([0x10]), ...v.map(c => c.rot), interleave(v.map(c => c.pos[0]), 4), interleave(v.map(c => c.pos[1]), 4), interleave(v.map(c => c.pos[2]), 4), Buffer.from([0x02]), Buffer.from(v.map(c => c.has))]);
   return Buffer.concat([head, body]);
 }
@@ -75,7 +91,11 @@ const enc = {
   cframe: m => { const rot = Buffer.alloc(37); rot[0] = 0; for (let i = 0; i < 9; i++) rot.writeFloatLE(m[3 + i], 1 + i * 4); return { rot, pos: [rbxFloat(m[0]), rbxFloat(m[1]), rbxFloat(m[2])] }; },
   optcf: m => Object.assign(enc.cframe(m), { has: 1 }),
   rgb8: c => Buffer.from(c),
-  attrs: o => { const parts = [u32(Object.keys(o).length)]; for (const [k, v] of Object.entries(o)) { const d = Buffer.alloc(8); d.writeDoubleLE(v); parts.push(strb(k), Buffer.from([0x06]), d); } return Buffer.concat(parts); },
+  attrs: o => { const parts = [u32(Object.keys(o).length)]; for (const [k, v] of Object.entries(o)) {
+      if (typeof v === 'string') parts.push(strb(k), Buffer.from([0x02]), strb(v));
+      else if (typeof v === 'boolean') parts.push(strb(k), Buffer.from([0x03, v ? 1 : 0]));
+      else { const d = Buffer.alloc(8); d.writeDoubleLE(v); parts.push(strb(k), Buffer.from([0x06]), d); } }
+    return Buffer.concat(parts); },
 };
 
 class Place {
@@ -125,6 +145,22 @@ class Place {
     this.dirty.add(c);
   }
   setParent(inst, parent) { this.reparent.set(inst.ref, parent.ref); }
+  // Change n'importe quelle propriété d'une instance (valeur déjà encodée).
+  setProp(inst, pname, value) {
+    const c = this.propChunk(inst.cls, pname);
+    if (!c) throw new Error(`${inst.cls}.${pname} introuvable`);
+    const s = this.split(c);
+    const i = this.g.classes[s.classId].refs.indexOf(inst.ref);
+    if (i < 0) throw new Error('instance absente');
+    s.vals[i] = value;
+    this.dirty.add(c);
+  }
+  getProp(inst, pname) {
+    const c = this.propChunk(inst.cls, pname);
+    if (!c) return undefined;
+    const s = this.split(c);
+    return s.vals[this.g.classes[s.classId].refs.indexOf(inst.ref)];
+  }
   classChunks(k) {
     if (!k.chunks) k.chunks = this.g.chunks.filter(c => c.name === 'PROP' && this.g.classes[c.data.readUInt32LE(0)] === k).map(c => { this.dirty.add(c); return this.split(c); });
     return k.chunks;
@@ -243,4 +279,4 @@ class Place {
     fs.writeFileSync(file, Buffer.concat(out));
   }
 }
-module.exports = { Place, enc };
+module.exports = { Place, enc, splitProp, joinProp };

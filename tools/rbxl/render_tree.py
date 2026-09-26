@@ -52,7 +52,7 @@ def rbx_matrix(p, right, up):
     R = Matrix((b(right), b(up), b(back))).transposed().to_4x4()
     return Matrix.Translation(B(*p)) @ R
 # géométrie du niveau
-parts = json.load(open('/tmp/claude-0/rbx/levels.json'))
+parts = json.load(open(args[7] if len(args) > 7 and args[7] != '-' else '/tmp/claude-0/rbx/levels.json'))
 for p in parts:
     if p['t'] != f'Level{lvl}' or p['tr'] > 0.8:
         continue
@@ -65,7 +65,7 @@ if len(args) > 8:
     rideY = (lvl - 1) * 50; z0 = 300 + (lvl - 1) * 1300; z1 = z0 + 1300
     for q in json.load(open(args[8])):
         if z0 - 250 < q['p'][2] < z1 + 250:
-            add_box(rbx_matrix(q['p'], (1, 0, 0), (0, 1, 0)), q['s'], mat(q['c']))
+            add_box(rbx_matrix(q['p'], (1, 0, 0), (0, 1, 0)), q['s'], mat(q['col'] if isinstance(q.get('c'), str) else q['c']))
 else:
     rideY = (lvl - 1) * 50; z0 = 300 + (lvl - 1) * 1300; z1 = z0 + 1300
     h1 = {7: 215, 11: 280}.get(lvl, 150)
