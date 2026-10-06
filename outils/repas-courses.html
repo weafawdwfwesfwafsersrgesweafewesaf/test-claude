@@ -172,6 +172,8 @@ textarea.input { min-height: 84px; resize: vertical; }
 .drow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .copied { font-size: 15px; color: var(--accent); font-weight: 700; min-height: 22px; }
 .next-up { font-size: 15px; color: var(--muted); }
+.drivepanel { display: grid; gap: 12px; }
+.drivepanel > b { font-size: 18px; }
 
 /* Settings */
 .rows { display: grid; }
@@ -906,6 +908,36 @@ function openInstall() {
     </div>`);
 }
 
+/* ---------- Claude in Chrome: a ready-to-paste mission that fills the drive cart in the user's own browser ---------- */
+function missionText() {
+  const p = P(), st = storeOf(p.store);
+  const items = allItems().filter((x) => !S.checked[x.key]);
+  return `Fais mes courses sur le site de ${st.name} Drive (je suis déjà connecté(e), sur mon drive habituel).
+Pour chaque produit de la liste :
+- cherche-le et compare les prix au kilo ou au litre ;
+- prends la marque du magasin si elle est moins chère${p.storeBrands === false ? " (sauf si je préfère une grande marque)" : ""} ;
+- prends une promo seulement si elle est vraiment rentable : le prix par portion baisse, et tout sera utilisé (un lot de frais qu’on ne finira pas n’est pas une affaire) ;
+- ajoute la bonne quantité au panier.
+${p.allergies ? `Attention, allergies : ${p.allergies}. Vérifie les produits.\n` : ""}Ne valide jamais la commande et ne paie pas. À la fin, donne-moi le total du panier et la liste de ce que tu n’as pas trouvé.
+
+Ma liste :
+${items.map((x) => `- ${x.product}${x.qty ? " (" + x.qty + ")" : ""}${x.why ? " — " + x.why : ""}`).join("\n")}`;
+}
+function openChromeMission() {
+  openSheet(`${sheetHead("Remplir le panier avec Claude dans Chrome", "Sur ton ordinateur")}
+    <div class="sheet-body">
+      <ol class="howto">
+        <li>Dans Chrome, installe l’extension <b>Claude</b> depuis le Chrome Web Store et connecte-toi avec ton compte Claude Pro.</li>
+        <li>Ouvre ${esc(storeOf(P().store).name)} Drive dans Chrome et connecte-toi à ton compte.</li>
+        <li>Copie la mission ci-dessous, ouvre le panneau Claude dans Chrome et colle-la.</li>
+      </ol>
+      <pre class="box pad" style="margin:0;white-space:pre-wrap;font-size:14px;max-height:240px;overflow:auto">${esc(missionText())}</pre>
+      <button class="btn primary block" data-act="copy-mission">${ic("copy")}Copier la mission</button>
+      <p class="fine">Claude remplit le panier dans ton vrai Chrome. Il ne paie jamais : tu vérifies et tu valides toi-même.</p>
+    </div>`);
+}
+const missionPanel = () => `<div class="box pad drivepanel"><b>Remplir le panier automatiquement</b><p class="muted">Sur ton ordinateur, l’extension Claude dans Chrome cherche chaque produit sur ${esc(storeOf(P().store).name)} Drive, compare les prix au kilo, garde les promos qui valent le coup et remplit ton panier.</p><button class="btn primary block" data-act="chrome-mission">Préparer la mission</button></div>`;
+
 /* ---------- View: semaine ---------- */
 function renderGenerating() {
   const g = S.gen || { step: 0, n: 0, start: Date.now() };
@@ -1016,7 +1048,7 @@ function renderCourses() {
   }
   const seg = `<div class="seg" role="tablist"><button role="tab" data-act="shopmode" data-mode="liste" aria-selected="${S.shopMode === "liste"}">Liste</button><button role="tab" data-act="shopmode" data-mode="drive" aria-selected="${S.shopMode === "drive"}">Mode drive</button></div>`;
   if (S.shopMode === "drive") { box.innerHTML = head + seg + renderDrive(all.length); return; }
-  let html = head + seg + `<div class="progress-line"><span><b>${all.length - leftItems.length}</b> sur ${all.length} dans le panier</span>${leftCost ? `<span>reste ≈ <span class="money">${eur(leftCost)}</span></span>` : ""}</div>
+  let html = head + seg + missionPanel() + `<div class="progress-line"><span><b>${all.length - leftItems.length}</b> sur ${all.length} dans le panier</span>${leftCost ? `<span>reste ≈ <span class="money">${eur(leftCost)}</span></span>` : ""}</div>
     <form id="extraForm" class="addrow"><input class="input" id="extraName" placeholder="Ajouter un article" aria-label="Article à ajouter" autocomplete="off"><button class="btn primary" aria-label="Ajouter">${ic("plus")}</button></form>`;
   for (const aisle of AISLE_NAMES) {
     const list = all.filter((x) => x.aisle === aisle);
@@ -1180,6 +1212,11 @@ document.addEventListener("click", (e) => {
     let txt = `Courses ${st.name}\n`;
     for (const name of AISLE_NAMES) { const l = items.filter((x) => x.aisle === name); if (!l.length) continue; txt += `\n${name}\n` + l.map((x) => `- ${x.product}${x.qty ? " (" + x.qty + ")" : ""}`).join("\n") + "\n"; }
     try { navigator.clipboard.writeText(txt).then(() => toast("Liste copiée. Colle-la dans un message."), () => toast("La copie est bloquée sur cet appareil.")); } catch (err) { toast("La copie est bloquée sur cet appareil."); }
+    return;
+  }
+  if (act === "chrome-mission") return openChromeMission();
+  if (act === "copy-mission") {
+    try { navigator.clipboard.writeText(missionText()).then(() => toast("Mission copiée. Colle-la dans Claude dans Chrome."), () => toast("La copie est bloquée sur cet appareil.")); } catch (err) { toast("La copie est bloquée sur cet appareil."); }
     return;
   }
   if (act === "reset-list") return armConfirm(a, "Confirmer", async () => { await clearShoppingState(); toast("Liste décochée."); });
