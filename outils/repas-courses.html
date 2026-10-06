@@ -1,0 +1,574 @@
+<title>Repas & Courses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column (max 860px), sticky tabs; the week is a list of day rows, the list is grouped by store aisle */
+:root {
+  --bg: #F4F7F0;
+  --surface: #FFFFFF;
+  --ink: #1D281C;
+  --muted: #5B6857;
+  --line: #D8E1D1;
+  --accent: #2D6838;
+  --accent-soft: #E2EDDD;
+  --accent-ink: #FFFFFF;
+  --pop: #B9790A;
+  --pop-soft: #FAEFD4;
+  --danger: #B33A2E;
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101510; --surface: #182018; --ink: #E5ECE1; --muted: #9AA895; --line: #2A3529;
+    --accent: #81C78C; --accent-soft: #1E3121; --accent-ink: #0D180E; --pop: #F0B53A; --pop-soft: #3A2E12;
+    --danger: #F08A7E; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101510; --surface: #182018; --ink: #E5ECE1; --muted: #9AA895; --line: #2A3529;
+  --accent: #81C78C; --accent-soft: #1E3121; --accent-ink: #0D180E; --pop: #F0B53A; --pop-soft: #3A2E12;
+  --danger: #F08A7E; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.app { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(26px, 6vw, 36px); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 22px; font-weight: 800; }
+h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-family: var(--body); }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.mode { margin: 0; font-size: 13px; color: var(--muted); }
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; font-weight: 600; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; }
+button.confirm { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+input, select { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; min-width: 0; }
+
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; gap: 6px; padding-block: 8px; background: var(--bg); margin-bottom: 14px; }
+.tabs button { flex: 1; border-radius: 10px; padding: 10px 8px; background: transparent; border-color: transparent; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); box-shadow: 0 1px 0 var(--line); }
+.badge { display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--pop-soft); color: var(--pop); font-size: 12px; font-variant-numeric: tabular-nums; }
+.badge:empty { display: none; }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.bar .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.people { display: flex; align-items: center; gap: 8px; }
+.people button { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: 18px; line-height: 1; }
+.people strong { font-family: var(--display); font-size: 22px; min-width: 1.4ch; text-align: center; font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+
+/* Week */
+.week { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.day { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+.day:first-child { border-top: 0; }
+.day.today { background: var(--accent-soft); }
+.dname { font-family: var(--display); font-weight: 600; font-size: 17px; }
+.dname small { display: block; font-family: var(--body); font-size: 12px; color: var(--accent); font-weight: 600; }
+.slot { display: grid; gap: 3px; min-width: 0; }
+.slot span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.slot select { width: 100%; }
+.slot select.filled { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+@media (max-width: 560px) {
+  .day { grid-template-columns: 1fr 1fr; }
+  .dname { grid-column: 1 / -1; }
+}
+
+/* Shopping list */
+.extra { display: grid; grid-template-columns: 1fr 180px auto; gap: 8px; margin-bottom: 16px; }
+@media (max-width: 560px) { .extra { grid-template-columns: 1fr auto; } .extra select { grid-row: 2; grid-column: 1 / -1; } }
+.aisle { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 6px; margin-bottom: 12px; }
+.aisle h3 { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.item { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; border-top: 1px dashed var(--line); cursor: pointer; }
+.item:first-of-type { border-top: 0; }
+.item input { margin-top: 3px; width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.item .what { flex: 1; min-width: 0; }
+.item .name { font-weight: 600; }
+.item .from { display: block; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.item .qty { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.item.done .name, .item.done .qty { text-decoration: line-through; color: var(--muted); }
+.item .rm { border: 0; background: none; padding: 0 4px; color: var(--muted); font-size: 18px; line-height: 1; }
+.progress { font-weight: 600; }
+
+/* Recipes */
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.recipe { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.recipe h2 { font-size: 19px; }
+.recipe .meta { font-size: 13px; color: var(--muted); }
+.recipe .ings { font-size: 13px; color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+.recipe .row { display: flex; gap: 8px; margin-top: auto; padding-top: 4px; flex-wrap: wrap; }
+.recipe .row button { padding: 6px 12px; font-size: 13px; }
+.used { display: inline-block; font-size: 12px; font-weight: 600; color: var(--pop); background: var(--pop-soft); padding: 2px 8px; border-radius: 999px; }
+
+.empty { text-align: center; padding: 36px 16px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); }
+.empty p { margin: 0 0 14px; }
+.empty .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* Recipe editor */
+.sheet { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: end center; }
+.sheet-inner { background: var(--bg); width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 760px) { .sheet { place-items: center; } .sheet-inner { border-radius: 18px; } }
+.field { display: grid; gap: 4px; margin-bottom: 12px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.field input { color: var(--ink); font-weight: 500; font-size: 15px; }
+.two { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
+.ing { display: grid; grid-template-columns: 80px 110px 1fr 170px 36px; gap: 6px; margin-bottom: 8px; align-items: center; }
+.ing .del { padding: 0; width: 36px; height: 36px; color: var(--muted); }
+.ing-head { display: grid; grid-template-columns: 80px 110px 1fr 170px 36px; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+@media (max-width: 640px) {
+  .ing { grid-template-columns: 70px 1fr 36px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
+  .ing .n { grid-column: 1 / 3; grid-row: 1; }
+  .ing .del { grid-column: 3; grid-row: 1; }
+  .ing .a { grid-column: 1 / -1; }
+  .ing-head { display: none; }
+}
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; position: sticky; bottom: 0; padding-top: 10px; background: var(--bg); }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; z-index: 30; max-width: calc(100% - 32px); text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Repas &amp; Courses</h1>
+    <p id="mode" class="mode">Chargement…</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="t-semaine" data-tab="semaine" aria-selected="true">Semaine</button>
+    <button role="tab" id="t-courses" data-tab="courses" aria-selected="false">Courses <span id="count" class="badge"></span></button>
+    <button role="tab" id="t-recettes" data-tab="recettes" aria-selected="false">Recettes</button>
+  </nav>
+
+  <section id="tab-semaine" role="tabpanel">
+    <div class="bar">
+      <div class="people">Pour <button id="pMinus" aria-label="Une personne de moins">−</button><strong id="people">2</strong><button id="pPlus" aria-label="Une personne de plus">+</button> <span id="peopleWord">personnes</span></div>
+      <button id="clearWeek" class="ghost">Vider la semaine</button>
+    </div>
+    <div id="week" class="week"></div>
+    <p class="hint">Choisis un plat pour chaque repas : la liste de courses se remplit toute seule, avec les quantités ajustées au nombre de personnes.</p>
+  </section>
+
+  <section id="tab-courses" role="tabpanel" hidden>
+    <div class="bar">
+      <span id="progress" class="progress"></span>
+      <div class="actions">
+        <button id="copy">Copier la liste</button>
+        <button id="doneShopping" class="ghost">Courses terminées</button>
+      </div>
+    </div>
+    <form id="extraForm" class="extra">
+      <input id="extraName" placeholder="Ajouter un article (ex. papier toilette)" aria-label="Article à ajouter" autocomplete="off">
+      <select id="extraAisle" aria-label="Rayon"></select>
+      <button class="primary">Ajouter</button>
+    </form>
+    <div id="list"></div>
+  </section>
+
+  <section id="tab-recettes" role="tabpanel" hidden>
+    <div class="bar">
+      <span id="recipeCount" class="progress"></span>
+      <button id="newRecipe" class="primary">Nouvelle recette</button>
+    </div>
+    <div id="recipes" class="recipes"></div>
+  </section>
+</div>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">Nouvelle recette</h2>
+    <form id="recipeForm" style="margin-top:14px">
+      <div class="two">
+        <label class="field">Nom du plat<input id="rName" required placeholder="ex. Lasagnes"></label>
+        <label class="field">Pour combien ?<input id="rServings" type="number" min="1" max="30" value="4" inputmode="numeric"></label>
+      </div>
+      <div class="ing-head"><span>Qté</span><span>Unité</span><span>Ingrédient</span><span>Rayon</span><span></span></div>
+      <div id="ings"></div>
+      <button type="button" id="addIng">+ Ajouter un ingrédient</button>
+      <div class="sheet-actions">
+        <button type="button" id="cancelRecipe" class="ghost">Annuler</button>
+        <button class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(() => {
+const DAYS = [["lun","Lundi"],["mar","Mardi"],["mer","Mercredi"],["jeu","Jeudi"],["ven","Vendredi"],["sam","Samedi"],["dim","Dimanche"]];
+const MEALS = [["midi","Midi"],["soir","Soir"]];
+const SPECIAL = { "__restes": "Restes", "__dehors": "Repas dehors" };
+const AISLES = ["Fruits & légumes","Boucherie & poisson","Crèmerie & œufs","Épicerie salée","Épicerie sucrée","Boulangerie","Surgelés","Boissons","Maison & hygiène","Autre"];
+const UNITS = ["pièce","g","kg","ml","cl","L","tranche","gousse","boîte","sachet","pot","botte","c. à s.","c. à c."];
+const COUNTABLE = new Set(["pièce","tranche","gousse","boîte","sachet","pot","botte"]);
+
+const GUESS = [
+  ["Crèmerie & œufs", ["pate feuilletee","pate brisee","pate a pizza","pate sablee","fromage blanc"]],
+  ["Épicerie salée", ["lait de coco","sauce tomate","coulis","tomates concassees","tomate concassee","haricots rouges","pois chiche","thon"]],
+  ["Boulangerie", ["pain de mie"]],
+  ["Fruits & légumes", ["tomate","oignon","ail","echalote","carotte","courgette","poivron","salade","laitue","pomme","patate","citron","banane","champignon","aubergine","poireau","epinard","brocoli","concombre","avocat","basilic","persil","coriandre","ciboulette","gingembre","haricot vert","fraise","orange","chou","radis","navet","potiron","butternut","menthe","thym","kiwi","poire","raisin"]],
+  ["Boucherie & poisson", ["poulet","boeuf","steak","hache","porc","jambon","lardon","saumon","poisson","crevette","dinde","saucisse","veau","agneau","chorizo","cabillaud","merguez","escalope","filet mignon","bacon"]],
+  ["Crèmerie & œufs", ["lait","beurre","creme","fromage","emmental","parmesan","mozzarella","yaourt","oeuf","feta","chevre","comte","gruyere","ricotta","raclette","mascarpone"]],
+  ["Épicerie salée", ["pates","spaghetti","tagliatelle","penne","lasagne","riz","huile","sel","poivre","sauce","conserve","lentille","bouillon","epice","curry","cumin","paprika","moutarde","vinaigre","semoule","quinoa","tortilla","wrap","olive","cornichon","mais","ketchup","mayonnaise","chapelure","herbes"]],
+  ["Épicerie sucrée", ["sucre","chocolat","miel","confiture","cereale","biscuit","levure","vanille","compote","farine","pate a tartiner"]],
+  ["Boulangerie", ["pain","baguette","brioche","croissant"]],
+  ["Surgelés", ["surgele","glace","frites","poelee"]],
+  ["Maison & hygiène", ["papier","lessive","liquide vaisselle","eponge","savon","shampo","dentifrice","sac poubelle","gel douche","deodorant","essuie"]],
+  ["Boissons", ["eau","jus","vin","biere","soda","cafe","the","sirop","coca"]]
+];
+
+const STARTERS = [
+  { name: "Pâtes bolognaise", servings: 4, ingredients: [[400,"g","Pâtes"],[400,"g","Bœuf haché"],[1,"pièce","Oignon"],[2,"gousse","Ail"],[500,"g","Coulis de tomate"],[50,"g","Parmesan"]] },
+  { name: "Poulet curry coco et riz", servings: 4, ingredients: [[600,"g","Blanc de poulet"],[400,"ml","Lait de coco"],[1,"pièce","Oignon"],[1,"pièce","Poivron"],[2,"c. à s.","Curry"],[300,"g","Riz"]] },
+  { name: "Quiche lorraine et salade", servings: 4, ingredients: [[1,"pièce","Pâte brisée"],[200,"g","Lardons"],[3,"pièce","Œufs"],[20,"cl","Crème fraîche"],[100,"g","Emmental râpé"],[1,"pièce","Salade"]] },
+  { name: "Chili con carne", servings: 4, ingredients: [[500,"g","Bœuf haché"],[1,"boîte","Haricots rouges"],[1,"boîte","Tomates concassées"],[1,"pièce","Oignon"],[1,"pièce","Poivron"],[1,"c. à c.","Cumin"],[250,"g","Riz"]] },
+  { name: "Saumon, riz et brocoli", servings: 2, ingredients: [[2,"pièce","Pavé de saumon"],[150,"g","Riz"],[1,"pièce","Brocoli"],[1,"pièce","Citron"]] },
+  { name: "Omelette et salade", servings: 2, ingredients: [[4,"pièce","Œufs"],[50,"g","Fromage râpé"],[1,"pièce","Salade"],[2,"pièce","Tomate"]] },
+  { name: "Wraps poulet crudités", servings: 4, ingredients: [[8,"pièce","Tortillas"],[400,"g","Blanc de poulet"],[1,"pièce","Salade"],[3,"pièce","Tomate"],[200,"g","Fromage blanc"]] },
+  { name: "Soupe de légumes", servings: 4, ingredients: [[4,"pièce","Carotte"],[2,"pièce","Poireau"],[3,"pièce","Pomme de terre"],[1,"pièce","Oignon"],[1,"pièce","Bouillon cube"]] },
+  { name: "Croque-monsieur", servings: 2, ingredients: [[4,"tranche","Pain de mie"],[2,"tranche","Jambon"],[4,"tranche","Fromage à croque"],[1,"pièce","Salade"]] }
+];
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const norm = (s) => String(s ?? "").replace(/œ/g,"oe").replace(/Œ/g,"oe").replace(/æ/g,"ae").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
+const slug = (s) => norm(s).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,80) || "x";
+const num = (n) => String(Number(n.toFixed(2))).replace(".", ",");
+
+function guessAisle(name) {
+  const n = " " + norm(name).replace(/[^a-z0-9]+/g, " ") + " ";
+  for (const [aisle, keys] of GUESS) for (const k of keys) if (n.includes(" " + k)) return aisle;
+  return "Autre";
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* Storage: the shared artifact database when available, this browser's storage otherwise */
+const Store = (() => {
+  let db = null;
+  const PREFIX = "repas-courses:";
+  const subs = {};
+  const queues = {};
+  const readLocal = (c) => { try { return JSON.parse(localStorage.getItem(PREFIX + c)) || {}; } catch (e) { return {}; } };
+  const writeLocal = (c, v) => { try { localStorage.setItem(PREFIX + c, JSON.stringify(v)); } catch (e) {} (subs[c] || []).forEach((cb) => cb({ ...v })); };
+  const serial = (key, fn) => (queues[key] = (queues[key] || Promise.resolve()).catch(() => {}).then(fn));
+  const onError = (e) => {
+    if (e && e.code === "invalid_argument") toast("Tu peux consulter cette page, mais pas la modifier.");
+    else if (e && e.code === "quota_exceeded") toast("Stockage plein : supprime quelques recettes.");
+    else toast("Enregistrement impossible pour le moment. Réessaie.");
+  };
+  return {
+    async init() {
+      try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+      return !!db;
+    },
+    watch(col, cb) {
+      if (db) {
+        return db.collection(col).onSnapshot((s) => { const o = {}; s.docs.forEach((d) => { o[d.id] = d.data(); }); cb(o); },
+          () => toast("Synchronisation interrompue. Recharge la page."));
+      }
+      (subs[col] = subs[col] || []).push(cb); cb(readLocal(col));
+    },
+    set(col, id, data) {
+      if (db) return serial(col + "/" + id, () => db.collection(col).doc(id).set(data)).catch(onError);
+      const o = readLocal(col); o[id] = data; writeLocal(col, o); return Promise.resolve();
+    },
+    del(col, id) {
+      if (db) return serial(col + "/" + id, () => db.collection(col).doc(id).delete()).catch(onError);
+      const o = readLocal(col); delete o[id]; writeLocal(col, o); return Promise.resolve();
+    },
+    newId() {
+      return db ? db.collection("ids").doc().id : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+  };
+})();
+
+const state = { recipes: {}, plan: {}, settings: {}, checked: {}, extras: {}, loaded: false };
+const people = () => Math.max(1, Math.min(20, Number(state.settings.main?.people) || 2));
+
+/* Quantities */
+function toBase(q, u) {
+  if (u === "kg") return [q * 1000, "g"];
+  if (u === "cl") return [q * 10, "ml"];
+  if (u === "L") return [q * 1000, "ml"];
+  return [q, u];
+}
+const PLURAL = { "tranche":"tranches","gousse":"gousses","boîte":"boîtes","sachet":"sachets","pot":"pots","botte":"bottes" };
+function fmtQty(q, u) {
+  if (!q) return "";
+  if (u === "g") { if (q >= 1000) return num(Math.ceil(q / 50) * 50 / 1000) + " kg"; return (q < 100 ? Math.ceil(q / 5) * 5 : Math.ceil(q / 10) * 10) + " g"; }
+  if (u === "ml") { if (q >= 1000) return num(Math.ceil(q / 50) * 50 / 1000) + " L"; const r = Math.ceil(q / 10) * 10; return r / 10 + " cl"; }
+  if (COUNTABLE.has(u)) { const n = Math.max(1, Math.ceil(q - 0.05)); return u === "pièce" ? "× " + n : n + " " + (n > 1 ? PLURAL[u] : u); }
+  return num(Math.ceil(q * 2) / 2) + " " + u;
+}
+
+function computeList() {
+  const map = new Map();
+  const p = people();
+  for (const slot of Object.values(state.plan)) {
+    const r = state.recipes[slot.recipeId];
+    if (!r) continue;
+    const f = p / (Number(r.servings) || 1);
+    for (const ing of r.ingredients || []) {
+      if (!ing.name || !ing.name.trim()) continue;
+      const [q, u] = toBase((Number(ing.qty) || 0) * f, ing.unit || "pièce");
+      const key = slug(ing.name) + "_" + slug(u);
+      let it = map.get(key);
+      if (!it) { it = { key, name: ing.name.trim(), unit: u, qty: 0, aisle: ing.aisle || guessAisle(ing.name), from: new Map() }; map.set(key, it); }
+      it.qty += q;
+      it.from.set(r.name, (it.from.get(r.name) || 0) + 1);
+    }
+  }
+  for (const [id, x] of Object.entries(state.extras)) {
+    const key = "x_" + id;
+    map.set(key, { key, name: x.name, unit: "", qty: 0, aisle: x.aisle || "Autre", from: new Map(), extraId: id });
+  }
+  return [...map.values()];
+}
+
+/* Rendering */
+function recipeOptions(selected) {
+  const list = Object.entries(state.recipes).sort((a, b) => a[1].name.localeCompare(b[1].name, "fr"));
+  let html = `<option value="">—</option>`;
+  html += list.map(([id, r]) => `<option value="${esc(id)}"${id === selected ? " selected" : ""}>${esc(r.name)}</option>`).join("");
+  html += `<option disabled>──────────</option>`;
+  html += Object.entries(SPECIAL).map(([id, l]) => `<option value="${id}"${id === selected ? " selected" : ""}>${l}</option>`).join("");
+  return html;
+}
+
+function renderWeek() {
+  const p = people();
+  $("#people").textContent = p;
+  $("#peopleWord").textContent = p > 1 ? "personnes" : "personne";
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.slot : null;
+  $("#week").innerHTML = DAYS.map(([d, label], i) => `
+    <div class="day${i === todayIdx ? " today" : ""}">
+      <div class="dname">${label}${i === todayIdx ? "<small>Aujourd’hui</small>" : ""}</div>
+      ${MEALS.map(([m, ml]) => {
+        const id = d + "-" + m;
+        const val = state.plan[id]?.recipeId || "";
+        const valid = val && (state.recipes[val] || SPECIAL[val]) ? val : "";
+        return `<label class="slot"><span>${ml}</span><select id="slot-${id}" data-slot="${id}" class="${valid ? "filled" : ""}">${recipeOptions(valid)}</select></label>`;
+      }).join("")}
+    </div>`).join("");
+  if (focused) { const el = document.getElementById("slot-" + focused); if (el) el.focus(); }
+}
+
+function renderList() {
+  const items = computeList();
+  const left = items.filter((i) => !state.checked[i.key]).length;
+  $("#count").textContent = left || "";
+  $("#progress").textContent = items.length ? (left ? `${left} article${left > 1 ? "s" : ""} à acheter` : "Tout est dans le panier") : "";
+  const sel = $("#extraAisle");
+  if (!sel.options.length) sel.innerHTML = AISLES.map((a) => `<option>${esc(a)}</option>`).join("");
+  if (!items.length) {
+    $("#list").innerHTML = `<div class="empty"><p>Ta liste est vide pour l’instant.<br>Choisis des plats dans l’onglet Semaine, ou ajoute un article ci-dessus.</p><div class="row"><button data-goto="semaine" class="primary">Planifier la semaine</button></div></div>`;
+    return;
+  }
+  const byAisle = new Map(AISLES.map((a) => [a, []]));
+  items.forEach((i) => (byAisle.get(i.aisle) || byAisle.get("Autre")).push(i));
+  let html = "";
+  for (const [aisle, list] of byAisle) {
+    if (!list.length) continue;
+    list.sort((a, b) => (!!state.checked[a.key] - !!state.checked[b.key]) || a.name.localeCompare(b.name, "fr"));
+    const n = list.filter((i) => !state.checked[i.key]).length;
+    html += `<div class="aisle"><h3><span>${esc(aisle)}</span><span>${n}/${list.length}</span></h3>` + list.map((i) => {
+      const done = !!state.checked[i.key];
+      const from = [...i.from.entries()].map(([name, c]) => c > 1 ? `${name} ×${c}` : name).join(", ");
+      return `<label class="item${done ? " done" : ""}">
+        <input type="checkbox" id="chk-${esc(i.key)}" data-key="${esc(i.key)}"${done ? " checked" : ""}>
+        <span class="what"><span class="name">${esc(i.name)}</span>${from ? `<span class="from">pour ${esc(from)}</span>` : ""}</span>
+        <span class="qty">${esc(fmtQty(i.qty, i.unit))}</span>
+        ${i.extraId ? `<button type="button" class="rm" data-rm="${esc(i.extraId)}" aria-label="Retirer ${esc(i.name)}">×</button>` : ""}
+      </label>`;
+    }).join("") + `</div>`;
+  }
+  $("#list").innerHTML = html;
+}
+
+function renderRecipes() {
+  const entries = Object.entries(state.recipes).sort((a, b) => a[1].name.localeCompare(b[1].name, "fr"));
+  $("#recipeCount").textContent = entries.length ? `${entries.length} recette${entries.length > 1 ? "s" : ""}` : "";
+  if (!entries.length) {
+    $("#recipes").innerHTML = `<div class="empty" style="grid-column:1/-1"><p>Aucune recette pour l’instant.<br>Ajoute les tiennes, ou commence avec ${STARTERS.length} plats classiques que tu pourras modifier.</p><div class="row"><button id="loadStarters" class="primary">Ajouter les plats classiques</button><button data-new="1">Créer ma recette</button></div></div>`;
+    return;
+  }
+  const uses = {};
+  Object.values(state.plan).forEach((s) => { uses[s.recipeId] = (uses[s.recipeId] || 0) + 1; });
+  $("#recipes").innerHTML = entries.map(([id, r]) => `
+    <article class="recipe">
+      <h2>${esc(r.name)}</h2>
+      <div class="meta">Pour ${Number(r.servings) || 1} · ${(r.ingredients || []).length} ingrédient${(r.ingredients || []).length > 1 ? "s" : ""} ${uses[id] ? `<span class="used">${uses[id]}× cette semaine</span>` : ""}</div>
+      <p class="ings">${esc((r.ingredients || []).map((i) => i.name).join(", "))}</p>
+      <div class="row"><button data-edit="${esc(id)}">Modifier</button><button class="ghost" data-del="${esc(id)}">Supprimer</button></div>
+    </article>`).join("");
+}
+
+function renderAll() {
+  if (!state.loaded) return;
+  renderWeek(); renderList(); renderRecipes();
+}
+
+/* Two-step confirmation, since the viewer blocks confirm() */
+function armConfirm(btn, label, action) {
+  if (btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("confirm"); btn.textContent = btn.dataset.label; action(); return; }
+  btn.dataset.label = btn.textContent; btn.dataset.armed = "1"; btn.classList.add("confirm"); btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("confirm"); btn.textContent = btn.dataset.label; } }, 3500);
+}
+
+/* Tabs */
+function showTab(name) {
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  ["semaine","courses","recettes"].forEach((t) => { $("#tab-" + t).hidden = t !== name; });
+  try { localStorage.setItem("repas-courses:tab", name); } catch (e) {}
+}
+document.querySelector(".tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) showTab(b.dataset.tab); });
+
+/* Week events */
+$("#week").addEventListener("change", (e) => {
+  const sel = e.target.closest("select[data-slot]"); if (!sel) return;
+  if (sel.value) Store.set("plan", sel.dataset.slot, { recipeId: sel.value });
+  else Store.del("plan", sel.dataset.slot);
+});
+const setPeople = (n) => Store.set("settings", "main", { ...(state.settings.main || {}), people: Math.max(1, Math.min(20, n)) });
+$("#pMinus").addEventListener("click", () => setPeople(people() - 1));
+$("#pPlus").addEventListener("click", () => setPeople(people() + 1));
+$("#clearWeek").addEventListener("click", (e) => armConfirm(e.currentTarget, "Confirmer ?", async () => {
+  await Promise.all(Object.keys(state.plan).map((id) => Store.del("plan", id)));
+  toast("Semaine vidée");
+}));
+
+/* List events */
+$("#list").addEventListener("change", (e) => {
+  const c = e.target.closest("input[data-key]"); if (!c) return;
+  if (c.checked) Store.set("checked", c.dataset.key, { at: Date.now() }); else Store.del("checked", c.dataset.key);
+});
+$("#list").addEventListener("click", (e) => {
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { e.preventDefault(); Store.del("extras", rm.dataset.rm); Store.del("checked", "x_" + rm.dataset.rm); return; }
+  const g = e.target.closest("[data-goto]"); if (g) showTab(g.dataset.goto);
+});
+$("#extraName").addEventListener("input", (e) => { const a = guessAisle(e.target.value); if (a !== "Autre") $("#extraAisle").value = a; });
+$("#extraForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#extraName").value.trim(); if (!name) return;
+  Store.set("extras", Store.newId(), { name, aisle: $("#extraAisle").value });
+  $("#extraName").value = ""; $("#extraName").focus();
+});
+$("#copy").addEventListener("click", async () => {
+  const items = computeList().filter((i) => !state.checked[i.key]);
+  if (!items.length) { toast("Rien à copier"); return; }
+  let txt = "Courses\n";
+  for (const a of AISLES) {
+    const l = items.filter((i) => i.aisle === a); if (!l.length) continue;
+    txt += `\n${a}\n` + l.map((i) => `- ${i.name}${i.qty ? " (" + fmtQty(i.qty, i.unit).replace("× ", "") + ")" : ""}`).join("\n") + "\n";
+  }
+  try { await navigator.clipboard.writeText(txt); toast("Liste copiée, colle-la où tu veux"); }
+  catch (err) { toast("Copie refusée par le navigateur"); }
+});
+$("#doneShopping").addEventListener("click", (e) => armConfirm(e.currentTarget, "Tout décocher ?", async () => {
+  const ops = Object.keys(state.checked).map((k) => Store.del("checked", k));
+  Object.keys(state.extras).forEach((id) => { if (state.checked["x_" + id]) ops.push(Store.del("extras", id)); });
+  await Promise.all(ops);
+  toast("Liste remise à zéro");
+}));
+
+/* Recipe editor */
+let editingId = null;
+let ingSeq = 0;
+function ingRow(ing = {}) {
+  const i = ingSeq++;
+  const unit = ing.unit || "pièce";
+  const aisle = ing.aisle || (ing.name ? guessAisle(ing.name) : "Autre");
+  const div = document.createElement("div");
+  div.className = "ing";
+  div.innerHTML = `
+    <input class="q" id="ing-${i}-q" type="number" min="0" step="any" inputmode="decimal" placeholder="Qté" aria-label="Quantité" value="${ing.qty ?? ""}">
+    <select class="u" id="ing-${i}-u" aria-label="Unité">${UNITS.map((u) => `<option${u === unit ? " selected" : ""}>${u}</option>`).join("")}</select>
+    <input class="n" id="ing-${i}-n" placeholder="Ingrédient" aria-label="Ingrédient" value="${esc(ing.name || "")}">
+    <select class="a" id="ing-${i}-a" aria-label="Rayon" data-auto="${ing.aisle ? "" : "1"}">${AISLES.map((a) => `<option${a === aisle ? " selected" : ""}>${esc(a)}</option>`).join("")}</select>
+    <button type="button" class="del" aria-label="Retirer cet ingrédient">×</button>`;
+  return div;
+}
+function openEditor(id) {
+  editingId = id || null;
+  const r = id ? state.recipes[id] : { name: "", servings: 4, ingredients: [] };
+  $("#sheetTitle").textContent = id ? "Modifier la recette" : "Nouvelle recette";
+  $("#rName").value = r.name || "";
+  $("#rServings").value = r.servings || 4;
+  const box = $("#ings"); box.innerHTML = "";
+  const ings = (r.ingredients || []).length ? r.ingredients : [{}, {}, {}];
+  ings.forEach((ing) => box.appendChild(ingRow(ing)));
+  $("#sheet").hidden = false;
+  setTimeout(() => $("#rName").focus(), 30);
+}
+function closeEditor() { $("#sheet").hidden = true; editingId = null; }
+$("#addIng").addEventListener("click", () => { const row = ingRow(); $("#ings").appendChild(row); row.querySelector(".n").focus(); });
+$("#ings").addEventListener("click", (e) => { const d = e.target.closest(".del"); if (d) d.parentElement.remove(); });
+$("#ings").addEventListener("input", (e) => {
+  if (!e.target.classList.contains("n")) return;
+  const a = e.target.parentElement.querySelector(".a");
+  if (a.dataset.auto) a.value = guessAisle(e.target.value);
+});
+$("#ings").addEventListener("change", (e) => { if (e.target.classList.contains("a")) e.target.dataset.auto = ""; });
+$("#cancelRecipe").addEventListener("click", closeEditor);
+$("#sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeEditor(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeEditor(); });
+$("#recipeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#rName").value.trim(); if (!name) return;
+  const ingredients = [...document.querySelectorAll("#ings .ing")].map((row) => ({
+    qty: row.querySelector(".q").value === "" ? 0 : Number(row.querySelector(".q").value),
+    unit: row.querySelector(".u").value,
+    name: row.querySelector(".n").value.trim(),
+    aisle: row.querySelector(".a").value
+  })).filter((i) => i.name);
+  const id = editingId || Store.newId();
+  Store.set("recipes", id, { name, servings: Math.max(1, Number($("#rServings").value) || 1), ingredients });
+  toast(editingId ? "Recette mise à jour" : "Recette ajoutée");
+  closeEditor();
+});
+$("#newRecipe").addEventListener("click", () => openEditor());
+$("#recipes").addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-edit]"); if (ed) return openEditor(ed.dataset.edit);
+  if (e.target.closest("[data-new]")) return openEditor();
+  const del = e.target.closest("[data-del]");
+  if (del) return armConfirm(del, "Confirmer ?", () => { Store.del("recipes", del.dataset.del); toast("Recette supprimée"); });
+  const ls = e.target.closest("#loadStarters");
+  if (ls) {
+    ls.disabled = true;
+    for (const s of STARTERS) {
+      await Store.set("recipes", Store.newId(), { name: s.name, servings: s.servings, ingredients: s.ingredients.map(([qty, unit, name]) => ({ qty, unit, name, aisle: guessAisle(name) })) });
+    }
+    toast("Plats classiques ajoutés");
+  }
+});
+
+/* Boot */
+try { const t = localStorage.getItem("repas-courses:tab"); if (t) showTab(t); } catch (e) {}
+renderList();
+(async () => {
+  const remote = await Store.init();
+  $("#mode").textContent = remote ? "Synchronisé sur tous tes appareils" : "Données gardées dans ce navigateur";
+  let pending = 5;
+  const done = () => { if (--pending === 0) { state.loaded = true; } renderAll(); };
+  const seen = {};
+  for (const col of ["recipes","plan","settings","checked","extras"]) {
+    Store.watch(col, (data) => { state[col] = data; if (!seen[col]) { seen[col] = 1; done(); } else renderAll(); });
+  }
+})();
+})();
+</script>
