@@ -3,37 +3,39 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
-/* Layout: a plain phone app. Text and thin rules carry the structure; boxes only where something is a separate object.
+/* Layout: a plain phone app, coloured like a French school exercise book (cahier Seyès): white paper, blue-ink text and buttons,
+   pale blue ruling for the lines, the red margin for warnings and the shopping list. Boxes only where something is a separate object.
    Bottom tab bar on phones, left rail from 960px. One typeface built for legibility; prices close each line like a till receipt. */
 :root {
-  --bg: #F6F7F5;
+  --bg: #FFFFFF;
   --surface: #FFFFFF;
-  --ink: #141A16;
-  --muted: #59625C;
-  --faint: #8A928C;
-  --line: #DCE0DB;
-  --accent: #1D6A44;
+  --ink: #1B2150;
+  --muted: #565D80;
+  --faint: #8A90AE;
+  --line: #CDD5EF;
+  --accent: #2233A6;
   --accent-ink: #FFFFFF;
-  --accent-soft: #E3EFE7;
-  --warn: #A4500F;
-  --warn-soft: #F9EADC;
-  --danger: #B0281F;
-  --scrim: rgba(10, 14, 12, .45);
+  --accent-soft: #E9EDFB;
+  --warn: #C1253C;
+  --warn-soft: #FDEBEE;
+  --danger: #C1253C;
+  --margin: #E8828F;
+  --scrim: rgba(16, 20, 50, .45);
   --font: "Atkinson Hyperlegible", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: var(--font);
   --tabbar: 64px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0E1210; --surface: #161B18; --ink: #E8ECE9; --muted: #A0A9A3; --faint: #727B75; --line: #2A312C;
-    --accent: #6CC495; --accent-ink: #062014; --accent-soft: #17301F; --warn: #F0A262; --warn-soft: #36230F; --danger: #F08A7F;
+    --bg: #0E1124; --surface: #161A33; --ink: #E7EAF8; --muted: #A4AACB; --faint: #737A9E; --line: #2A3159;
+    --accent: #93A4FF; --accent-ink: #0A0E2B; --accent-soft: #1D2452; --warn: #FF8394; --warn-soft: #3A1623; --danger: #FF8394; --margin: #8E3A4A;
     --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0E1210; --surface: #161B18; --ink: #E8ECE9; --muted: #A0A9A3; --faint: #727B75; --line: #2A312C;
-  --accent: #6CC495; --accent-ink: #062014; --accent-soft: #17301F; --warn: #F0A262; --warn-soft: #36230F; --danger: #F08A7F;
-  --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
+  --bg: #0E1124; --surface: #161A33; --ink: #E7EAF8; --muted: #A4AACB; --faint: #737A9E; --line: #2A3159;
+    --accent: #93A4FF; --accent-ink: #0A0E2B; --accent-soft: #1D2452; --warn: #FF8394; --warn-soft: #3A1623; --danger: #FF8394; --margin: #8E3A4A;
+    --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
@@ -152,7 +154,7 @@ textarea.input { min-height: 84px; resize: vertical; }
 .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); }
 .progress-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 16px; }
 .addrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-.aisle { display: grid; }
+.aisle { display: grid; border-left: 2px solid var(--margin); padding-left: 14px; margin-left: 2px; }
 .aisle .label { padding: 18px 0 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
 .line { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
 .tick { position: relative; width: 28px; height: 28px; }
