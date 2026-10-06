@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: one column (max 860px), sticky tabs; the week is a list of day rows, the list is grouped by store aisle */
+/* Layout: phone-first single column (max 720px): a step-by-step questionnaire on first visit, then tabs Menus / Courses / Profil */
 :root {
   --bg: #F4F7F0;
   --surface: #FFFFFF;
@@ -13,562 +13,963 @@
   --accent: #2D6838;
   --accent-soft: #E2EDDD;
   --accent-ink: #FFFFFF;
-  --pop: #B9790A;
+  --pop: #A86A00;
   --pop-soft: #FAEFD4;
   --danger: #B33A2E;
+  --danger-soft: #FBE5E1;
   --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
   --body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --r: 12px;
+  --r: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #101510; --surface: #182018; --ink: #E5ECE1; --muted: #9AA895; --line: #2A3529;
     --accent: #81C78C; --accent-soft: #1E3121; --accent-ink: #0D180E; --pop: #F0B53A; --pop-soft: #3A2E12;
-    --danger: #F08A7E; color-scheme: dark;
+    --danger: #F08A7E; --danger-soft: #3A1D19; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #101510; --surface: #182018; --ink: #E5ECE1; --muted: #9AA895; --line: #2A3529;
   --accent: #81C78C; --accent-soft: #1E3121; --accent-ink: #0D180E; --pop: #F0B53A; --pop-soft: #3A2E12;
-  --danger: #F08A7E; color-scheme: dark;
+  --danger: #F08A7E; --danger-soft: #3A1D19; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
-.app { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+.app { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 80px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
-h1 { font-size: clamp(26px, 6vw, 36px); font-weight: 800; letter-spacing: -0.02em; }
-h2 { font-size: 22px; font-weight: 800; }
-h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-family: var(--body); }
-.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.mode { margin: 0; font-size: 13px; color: var(--muted); }
+h1 { font-size: clamp(26px, 6.5vw, 34px); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-family: var(--body); }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
 
-button, input, select { font: inherit; color: inherit; }
-button { cursor: pointer; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; font-weight: 600; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); padding: 10px 16px; font-weight: 600; }
 button:hover { border-color: var(--accent); }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.big { padding: 14px 22px; font-size: 17px; }
 button.ghost { background: transparent; }
+button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 button.confirm { background: var(--danger); border-color: var(--danger); color: var(--surface); }
-input, select { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; min-width: 0; }
+input, select, textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; min-width: 0; width: 100%; }
+textarea { resize: vertical; min-height: 76px; }
+a { color: var(--accent); }
 
-.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; gap: 6px; padding-block: 8px; background: var(--bg); margin-bottom: 14px; }
-.tabs button { flex: 1; border-radius: 10px; padding: 10px 8px; background: transparent; border-color: transparent; color: var(--muted); }
-.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); box-shadow: 0 1px 0 var(--line); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.top .sub { font-size: 13px; color: var(--muted); }
+.store-pill { font-size: 13px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; gap: 6px; padding-block: 8px; background: var(--bg); margin-bottom: 12px; }
+.tabs button { flex: 1; border-radius: 12px; padding: 10px 6px; background: transparent; border-color: transparent; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); }
 .badge { display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--pop-soft); color: var(--pop); font-size: 12px; font-variant-numeric: tabular-nums; }
 .badge:empty { display: none; }
 
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.bar .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.people { display: flex; align-items: center; gap: 8px; }
-.people button { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: 18px; line-height: 1; }
-.people strong { font-family: var(--display); font-size: 22px; min-width: 1.4ch; text-align: center; font-variant-numeric: tabular-nums; }
-.hint { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.stack { display: grid; gap: 12px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-/* Week */
-.week { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.day { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
-.day:first-child { border-top: 0; }
-.day.today { background: var(--accent-soft); }
-.dname { font-family: var(--display); font-weight: 600; font-size: 17px; }
-.dname small { display: block; font-family: var(--body); font-size: 12px; color: var(--accent); font-weight: 600; }
-.slot { display: grid; gap: 3px; min-width: 0; }
-.slot span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-.slot select { width: 100%; }
-.slot select.filled { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
-@media (max-width: 560px) {
-  .day { grid-template-columns: 1fr 1fr; }
-  .dname { grid-column: 1 / -1; }
-}
+/* Budget meter */
+.meter { height: 10px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; margin-top: 8px; }
+.meter > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.meter.over > i { background: var(--danger); }
+.bignum { font-family: var(--display); font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.warn { background: var(--danger-soft); color: var(--danger); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
+.tips { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 
-/* Shopping list */
-.extra { display: grid; grid-template-columns: 1fr 180px auto; gap: 8px; margin-bottom: 16px; }
-@media (max-width: 560px) { .extra { grid-template-columns: 1fr auto; } .extra select { grid-row: 2; grid-column: 1 / -1; } }
-.aisle { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 6px; margin-bottom: 12px; }
-.aisle h3 { display: flex; justify-content: space-between; margin-bottom: 4px; }
-.item { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; border-top: 1px dashed var(--line); cursor: pointer; }
-.item:first-of-type { border-top: 0; }
-.item input { margin-top: 3px; width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
-.item .what { flex: 1; min-width: 0; }
-.item .name { font-weight: 600; }
-.item .from { display: block; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
-.item .qty { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); white-space: nowrap; }
-.item.done .name, .item.done .qty { text-decoration: line-through; color: var(--muted); }
+/* Meals */
+.day h3 { margin: 6px 2px 6px; }
+.day.today h3 { color: var(--accent); }
+.meal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 8px; overflow: hidden; }
+.meal summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: start; }
+.meal summary::-webkit-details-marker { display: none; }
+.slot { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding-top: 3px; }
+.meal .mname { font-weight: 700; font-size: 17px; line-height: 1.25; }
+.meal .mdesc { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.meal .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.tag.pop { background: var(--pop-soft); color: var(--pop); }
+.chev { color: var(--muted); font-size: 18px; transition: transform .15s; }
+details[open] .chev { transform: rotate(90deg); }
+.mbody { padding: 0 14px 14px; display: grid; gap: 12px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.mbody ul, .mbody ol { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 15px; }
+.leftover { font-size: 13px; color: var(--pop); font-weight: 600; }
+.swap { display: grid; gap: 8px; background: var(--bg); border-radius: 12px; padding: 10px; }
+.meal.busy { opacity: .6; pointer-events: none; }
+
+/* Choice chips (questionnaire and swap) */
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { border-radius: 14px; padding: 12px 14px; text-align: left; font-weight: 600; background: var(--surface); }
+.choice small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.choices.col { flex-direction: column; }
+.choices.col .choice { width: 100%; }
+.mini { padding: 7px 12px; font-size: 14px; border-radius: 999px; }
+
+/* Questionnaire */
+.wiz { max-width: 560px; margin: 0 auto; padding-block: 8px 24px; display: grid; gap: 18px; }
+.progress { height: 6px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .2s; }
+.wiz .q { display: grid; gap: 14px; }
+.wiz .q h2 { font-size: clamp(24px, 6vw, 30px); }
+.wiz .help { color: var(--muted); font-size: 15px; }
+.wiz .label { font-weight: 700; font-size: 15px; margin-top: 4px; }
+.wiz-nav { display: flex; justify-content: space-between; gap: 10px; position: sticky; bottom: 0; padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--bg); }
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.stepper .ctl { display: flex; align-items: center; gap: 12px; }
+.stepper button { width: 40px; height: 40px; padding: 0; font-size: 20px; line-height: 1; }
+.stepper strong { font-family: var(--display); font-size: 24px; min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.toggle { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.budget-box { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.budget-input { display: flex; align-items: center; gap: 8px; }
+.budget-input input { font-family: var(--display); font-size: 34px; font-weight: 800; width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
+.budget-input span { font-family: var(--display); font-size: 22px; color: var(--muted); }
+.recap { display: grid; gap: 6px; font-size: 15px; }
+.recap div { display: grid; grid-template-columns: 120px 1fr; gap: 10px; }
+.recap dt, .recap .k { color: var(--muted); }
+
+/* Generation progress */
+.gen { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 26px 16px; }
+.pot { width: 54px; height: 54px; border-radius: 50%; border: 5px solid var(--accent-soft); border-top-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .pot { animation: spin 1s linear infinite; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Shopping */
+.aisle { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 4px; margin-bottom: 12px; }
+.aisle h3 { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.item { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: start; padding: 11px 0; border-top: 1px dashed var(--line); }
+.aisle h3 + .item { border-top: 0; }
+.item input[type=checkbox] { margin-top: 2px; width: 22px; height: 22px; accent-color: var(--accent); }
+.item .what { min-width: 0; }
+.item .prod { font-weight: 700; background: none; border: 0; padding: 0; text-align: left; border-radius: 4px; text-decoration: underline dotted var(--line); text-underline-offset: 4px; }
+.item .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.item .why { font-size: 13px; color: var(--pop); }
+.item .right { text-align: right; display: grid; gap: 4px; justify-items: end; }
+.item .price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.item .find { font-size: 13px; white-space: nowrap; }
+.item.done .prod, .item.done .price { text-decoration: line-through; color: var(--muted); }
 .item .rm { border: 0; background: none; padding: 0 4px; color: var(--muted); font-size: 18px; line-height: 1; }
-.progress { font-weight: 600; }
+.extra { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 
-/* Recipes */
-.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-.recipe { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.recipe h2 { font-size: 19px; }
-.recipe .meta { font-size: 13px; color: var(--muted); }
-.recipe .ings { font-size: 13px; color: var(--muted); margin: 0; overflow-wrap: anywhere; }
-.recipe .row { display: flex; gap: 8px; margin-top: auto; padding-top: 4px; flex-wrap: wrap; }
-.recipe .row button { padding: 6px 12px; font-size: 13px; }
-.used { display: inline-block; font-size: 12px; font-weight: 600; color: var(--pop); background: var(--pop-soft); padding: 2px 8px; border-radius: 999px; }
+.empty { text-align: center; padding: 30px 16px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); display: grid; gap: 12px; justify-items: center; }
 
-.empty { text-align: center; padding: 36px 16px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); }
-.empty p { margin: 0 0 14px; }
-.empty .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-
-/* Recipe editor */
+/* Sheets */
 .sheet { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: end center; }
-.sheet-inner { background: var(--bg); width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)); }
-@media (min-width: 760px) { .sheet { place-items: center; } .sheet-inner { border-radius: 18px; } }
-.field { display: grid; gap: 4px; margin-bottom: 12px; font-size: 13px; color: var(--muted); font-weight: 600; }
-.field input { color: var(--ink); font-weight: 500; font-size: 15px; }
-.two { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
-.ing { display: grid; grid-template-columns: 80px 110px 1fr 170px 36px; gap: 6px; margin-bottom: 8px; align-items: center; }
-.ing .del { padding: 0; width: 36px; height: 36px; color: var(--muted); }
-.ing-head { display: grid; grid-template-columns: 80px 110px 1fr 170px 36px; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
-@media (max-width: 640px) {
-  .ing { grid-template-columns: 70px 1fr 36px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
-  .ing .n { grid-column: 1 / 3; grid-row: 1; }
-  .ing .del { grid-column: 3; grid-row: 1; }
-  .ing .a { grid-column: 1 / -1; }
-  .ing-head { display: none; }
-}
-.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; position: sticky; bottom: 0; padding-top: 10px; background: var(--bg); }
+.sheet-inner { background: var(--bg); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+@media (min-width: 700px) { .sheet { place-items: center; } .sheet-inner { border-radius: 20px; } }
+.field { display: grid; gap: 6px; font-weight: 700; font-size: 15px; }
+.field .muted { font-weight: 400; font-size: 13px; }
+.photos { display: flex; gap: 8px; flex-wrap: wrap; }
+.photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
 
-.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; z-index: 30; max-width: calc(100% - 32px); text-align: center; }
-@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); text-align: center; }
 </style>
 
 <div class="app">
-  <header class="top">
-    <h1>Repas &amp; Courses</h1>
-    <p id="mode" class="mode">Chargement…</p>
-  </header>
+  <div id="loading" class="gen"><div class="pot"></div><p class="muted">Chargement…</p></div>
 
-  <nav class="tabs" role="tablist">
-    <button role="tab" id="t-semaine" data-tab="semaine" aria-selected="true">Semaine</button>
-    <button role="tab" id="t-courses" data-tab="courses" aria-selected="false">Courses <span id="count" class="badge"></span></button>
-    <button role="tab" id="t-recettes" data-tab="recettes" aria-selected="false">Recettes</button>
-  </nav>
-
-  <section id="tab-semaine" role="tabpanel">
-    <div class="bar">
-      <div class="people">Pour <button id="pMinus" aria-label="Une personne de moins">−</button><strong id="people">2</strong><button id="pPlus" aria-label="Une personne de plus">+</button> <span id="peopleWord">personnes</span></div>
-      <button id="clearWeek" class="ghost">Vider la semaine</button>
-    </div>
-    <div id="week" class="week"></div>
-    <p class="hint">Choisis un plat pour chaque repas : la liste de courses se remplit toute seule, avec les quantités ajustées au nombre de personnes.</p>
-  </section>
-
-  <section id="tab-courses" role="tabpanel" hidden>
-    <div class="bar">
-      <span id="progress" class="progress"></span>
-      <div class="actions">
-        <button id="copy">Copier la liste</button>
-        <button id="doneShopping" class="ghost">Courses terminées</button>
+  <!-- Questionnaire -->
+  <section id="wizard" hidden>
+    <div class="wiz">
+      <div class="progress"><i id="wizBar" style="width:0"></i></div>
+      <div id="wizStep" class="q"></div>
+      <div class="wiz-nav">
+        <button id="wizBack" class="ghost">Retour</button>
+        <button id="wizNext" class="primary big">Continuer</button>
       </div>
     </div>
-    <form id="extraForm" class="extra">
-      <input id="extraName" placeholder="Ajouter un article (ex. papier toilette)" aria-label="Article à ajouter" autocomplete="off">
-      <select id="extraAisle" aria-label="Rayon"></select>
-      <button class="primary">Ajouter</button>
-    </form>
-    <div id="list"></div>
   </section>
 
-  <section id="tab-recettes" role="tabpanel" hidden>
-    <div class="bar">
-      <span id="recipeCount" class="progress"></span>
-      <button id="newRecipe" class="primary">Nouvelle recette</button>
-    </div>
-    <div id="recipes" class="recipes"></div>
+  <!-- Main app -->
+  <section id="main" hidden>
+    <header class="top">
+      <div>
+        <h1>Repas &amp; Courses</h1>
+        <p class="sub" id="hello"></p>
+      </div>
+      <span class="store-pill" id="storePill"></span>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="t-menus" data-tab="menus" aria-selected="true">Menus</button>
+      <button role="tab" id="t-courses" data-tab="courses" aria-selected="false">Courses <span id="count" class="badge"></span></button>
+      <button role="tab" id="t-profil" data-tab="profil" aria-selected="false">Profil</button>
+    </nav>
+
+    <div id="tab-menus" role="tabpanel"></div>
+    <div id="tab-courses" role="tabpanel" hidden></div>
+    <div id="tab-profil" role="tabpanel" hidden></div>
   </section>
 </div>
 
-<div id="sheet" class="sheet" hidden>
-  <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <h2 id="sheetTitle">Nouvelle recette</h2>
-    <form id="recipeForm" style="margin-top:14px">
-      <div class="two">
-        <label class="field">Nom du plat<input id="rName" required placeholder="ex. Lasagnes"></label>
-        <label class="field">Pour combien ?<input id="rServings" type="number" min="1" max="30" value="4" inputmode="numeric"></label>
-      </div>
-      <div class="ing-head"><span>Qté</span><span>Unité</span><span>Ingrédient</span><span>Rayon</span><span></span></div>
-      <div id="ings"></div>
-      <button type="button" id="addIng">+ Ajouter un ingrédient</button>
-      <div class="sheet-actions">
-        <button type="button" id="cancelRecipe" class="ghost">Annuler</button>
-        <button class="primary">Enregistrer</button>
-      </div>
-    </form>
-  </div>
+<!-- Prepare the week -->
+<div id="prep" class="sheet" hidden>
+  <form class="sheet-inner" id="prepForm" role="dialog" aria-modal="true" aria-labelledby="prepTitle">
+    <h2 id="prepTitle">Préparer la semaine</h2>
+    <p class="muted small">Tout est facultatif. Plus tu m’en dis, plus les menus seront justes et pas chers.</p>
+    <div class="field" id="photoField" hidden>
+      Promos du moment
+      <span class="muted">Prends en photo le catalogue ou les promos de l’appli : je construis les repas autour des promos rentables.</span>
+      <input id="promoPhotos" type="file" accept="image/*" multiple>
+      <div class="photos" id="photoPreview"></div>
+    </div>
+    <label class="field">Promos repérées (en texte)
+      <span class="muted">Ex. « cuisses de poulet −30 %, 2e paquet de pâtes à −50 % »</span>
+      <textarea id="promoText" placeholder="Rien de spécial"></textarea>
+    </label>
+    <label class="field">Ce que j’ai déjà à la maison
+      <span class="muted">Je l’utilise en priorité et je ne le remets pas dans la liste.</span>
+      <textarea id="pantryText" placeholder="Ex. 1 kg de pommes de terre, un reste de crème, des œufs"></textarea>
+    </label>
+    <label class="field">Envies ou contraintes cette semaine
+      <span class="muted">Ex. « invités samedi soir », « pas de cuisine mercredi », « envie de raclette »</span>
+      <textarea id="wishText" placeholder="Rien de spécial"></textarea>
+    </label>
+    <div class="row" style="justify-content:flex-end">
+      <button type="button" id="prepCancel" class="ghost">Annuler</button>
+      <button class="primary big">Créer mes menus</button>
+    </div>
+  </form>
 </div>
 
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script>
 (() => {
+/* ---------- Constants ---------- */
 const DAYS = [["lun","Lundi"],["mar","Mardi"],["mer","Mercredi"],["jeu","Jeudi"],["ven","Vendredi"],["sam","Samedi"],["dim","Dimanche"]];
-const MEALS = [["midi","Midi"],["soir","Soir"]];
-const SPECIAL = { "__restes": "Restes", "__dehors": "Repas dehors" };
+const DAY_LABEL = Object.fromEntries(DAYS);
 const AISLES = ["Fruits & légumes","Boucherie & poisson","Crèmerie & œufs","Épicerie salée","Épicerie sucrée","Boulangerie","Surgelés","Boissons","Maison & hygiène","Autre"];
-const UNITS = ["pièce","g","kg","ml","cl","L","tranche","gousse","boîte","sachet","pot","botte","c. à s.","c. à c."];
-const COUNTABLE = new Set(["pièce","tranche","gousse","boîte","sachet","pot","botte"]);
-
-const GUESS = [
-  ["Crèmerie & œufs", ["pate feuilletee","pate brisee","pate a pizza","pate sablee","fromage blanc"]],
-  ["Épicerie salée", ["lait de coco","sauce tomate","coulis","tomates concassees","tomate concassee","haricots rouges","pois chiche","thon"]],
-  ["Boulangerie", ["pain de mie"]],
-  ["Fruits & légumes", ["tomate","oignon","ail","echalote","carotte","courgette","poivron","salade","laitue","pomme","patate","citron","banane","champignon","aubergine","poireau","epinard","brocoli","concombre","avocat","basilic","persil","coriandre","ciboulette","gingembre","haricot vert","fraise","orange","chou","radis","navet","potiron","butternut","menthe","thym","kiwi","poire","raisin"]],
-  ["Boucherie & poisson", ["poulet","boeuf","steak","hache","porc","jambon","lardon","saumon","poisson","crevette","dinde","saucisse","veau","agneau","chorizo","cabillaud","merguez","escalope","filet mignon","bacon"]],
-  ["Crèmerie & œufs", ["lait","beurre","creme","fromage","emmental","parmesan","mozzarella","yaourt","oeuf","feta","chevre","comte","gruyere","ricotta","raclette","mascarpone"]],
-  ["Épicerie salée", ["pates","spaghetti","tagliatelle","penne","lasagne","riz","huile","sel","poivre","sauce","conserve","lentille","bouillon","epice","curry","cumin","paprika","moutarde","vinaigre","semoule","quinoa","tortilla","wrap","olive","cornichon","mais","ketchup","mayonnaise","chapelure","herbes"]],
-  ["Épicerie sucrée", ["sucre","chocolat","miel","confiture","cereale","biscuit","levure","vanille","compote","farine","pate a tartiner"]],
-  ["Boulangerie", ["pain","baguette","brioche","croissant"]],
-  ["Surgelés", ["surgele","glace","frites","poelee"]],
-  ["Maison & hygiène", ["papier","lessive","liquide vaisselle","eponge","savon","shampo","dentifrice","sac poubelle","gel douche","deodorant","essuie"]],
-  ["Boissons", ["eau","jus","vin","biere","soda","cafe","the","sirop","coca"]]
+const STORES = [
+  { id: "leclerc", name: "E.Leclerc", site: "e.leclerc", f: 1 },
+  { id: "carrefour", name: "Carrefour", site: "carrefour.fr", f: 1.05, search: "https://www.carrefour.fr/s?q=" },
+  { id: "auchan", name: "Auchan", site: "auchan.fr", f: 1 },
+  { id: "intermarche", name: "Intermarché", site: "intermarche.com", f: 1 },
+  { id: "superu", name: "Super U", site: "coursesu.com", f: 1.04 },
+  { id: "lidl", name: "Lidl", site: "lidl.fr", f: 0.92 },
+  { id: "aldi", name: "Aldi", site: "aldi.fr", f: 0.9 },
+  { id: "netto", name: "Netto", site: "netto.fr", f: 0.92 },
+  { id: "casino", name: "Casino", site: "casino.fr", f: 1.1 },
+  { id: "monoprix", name: "Monoprix", site: "monoprix.fr", f: 1.3 },
+  { id: "franprix", name: "Franprix", site: "franprix.fr", f: 1.3 }
 ];
-
-const STARTERS = [
-  { name: "Pâtes bolognaise", servings: 4, ingredients: [[400,"g","Pâtes"],[400,"g","Bœuf haché"],[1,"pièce","Oignon"],[2,"gousse","Ail"],[500,"g","Coulis de tomate"],[50,"g","Parmesan"]] },
-  { name: "Poulet curry coco et riz", servings: 4, ingredients: [[600,"g","Blanc de poulet"],[400,"ml","Lait de coco"],[1,"pièce","Oignon"],[1,"pièce","Poivron"],[2,"c. à s.","Curry"],[300,"g","Riz"]] },
-  { name: "Quiche lorraine et salade", servings: 4, ingredients: [[1,"pièce","Pâte brisée"],[200,"g","Lardons"],[3,"pièce","Œufs"],[20,"cl","Crème fraîche"],[100,"g","Emmental râpé"],[1,"pièce","Salade"]] },
-  { name: "Chili con carne", servings: 4, ingredients: [[500,"g","Bœuf haché"],[1,"boîte","Haricots rouges"],[1,"boîte","Tomates concassées"],[1,"pièce","Oignon"],[1,"pièce","Poivron"],[1,"c. à c.","Cumin"],[250,"g","Riz"]] },
-  { name: "Saumon, riz et brocoli", servings: 2, ingredients: [[2,"pièce","Pavé de saumon"],[150,"g","Riz"],[1,"pièce","Brocoli"],[1,"pièce","Citron"]] },
-  { name: "Omelette et salade", servings: 2, ingredients: [[4,"pièce","Œufs"],[50,"g","Fromage râpé"],[1,"pièce","Salade"],[2,"pièce","Tomate"]] },
-  { name: "Wraps poulet crudités", servings: 4, ingredients: [[8,"pièce","Tortillas"],[400,"g","Blanc de poulet"],[1,"pièce","Salade"],[3,"pièce","Tomate"],[200,"g","Fromage blanc"]] },
-  { name: "Soupe de légumes", servings: 4, ingredients: [[4,"pièce","Carotte"],[2,"pièce","Poireau"],[3,"pièce","Pomme de terre"],[1,"pièce","Oignon"],[1,"pièce","Bouillon cube"]] },
-  { name: "Croque-monsieur", servings: 2, ingredients: [[4,"tranche","Pain de mie"],[2,"tranche","Jambon"],[4,"tranche","Fromage à croque"],[1,"pièce","Salade"]] }
+const DIETS = [
+  ["tout", "Je mange de tout", "Viande, poisson, tout"],
+  ["flexi", "Peu de viande", "De la viande 2 ou 3 fois par semaine"],
+  ["pesco", "Pas de viande, mais du poisson", "Pescétarien"],
+  ["vege", "Végétarien", "Ni viande ni poisson, mais œufs et laitages"],
+  ["vegan", "Végétalien (vegan)", "Aucun produit animal"]
 ];
+const GOALS = [
+  ["equilibre", "Manger équilibré", "Ni trop, ni trop peu"],
+  ["leger", "Des repas légers", "Pour perdre du poids ou faire attention"],
+  ["copieux", "Des repas copieux", "Qui tiennent au corps, bien nourrissants"],
+  ["proteines", "Riche en protéines", "Sport, prise de muscle"]
+];
+const RESTRICTIONS = ["Sans porc", "Halal", "Sans gluten", "Sans lactose", "Peu salé", "Peu sucré (diabète)", "Pas épicé", "Sans alcool en cuisine"];
+const CUISINES = ["Française traditionnelle", "Italienne", "Méditerranéenne", "Asiatique", "Orientale / maghrébine", "Indienne", "Mexicaine", "Africaine", "Antillaise", "Américaine (burgers…)", "Cuisine du monde, surprends-moi"];
+const STYLES = [
+  ["tres", "Très simple", "15–20 min, peu de vaisselle"],
+  ["simple", "Simple", "30 min environ"],
+  ["travaille", "Un peu travaillé", "45 min, des recettes plus élaborées"],
+  ["passion", "J’adore cuisiner", "Simple en semaine, plus ambitieux le week-end"]
+];
+const MEALSETS = [
+  ["soirs", "Le soir seulement", "7 dîners"],
+  ["soirs-we", "Le soir + le midi du week-end", "9 repas"],
+  ["midis-soirs", "Midi et soir, tous les jours", "14 repas"]
+];
+const lbl = (list, id) => (list.find((x) => x[0] === id) || [, ""])[1];
+const storeOf = (id) => STORES.find((s) => s.id === id) || { id, name: id || "mon magasin", f: 1 };
 
+/* ---------- Helpers ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-const norm = (s) => String(s ?? "").replace(/œ/g,"oe").replace(/Œ/g,"oe").replace(/æ/g,"ae").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
-const slug = (s) => norm(s).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,80) || "x";
-const num = (n) => String(Number(n.toFixed(2))).replace(".", ",");
-
-function guessAisle(name) {
-  const n = " " + norm(name).replace(/[^a-z0-9]+/g, " ") + " ";
-  for (const [aisle, keys] of GUESS) for (const k of keys) if (n.includes(" " + k)) return aisle;
-  return "Autre";
-}
-
+const eur = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(n) || 0);
+const norm = (s) => String(s ?? "").replace(/[œŒ]/g, "oe").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const slug = (s) => norm(s).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "x";
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 let toastTimer;
-function toast(msg) {
-  const t = $("#toast"); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3000); }
+function armConfirm(btn, label, action) {
+  if (btn.dataset.armed) { delete btn.dataset.armed; action(); return; }
+  btn.dataset.orig = btn.textContent; btn.dataset.armed = "1"; btn.classList.add("confirm"); btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("confirm"); btn.textContent = btn.dataset.orig; } }, 3500);
 }
+const seasonOf = (d) => { const m = d.getMonth(); return m < 2 || m === 11 ? "hiver" : m < 5 ? "printemps" : m < 8 ? "été" : "automne"; };
+const frDate = (iso) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 
-/* Storage: the shared artifact database when available, this browser's storage otherwise */
+/* ---------- Storage: shared database, or this device if it is unavailable or refuses writes ---------- */
 const Store = (() => {
-  let db = null;
-  const PREFIX = "repas-courses:";
-  const subs = {};
-  const queues = {};
+  let db = null, local = true;
+  const PREFIX = "repas-courses-v2:";
+  const subs = [], cache = {}, queues = {};
   const readLocal = (c) => { try { return JSON.parse(localStorage.getItem(PREFIX + c)) || {}; } catch (e) { return {}; } };
-  const writeLocal = (c, v) => { try { localStorage.setItem(PREFIX + c, JSON.stringify(v)); } catch (e) {} (subs[c] || []).forEach((cb) => cb({ ...v })); };
-  const serial = (key, fn) => (queues[key] = (queues[key] || Promise.resolve()).catch(() => {}).then(fn));
-  const onError = (e) => {
-    if (e && e.code === "invalid_argument") toast("Tu peux consulter cette page, mais pas la modifier.");
-    else if (e && e.code === "quota_exceeded") toast("Stockage plein : supprime quelques recettes.");
+  const saveLocal = (c, v) => { cache[c] = v; try { localStorage.setItem(PREFIX + c, JSON.stringify(v)); } catch (e) {} };
+  const emit = (c) => subs.filter((s) => s.col === c).forEach((s) => s.cb({ ...(cache[c] || {}) }));
+  const serial = (k, fn) => (queues[k] = (queues[k] || Promise.resolve()).catch(() => {}).then(fn));
+  function attach(s) {
+    if (local) { cache[s.col] = readLocal(s.col); s.cb({ ...cache[s.col] }); return; }
+    s.unsub = db.collection(s.col).onSnapshot((snap) => {
+      const o = {}; snap.docs.forEach((d) => { o[d.id] = d.data(); }); cache[s.col] = o; s.cb(o);
+    }, () => toast("Synchronisation interrompue. Recharge la page."));
+  }
+  function goLocal() {
+    if (local) return;
+    local = true;
+    subs.forEach((s) => { try { s.unsub && s.unsub(); } catch (e) {} });
+    Object.entries(cache).forEach(([c, v]) => saveLocal(c, v || {}));
+    subs.forEach(attach);
+    if (Store.onMode) Store.onMode();
+    toast("Tes données sont enregistrées sur cet appareil.");
+  }
+  function fail(e) {
+    if (e && e.code === "quota_exceeded") toast("Stockage plein.");
     else toast("Enregistrement impossible pour le moment. Réessaie.");
-  };
+  }
+  async function write(op, col, id, data) {
+    if (local) {
+      const o = { ...readLocal(col) };
+      if (op === "set") o[id] = data; else delete o[id];
+      saveLocal(col, o); emit(col); return;
+    }
+    try {
+      await serial(col + "/" + id, () => op === "set" ? db.collection(col).doc(id).set(data) : db.collection(col).doc(id).delete());
+    } catch (e) {
+      /* A refused write means this viewer may read but not write the shared data: keep going on this device */
+      if (e && e.code === "invalid_argument") { goLocal(); return write(op, col, id, data); }
+      fail(e);
+    }
+  }
   return {
+    onMode: null,
+    get remote() { return !local; },
     async init() {
       try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
-      return !!db;
+      local = !db; return !local;
     },
-    watch(col, cb) {
-      if (db) {
-        return db.collection(col).onSnapshot((s) => { const o = {}; s.docs.forEach((d) => { o[d.id] = d.data(); }); cb(o); },
-          () => toast("Synchronisation interrompue. Recharge la page."));
-      }
-      (subs[col] = subs[col] || []).push(cb); cb(readLocal(col));
-    },
-    set(col, id, data) {
-      if (db) return serial(col + "/" + id, () => db.collection(col).doc(id).set(data)).catch(onError);
-      const o = readLocal(col); o[id] = data; writeLocal(col, o); return Promise.resolve();
-    },
-    del(col, id) {
-      if (db) return serial(col + "/" + id, () => db.collection(col).doc(id).delete()).catch(onError);
-      const o = readLocal(col); delete o[id]; writeLocal(col, o); return Promise.resolve();
-    },
-    newId() {
-      return db ? db.collection("ids").doc().id : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    }
+    watch(col, cb) { const s = { col, cb }; subs.push(s); attach(s); },
+    set: (col, id, data) => write("set", col, id, data),
+    del: (col, id) => write("del", col, id)
   };
 })();
 
-const state = { recipes: {}, plan: {}, settings: {}, checked: {}, extras: {}, loaded: false };
-const people = () => Math.max(1, Math.min(20, Number(state.settings.main?.people) || 2));
+/* ---------- State ---------- */
+const S = { profile: null, week: null, history: [], checked: {}, extras: {}, sample: null, imgLimits: null, busy: false, swapping: null };
+const P = () => S.profile || {};
 
-/* Quantities */
-function toBase(q, u) {
-  if (u === "kg") return [q * 1000, "g"];
-  if (u === "cl") return [q * 10, "ml"];
-  if (u === "L") return [q * 1000, "ml"];
-  return [q, u];
+/* ---------- Budget suggestion ---------- */
+function slotsFor(p) {
+  const out = [];
+  for (const [d] of DAYS) {
+    if (p.meals === "midis-soirs" || (p.meals === "soirs-we" && (d === "sam" || d === "dim"))) out.push([d, "midi"]);
+    out.push([d, "soir"]);
+  }
+  return out;
 }
-const PLURAL = { "tranche":"tranches","gousse":"gousses","boîte":"boîtes","sachet":"sachets","pot":"pots","botte":"bottes" };
-function fmtQty(q, u) {
-  if (!q) return "";
-  if (u === "g") { if (q >= 1000) return num(Math.ceil(q / 50) * 50 / 1000) + " kg"; return (q < 100 ? Math.ceil(q / 5) * 5 : Math.ceil(q / 10) * 10) + " g"; }
-  if (u === "ml") { if (q >= 1000) return num(Math.ceil(q / 50) * 50 / 1000) + " L"; const r = Math.ceil(q / 10) * 10; return r / 10 + " cl"; }
-  if (COUNTABLE.has(u)) { const n = Math.max(1, Math.ceil(q - 0.05)); return u === "pièce" ? "× " + n : n + " " + (n > 1 ? PLURAL[u] : u); }
-  return num(Math.ceil(q * 2) / 2) + " " + u;
+function suggestBudget(p) {
+  const eq = (p.adults || 1) + 0.6 * (p.kids || 0);
+  const cover = { "soirs": 0.55, "soirs-we": 0.65, "midis-soirs": 1 }[p.meals] || 0.6;
+  let b = eq * 40 * cover;
+  if (p.breakfast) b += eq * 7 * 1.1;
+  b *= { tout: 1, flexi: 0.93, pesco: 1.05, vege: 0.86, vegan: 0.86 }[p.diet] || 1;
+  b *= { equilibre: 1, leger: 1.02, copieux: 1.08, proteines: 1.15 }[p.goal] || 1;
+  b *= { tres: 0.95, simple: 1, travaille: 1.08, passion: 1.12 }[p.style] || 1;
+  b *= storeOf(p.store).f || 1;
+  if (p.storeBrands === false) b *= 1.2;
+  return Math.max(15, Math.round(b / 5) * 5);
 }
 
-function computeList() {
-  const map = new Map();
-  const p = people();
-  for (const slot of Object.values(state.plan)) {
-    const r = state.recipes[slot.recipeId];
-    if (!r) continue;
-    const f = p / (Number(r.servings) || 1);
-    for (const ing of r.ingredients || []) {
-      if (!ing.name || !ing.name.trim()) continue;
-      const [q, u] = toBase((Number(ing.qty) || 0) * f, ing.unit || "pièce");
-      const key = slug(ing.name) + "_" + slug(u);
-      let it = map.get(key);
-      if (!it) { it = { key, name: ing.name.trim(), unit: u, qty: 0, aisle: ing.aisle || guessAisle(ing.name), from: new Map() }; map.set(key, it); }
-      it.qty += q;
-      it.from.set(r.name, (it.from.get(r.name) || 0) + 1);
+/* ---------- Questionnaire ---------- */
+let draft = {};
+let wizIdx = 0;
+const choiceList = (field, list, multi, col = true) => `<div class="choices${col ? " col" : ""}">` + list.map((it) => {
+  const [id, title, sub] = Array.isArray(it) ? it : [it, it, ""];
+  const on = multi ? (draft[field] || []).includes(id) : draft[field] === id;
+  return `<button type="button" class="choice${col ? "" : " mini"}" data-${multi ? "toggle" : "set"}="${field}" data-val="${esc(id)}" aria-pressed="${on}">${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ""}</button>`;
+}).join("") + `</div>`;
+const stepper = (field, label, min, max) => `<div class="stepper"><span class="label">${label}</span><div class="ctl"><button type="button" data-step="${field}" data-d="-1" data-min="${min}" aria-label="Moins">−</button><strong>${draft[field] ?? min}</strong><button type="button" data-step="${field}" data-d="1" data-max="${max}" aria-label="Plus">+</button></div></div>`;
+const toggle = (field, label) => `<label class="toggle"><input type="checkbox" id="tg-${field}" data-check="${field}"${draft[field] ? " checked" : ""}><span>${label}</span></label>`;
+
+const STEPS = [
+  { title: "Bienvenue", html: () => `
+      <h2>Bonjour ! Je prépare tes menus et ta liste de courses.</h2>
+      <p class="help">Quelques questions rapides (2 minutes), et je te propose une semaine de repas qui respecte ton budget, tes goûts et ton magasin. Tu pourras tout changer ensuite.</p>
+      <label class="field">Ton prénom (facultatif)<input id="w-name" value="${esc(draft.name || "")}" placeholder="Ex. Sylvie" autocomplete="given-name"></label>`,
+    read: () => { draft.name = $("#w-name").value.trim(); } },
+  { title: "Foyer", html: () => `
+      <h2>Vous êtes combien à table ?</h2>
+      ${stepper("adults", "Adultes et ados", 1, 10)}
+      ${stepper("kids", "Enfants (moins de 12 ans)", 0, 10)}` },
+  { title: "Alimentation", html: () => `
+      <h2>Comment tu manges ?</h2>
+      ${choiceList("diet", DIETS, false)}`, ok: () => !!draft.diet, need: "Choisis une réponse" },
+  { title: "Objectif", html: () => `
+      <h2>Tu préfères quel genre de repas ?</h2>
+      <p class="help">Un régime, des repas légers ou au contraire bien copieux ?</p>
+      ${choiceList("goal", GOALS, false)}
+      <p class="label">Des contraintes en plus ?</p>
+      ${choiceList("restrictions", RESTRICTIONS, true, false)}`, ok: () => !!draft.goal, need: "Choisis le genre de repas" },
+  { title: "Allergies", html: () => `
+      <h2>Allergies et aliments que tu n’aimes pas</h2>
+      <label class="field">Allergies ou intolérances <span class="muted">Je ne les mettrai jamais.</span><input id="w-allergies" value="${esc(draft.allergies || "")}" placeholder="Ex. fruits à coque, crustacés"></label>
+      <label class="field">Ce que tu n’aimes pas <span class="muted">Je l’évite.</span><input id="w-dislikes" value="${esc(draft.dislikes || "")}" placeholder="Ex. champignons, chou-fleur, poisson pané"></label>
+      <label class="field">Ce que tu adores <span class="muted">J’en mettrai plus souvent.</span><input id="w-likes" value="${esc(draft.likes || "")}" placeholder="Ex. gratins, poulet, soupes"></label>`,
+    read: () => { draft.allergies = $("#w-allergies").value.trim(); draft.dislikes = $("#w-dislikes").value.trim(); draft.likes = $("#w-likes").value.trim(); } },
+  { title: "Cuisine", html: () => `
+      <h2>Quel style de cuisine ?</h2>
+      ${choiceList("style", STYLES, false)}
+      <p class="label">Les cuisines que tu aimes</p>
+      ${choiceList("cuisines", CUISINES, true, false)}
+      ${toggle("batch", "Cuisiner un peu plus le soir pour avoir des restes le lendemain")}
+      ${(draft.kids || 0) > 0 ? toggle("picky", "Les enfants sont difficiles : des plats qu’ils aiment") : ""}`, ok: () => !!draft.style, need: "Choisis un style de cuisine" },
+  { title: "Repas", html: () => `
+      <h2>Quels repas je prévois ?</h2>
+      ${choiceList("meals", MEALSETS, false)}
+      ${toggle("breakfast", "Ajouter le petit-déjeuner et les goûters à la liste de courses")}`, ok: () => !!draft.meals, need: "Choisis quels repas prévoir" },
+  { title: "Magasin", html: () => `
+      <h2>Tu fais tes courses où ?</h2>
+      <p class="help">Je calcule les prix et je choisis les produits pour ce magasin.</p>
+      ${choiceList("store", STORES.map((s) => [s.id, s.name]), false, false)}
+      ${toggle("storeBrands", "Les marques du magasin me vont (souvent moins chères)")}`, ok: () => !!draft.store, need: "Choisis ton magasin" },
+  { title: "Budget", html: () => {
+      const sug = suggestBudget(draft);
+      if (!draft.budgetEdited) draft.budget = sug;
+      return `
+      <h2>Ton budget courses par semaine</h2>
+      <div class="budget-box">
+        <p>Pour ${draft.adults} adulte${draft.adults > 1 ? "s" : ""}${draft.kids ? ` et ${draft.kids} enfant${draft.kids > 1 ? "s" : ""}` : ""}, ${lbl(MEALSETS, draft.meals).toLowerCase()}${draft.breakfast ? " + petits-déjeuners" : ""} chez ${esc(storeOf(draft.store).name)}, je te propose :</p>
+        <div class="budget-input"><input id="w-budget" inputmode="decimal" value="${draft.budget}" aria-label="Budget par semaine en euros"><span>€ / semaine</span></div>
+        <p class="muted small">Un budget serré reste possible : je ferai plus de plats simples et de saison. Tu peux le changer quand tu veux.</p>
+        <div class="row"><button type="button" class="mini" data-budget="${Math.round(sug * 0.8 / 5) * 5}">Serré · ${Math.round(sug * 0.8 / 5) * 5} €</button><button type="button" class="mini" data-budget="${sug}">Conseillé · ${sug} €</button><button type="button" class="mini" data-budget="${Math.round(sug * 1.25 / 5) * 5}">Large · ${Math.round(sug * 1.25 / 5) * 5} €</button></div>
+      </div>`; },
+    read: () => { const v = parseFloat(String($("#w-budget").value).replace(",", ".")); if (v > 0) draft.budget = Math.round(v); },
+    ok: () => { const v = parseFloat(String($("#w-budget").value).replace(",", ".")); return v >= 5; }, need: "Indique un budget en euros" },
+  { title: "Récap", html: () => `
+      <h2>C’est tout bon${draft.name ? ", " + esc(draft.name) : ""} ?</h2>
+      <div class="card recap">
+        <div><span class="k">À table</span><span>${draft.adults} adulte${draft.adults > 1 ? "s" : ""}${draft.kids ? `, ${draft.kids} enfant${draft.kids > 1 ? "s" : ""}` : ""}</span></div>
+        <div><span class="k">Alimentation</span><span>${esc(lbl(DIETS, draft.diet))} · ${esc(lbl(GOALS, draft.goal))}</span></div>
+        ${(draft.restrictions || []).length ? `<div><span class="k">Contraintes</span><span>${esc(draft.restrictions.join(", "))}</span></div>` : ""}
+        ${draft.allergies ? `<div><span class="k">Allergies</span><span>${esc(draft.allergies)}</span></div>` : ""}
+        <div><span class="k">Cuisine</span><span>${esc(lbl(STYLES, draft.style))}${(draft.cuisines || []).length ? " · " + esc(draft.cuisines.join(", ")) : ""}</span></div>
+        <div><span class="k">Repas</span><span>${esc(lbl(MEALSETS, draft.meals))}</span></div>
+        <div><span class="k">Magasin</span><span>${esc(storeOf(draft.store).name)}</span></div>
+        <div><span class="k">Budget</span><span>${draft.budget} € par semaine</span></div>
+      </div>
+      <p class="help">Ensuite, je crée ta première semaine. Tu peux me donner les promos du moment juste avant.</p>` }
+];
+
+function openWizard(fromProfile) {
+  draft = JSON.parse(JSON.stringify(S.profile || { adults: 2, kids: 0, storeBrands: true, restrictions: [], cuisines: [] }));
+  draft.budgetEdited = !!fromProfile && !!draft.budget;
+  wizIdx = fromProfile ? 1 : 0;
+  $("#main").hidden = true; $("#wizard").hidden = false;
+  renderWizard();
+}
+function renderWizard() {
+  const st = STEPS[wizIdx];
+  $("#wizStep").innerHTML = st.html();
+  $("#wizBar").style.width = ((wizIdx + 1) / STEPS.length * 100) + "%";
+  $("#wizBack").style.visibility = wizIdx === 0 && !S.profile ? "hidden" : "visible";
+  $("#wizBack").textContent = wizIdx === 0 || (wizIdx === 1 && S.profile) ? (S.profile ? "Annuler" : "Retour") : "Retour";
+  $("#wizNext").textContent = wizIdx === STEPS.length - 1 ? (S.profile && S.week ? "Enregistrer" : "Créer mes menus") : wizIdx === 0 ? "C’est parti" : "Continuer";
+  window.scrollTo(0, 0);
+}
+$("#wizStep").addEventListener("click", (e) => {
+  const set = e.target.closest("[data-set]");
+  if (set) { draft[set.dataset.set] = set.dataset.val; renderWizard(); return; }
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) {
+    const f = tg.dataset.toggle; const v = tg.dataset.val; const arr = new Set(draft[f] || []);
+    arr.has(v) ? arr.delete(v) : arr.add(v);
+    if (f === "restrictions" && v === "Halal" && arr.has("Halal")) arr.add("Sans porc");
+    draft[f] = [...arr]; renderWizard(); return;
+  }
+  const stp = e.target.closest("[data-step]");
+  if (stp) {
+    const f = stp.dataset.step; const min = f === "adults" ? 1 : 0;
+    draft[f] = Math.max(min, Math.min(10, (draft[f] ?? min) + Number(stp.dataset.d)));
+    renderWizard(); return;
+  }
+  const b = e.target.closest("[data-budget]");
+  if (b) { draft.budget = Number(b.dataset.budget); draft.budgetEdited = true; $("#w-budget").value = draft.budget; }
+});
+$("#wizStep").addEventListener("change", (e) => { const c = e.target.closest("[data-check]"); if (c) draft[c.dataset.check] = c.checked; });
+$("#wizStep").addEventListener("input", (e) => { if (e.target.id === "w-budget") draft.budgetEdited = true; });
+$("#wizStep").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); $("#wizNext").click(); } });
+$("#wizBack").addEventListener("click", () => {
+  const st = STEPS[wizIdx]; if (st.read) st.read();
+  if (wizIdx === 0 || (wizIdx === 1 && S.profile)) { if (S.profile) { $("#wizard").hidden = true; $("#main").hidden = false; } return; }
+  wizIdx--; renderWizard();
+});
+$("#wizNext").addEventListener("click", async () => {
+  const st = STEPS[wizIdx];
+  if (st.ok && !st.ok()) { toast(st.need); return; }
+  if (st.read) st.read();
+  if (wizIdx < STEPS.length - 1) { wizIdx++; renderWizard(); return; }
+  const profile = { ...draft, done: true, updatedAt: Date.now() };
+  delete profile.budgetEdited;
+  const first = !S.week;
+  S.profile = profile;
+  await Store.set("settings", "profile", profile);
+  $("#wizard").hidden = true; $("#main").hidden = false;
+  renderMain();
+  if (first) openPrep(); else toast("Réponses enregistrées. Elles servent dès la prochaine semaine.");
+});
+
+/* ---------- Prompt ---------- */
+function profileBlock(p) {
+  const st = storeOf(p.store);
+  const slots = slotsFor(p).map(([d, s]) => `${d} ${s}`).join(", ");
+  const maxTime = { tres: "20 min", simple: "30 min", travaille: "45 min", passion: "30 min en semaine, jusqu’à 1 h 30 le week-end" }[p.style] || "30 min";
+  return `PROFIL DU FOYER
+- À table : ${p.adults} adulte(s)${p.kids ? ` et ${p.kids} enfant(s) de moins de 12 ans (un enfant ≈ 0,6 portion adulte)` : ""}.${p.picky ? " Enfants difficiles : plats qu’ils acceptent facilement." : ""}
+- Alimentation : ${lbl(DIETS, p.diet)} (${(DIETS.find((d) => d[0] === p.diet) || [])[2] || ""}).
+- Genre de repas : ${lbl(GOALS, p.goal)} (${(GOALS.find((d) => d[0] === p.goal) || [])[2] || ""}).
+- Contraintes : ${(p.restrictions || []).join(", ") || "aucune"}.
+- ALLERGIES (exclure strictement, y compris traces évidentes) : ${p.allergies || "aucune"}.
+- N’aime pas (ne jamais mettre) : ${p.dislikes || "rien de particulier"}.
+- Adore (en mettre plus souvent, sans répéter) : ${p.likes || "non précisé"}.
+- Cuisines appréciées : ${(p.cuisines || []).join(", ") || "variées"}.
+- Style : ${lbl(STYLES, p.style)}. Temps de préparation maximum : ${maxTime}.
+- Restes : ${!p.batch ? "non, chaque repas est préparé à part" : p.meals === "soirs" ? "oui, cuisiner plus certains soirs pour emporter le lendemain midi (compter ces portions en plus dans les quantités et le budget)" : "oui, cuisiner plus certains soirs pour le midi suivant (ce midi-là devient « Restes de … », sans nouveaux ingrédients)"}.
+- Magasin : ${st.name}. Marques du magasin : ${p.storeBrands === false ? "non, plutôt des grandes marques" : "oui, à privilégier quand c’est moins cher"}.
+- BUDGET COURSES DE LA SEMAINE : ${p.budget} € maximum, tout compris (viser entre 85 % et 100 %).
+- Repas à prévoir (exactement ceux-là) : ${slots}.
+- Petit-déjeuner et goûters : ${p.breakfast ? "oui, ajouter à la liste de courses ce qu’il faut pour la semaine (dans le budget)" : "non"}.`;
+}
+function historyBlock() {
+  const h = (S.history || []).slice(0, 8);
+  if (!h.length) return "Aucun (première semaine).";
+  return h.map((w, i) => `- Il y a ${i + 1} semaine(s) : ${(w.meals || []).join(" ; ")}`).join("\n");
+}
+const RULES = (p) => `RÈGLES
+1. Variété réelle : chaque plat est différent. Au fil de la semaine, varie les protéines, les féculents, les légumes, les cuisines et les modes de cuisson ; pas deux plats proches deux jours de suite. Aucun plat des 3 dernières semaines ; évite aussi les plus anciens. N’applique pas de menu type ni de rotation fixe : invente une semaine pensée pour ce foyer, cette saison et ces envies.
+2. Anti-gaspi : réutilise intelligemment les ingrédients entre les repas pour finir les paquets entamés (botte d’herbes, crème, légumes). Tiens compte des tailles réelles vendues en magasin.
+3. Promos : prends une promo seulement si elle est rentable : le prix par portion utilisée baisse ET tout sera consommé avant de périmer (ou se garde longtemps : pâtes, riz, conserves, surgelés, produits ménagers). Un lot de produits frais qu’on ne finira pas n’est pas une affaire. Construis des repas autour des promos rentables.
+4. Prix : estime des prix réalistes pratiqués chez ${storeOf(p.store).name} en France aujourd’hui${p.storeBrands === false ? "" : ", en choisissant la marque du magasin quand elle est moins chère"}. Le total de la liste doit tenir dans le budget. Si c’est impossible, fais au mieux et explique-le dans "warning".
+5. Liste de courses : une ligne par produit à acheter, avec le produit précis à chercher en magasin (nom, marque si utile, format) et une quantité arrondie aux formats réellement vendus (ex. riz 1 kg même s’il en faut 400 g ; indique le reste dans "why"). Les basiques (sel, poivre, huile, vinaigre, épices courantes, farine, sucre) vont dans "pantry" (à vérifier dans les placards) au lieu de "shopping", sauf s’il en faut beaucoup.
+6. Santé : respecte le genre de repas demandé ; kcal = estimation par portion adulte.
+7. Recettes : faisables par quelqu’un qui n’est pas chef, avec 3 à 6 étapes courtes et claires. Ingrédients avec les quantités pour tout le foyer.`;
+const FORMAT_MEAL = `{"day":"lun","slot":"soir","name":"…","desc":"une phrase appétissante","minutes":25,"kcal":550,"tags":["léger"],"ingredients":["400 g de riz basmati","…"],"steps":["…"],"leftover":"(facultatif) ce qui resservira plus tard dans la semaine"}`;
+const FORMAT_SHOP = `{"name":"Riz basmati","product":"Riz basmati 1 kg (marque du magasin)","qty":"1 paquet","aisle":"Épicerie salée","price":2.15,"promo":false,"why":"(facultatif) utilisé lundi et jeudi, il restera 400 g"}`;
+
+function weekPrompt(p, prep) {
+  const now = new Date();
+  return `Tu es à la fois diététicien(ne) et cuisinier(ère) en France. Tu aides un foyer à faire ses menus de la semaine et sa liste de courses au meilleur prix.
+
+${profileBlock(p)}
+
+CETTE SEMAINE
+- Semaine du ${now.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}, saison : ${seasonOf(now)}. Privilégie les fruits et légumes de saison (moins chers et meilleurs).
+- Déjà à la maison (à utiliser en priorité, à ne pas racheter) : ${prep.pantry || "rien de précisé"}.
+- Envies ou contraintes de la semaine : ${prep.wishes || "aucune"}.
+- Promos repérées : ${prep.promos || "aucune en texte"}${prep.photos ? `. ${prep.photos} photo(s) jointe(s) du catalogue ou de l’appli : lis-y les promos et les prix.` : "."}
+
+DÉJÀ MANGÉ CES DERNIÈRES SEMAINES
+${historyBlock()}
+
+${RULES(p)}
+
+RÉPONSE : uniquement un objet JSON, sans texte autour, de cette forme :
+{"meals":[${FORMAT_MEAL}],
+ "shopping":[${FORMAT_SHOP}],
+ "pantry":["Huile d’olive","Sel"],
+ "total":63.40,
+ "tips":["2 à 4 conseils concrets pour économiser ou gagner du temps cette semaine"],
+ "warning":""}
+"day" parmi lun, mar, mer, jeu, ven, sam, dim ; "slot" parmi midi, soir ; "aisle" parmi : ${AISLES.join(" | ")}. "price" et "total" en euros (nombres). Un repas par créneau demandé, dans l’ordre de la semaine. Variante n° ${Math.floor(Math.random() * 1e6)}.`;
+}
+function swapPrompt(p, week, target, reason) {
+  const others = week.meals.map((m) => `- ${m.day} ${m.slot} : ${m.name} (${(m.ingredients || []).join(", ")})`).join("\n");
+  return `Tu es à la fois diététicien(ne) et cuisinier(ère) en France. Tu aides un foyer à ajuster ses menus de la semaine.
+
+${profileBlock(p)}
+
+MENUS ACTUELS DE LA SEMAINE
+${others}
+
+DÉJÀ MANGÉ CES DERNIÈRES SEMAINES
+${historyBlock()}
+
+DEMANDE : remplace UNIQUEMENT le repas « ${target.day} ${target.slot} : ${target.name} ». Raison donnée : ${reason || "envie d’autre chose"}.
+Le nouveau plat doit être nettement différent de tous les autres plats de la semaine et de l’historique, respecter tout le profil et garder le budget. Garde les autres repas tels quels.
+Puis refais la liste de courses complète de toute la semaine (avec le nouveau plat), avec les mêmes règles.
+
+${RULES(p)}
+
+RÉPONSE : uniquement un objet JSON, sans texte autour :
+{"meal":${FORMAT_MEAL.replace('"day":"lun","slot":"soir"', `"day":"${target.day}","slot":"${target.slot}"`)},
+ "shopping":[${FORMAT_SHOP}],
+ "pantry":["…"],
+ "total":63.40,
+ "warning":""}
+Variante n° ${Math.floor(Math.random() * 1e6)}.`;
+}
+
+/* ---------- Claude calls ---------- */
+const ERR = {
+  not_granted: "Il faut autoriser la page à utiliser Claude pour créer les menus.",
+  sampling_disabled: "Claude n’est pas disponible sur ce compte.",
+  rate_limited: "Trop de demandes pour l’instant. Réessaie dans quelques minutes.",
+  session_expired: "Reconnecte-toi à claude.ai, puis réessaie.",
+  invalid_json: "La réponse est arrivée incomplète. Réessaie.",
+  image_rejected: "Une photo n’a pas pu être lue. Essaie avec une autre photo.",
+  images_unavailable: "Les photos ne sont pas acceptées ici. Écris les promos en texte.",
+  refused: "Je n’ai pas pu faire cette demande. Modifie le texte et réessaie."
+};
+const errMsg = (e) => ERR[e && e.code] || "Ça n’a pas marché cette fois. Réessaie.";
+const cleanMeal = (m) => ({
+  day: DAY_LABEL[m.day] ? m.day : "lun", slot: m.slot === "midi" ? "midi" : "soir",
+  name: String(m.name || "Repas"), desc: String(m.desc || ""), minutes: Number(m.minutes) || null, kcal: Number(m.kcal) || null,
+  tags: Array.isArray(m.tags) ? m.tags.slice(0, 4).map(String) : [], ingredients: Array.isArray(m.ingredients) ? m.ingredients.map(String) : [],
+  steps: Array.isArray(m.steps) ? m.steps.map(String) : [], leftover: m.leftover ? String(m.leftover) : ""
+});
+const cleanShop = (list) => (Array.isArray(list) ? list : []).filter((x) => x && (x.name || x.product)).map((x) => ({
+  name: String(x.name || x.product), product: String(x.product || x.name), qty: String(x.qty || ""),
+  aisle: AISLES.includes(x.aisle) ? x.aisle : "Autre", price: Math.max(0, Number(x.price) || 0), promo: !!x.promo, why: x.why ? String(x.why) : ""
+}));
+const sumShop = (list) => Math.round(list.reduce((a, x) => a + x.price, 0) * 100) / 100;
+
+let genCtl = null;
+let prepFiles = [];
+function openPrep() {
+  if (!S.sample) { renderMenus(); toast("Ouvre la page depuis claude.ai, connectée à ton compte, pour créer les menus."); return; }
+  $("#promoText").value = ""; $("#pantryText").value = ""; $("#wishText").value = "";
+  prepFiles = []; $("#promoPhotos").value = ""; $("#photoPreview").innerHTML = "";
+  $("#photoField").hidden = !S.imgLimits;
+  $("#prep").hidden = false;
+}
+$("#prepCancel").addEventListener("click", () => { $("#prep").hidden = true; });
+$("#prep").addEventListener("click", (e) => { if (e.target.id === "prep") $("#prep").hidden = true; });
+$("#promoPhotos").addEventListener("change", (e) => {
+  const max = S.imgLimits ? S.imgLimits.maxCount : 0;
+  prepFiles = [...e.target.files].slice(0, max);
+  if (e.target.files.length > max) toast(`${max} photos maximum : j’ai gardé les ${max} premières.`);
+  $("#photoPreview").innerHTML = "";
+  prepFiles.forEach((f) => { const img = document.createElement("img"); img.alt = "Photo de promos"; img.src = URL.createObjectURL(f); $("#photoPreview").appendChild(img); });
+});
+$("#prepForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  $("#prep").hidden = true;
+  generateWeek({ promos: $("#promoText").value.trim(), pantry: $("#pantryText").value.trim(), wishes: $("#wishText").value.trim(), files: prepFiles });
+});
+
+async function generateWeek(prep) {
+  if (S.busy) return;
+  S.busy = true; genCtl = new AbortController();
+  showTab("menus"); renderGenerating("Je réfléchis à ta semaine…", "Je tiens compte de ton budget, de tes goûts et de ce que tu as déjà mangé. Ça prend en général une à deux minutes.");
+  try {
+    const opts = { modelTier: "default", cache: false, signal: genCtl.signal, onText: ({ text }) => {
+      const n = (text.match(/"slot"\s*:/g) || []).length;
+      const shop = text.includes('"shopping"');
+      setGenStatus(shop ? "Je fais la liste de courses…" : n ? `J’écris les menus… ${n} plat${n > 1 ? "s" : ""}` : "J’écris les menus…");
+    } };
+    if (prep.files && prep.files.length) opts.images = prep.files;
+    const res = await S.sample.json(weekPrompt(P(), { ...prep, photos: prep.files ? prep.files.length : 0 }), opts);
+    if (!res || !Array.isArray(res.meals) || !res.meals.length) throw { code: "invalid_json" };
+    const shopping = cleanShop(res.shopping);
+    const week = {
+      weekOf: new Date().toISOString().slice(0, 10), createdAt: Date.now(), budget: P().budget, store: P().store,
+      meals: res.meals.map(cleanMeal), shopping, pantry: Array.isArray(res.pantry) ? res.pantry.map(String) : [],
+      total: sumShop(shopping) || Number(res.total) || 0, tips: Array.isArray(res.tips) ? res.tips.map(String).slice(0, 5) : [],
+      warning: res.warning ? String(res.warning) : "", prep: { promos: prep.promos || "", pantry: prep.pantry || "", wishes: prep.wishes || "" }
+    };
+    if (S.week && S.week.meals && S.week.meals.length) {
+      const hist = [{ weekOf: S.week.weekOf, meals: S.week.meals.map((m) => m.name) }, ...(S.history || [])].slice(0, 12);
+      await Store.set("history", "log", { weeks: hist });
     }
+    await Store.set("weeks", "current", week);
+    await Promise.all(Object.keys(S.checked).map((k) => Store.del("checked", k)));
+    for (const [id, x] of Object.entries(S.extras)) if (S.checked["x_" + id]) await Store.del("extras", id);
+    toast("Ta semaine est prête !");
+  } catch (e) {
+    if (e && e.code !== "cancelled") toast(errMsg(e));
+  } finally {
+    S.busy = false; genCtl = null; renderMenus(); renderCourses();
   }
-  for (const [id, x] of Object.entries(state.extras)) {
-    const key = "x_" + id;
-    map.set(key, { key, name: x.name, unit: "", qty: 0, aisle: x.aisle || "Autre", from: new Map(), extraId: id });
+}
+
+async function swapMeal(idx, reason) {
+  if (S.busy || !S.week) return;
+  const target = S.week.meals[idx]; if (!target) return;
+  S.busy = true; S.swapping = idx; genCtl = new AbortController();
+  const card = document.querySelector(`[data-meal="${idx}"]`); if (card) card.classList.add("busy");
+  toast("Je cherche un autre plat… (environ une minute)");
+  try {
+    const res = await S.sample.json(swapPrompt(P(), S.week, target, reason), { modelTier: "default", cache: false, signal: genCtl.signal });
+    if (!res || !res.meal || !res.meal.name) throw { code: "invalid_json" };
+    const meal = cleanMeal({ ...res.meal, day: target.day, slot: target.slot });
+    const shopping = cleanShop(res.shopping);
+    const week = { ...S.week, meals: S.week.meals.map((m, i) => i === idx ? meal : m) };
+    if (shopping.length) { week.shopping = shopping; week.total = sumShop(shopping) || Number(res.total) || week.total; }
+    if (Array.isArray(res.pantry)) week.pantry = res.pantry.map(String);
+    week.warning = res.warning ? String(res.warning) : "";
+    await Store.set("weeks", "current", week);
+    toast(`Remplacé par : ${meal.name}`);
+  } catch (e) {
+    if (e && e.code !== "cancelled") toast(errMsg(e));
+  } finally {
+    S.busy = false; S.swapping = null; genCtl = null; renderMenus(); renderCourses();
   }
-  return [...map.values()];
 }
 
-/* Rendering */
-function recipeOptions(selected) {
-  const list = Object.entries(state.recipes).sort((a, b) => a[1].name.localeCompare(b[1].name, "fr"));
-  let html = `<option value="">—</option>`;
-  html += list.map(([id, r]) => `<option value="${esc(id)}"${id === selected ? " selected" : ""}>${esc(r.name)}</option>`).join("");
-  html += `<option disabled>──────────</option>`;
-  html += Object.entries(SPECIAL).map(([id, l]) => `<option value="${id}"${id === selected ? " selected" : ""}>${l}</option>`).join("");
-  return html;
+/* ---------- Rendering: menus ---------- */
+function renderGenerating(title, sub) {
+  $("#tab-menus").innerHTML = `<div class="card gen"><div class="pot"></div><h2>${esc(title)}</h2><p class="muted" id="genStatus">${esc(sub)}</p><button id="stopGen" class="ghost">Arrêter</button></div>`;
 }
+function setGenStatus(t) { const el = $("#genStatus"); if (el) el.textContent = t; }
 
-function renderWeek() {
-  const p = people();
-  $("#people").textContent = p;
-  $("#peopleWord").textContent = p > 1 ? "personnes" : "personne";
-  const todayIdx = (new Date().getDay() + 6) % 7;
-  const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.slot : null;
-  $("#week").innerHTML = DAYS.map(([d, label], i) => `
-    <div class="day${i === todayIdx ? " today" : ""}">
-      <div class="dname">${label}${i === todayIdx ? "<small>Aujourd’hui</small>" : ""}</div>
-      ${MEALS.map(([m, ml]) => {
-        const id = d + "-" + m;
-        const val = state.plan[id]?.recipeId || "";
-        const valid = val && (state.recipes[val] || SPECIAL[val]) ? val : "";
-        return `<label class="slot"><span>${ml}</span><select id="slot-${id}" data-slot="${id}" class="${valid ? "filled" : ""}">${recipeOptions(valid)}</select></label>`;
-      }).join("")}
-    </div>`).join("");
-  if (focused) { const el = document.getElementById("slot-" + focused); if (el) el.focus(); }
-}
-
-function renderList() {
-  const items = computeList();
-  const left = items.filter((i) => !state.checked[i.key]).length;
-  $("#count").textContent = left || "";
-  $("#progress").textContent = items.length ? (left ? `${left} article${left > 1 ? "s" : ""} à acheter` : "Tout est dans le panier") : "";
-  const sel = $("#extraAisle");
-  if (!sel.options.length) sel.innerHTML = AISLES.map((a) => `<option>${esc(a)}</option>`).join("");
-  if (!items.length) {
-    $("#list").innerHTML = `<div class="empty"><p>Ta liste est vide pour l’instant.<br>Choisis des plats dans l’onglet Semaine, ou ajoute un article ci-dessus.</p><div class="row"><button data-goto="semaine" class="primary">Planifier la semaine</button></div></div>`;
+function renderMenus() {
+  if (S.busy && S.swapping === null) { if (!$("#genStatus")) renderGenerating("Je réfléchis à ta semaine…", ""); return; }
+  const box = $("#tab-menus");
+  const p = P();
+  if (!S.week || !S.week.meals) {
+    box.innerHTML = `<div class="empty">
+      <h2>Prête pour ta première semaine${p.name ? ", " + esc(p.name) : ""} ?</h2>
+      <p>Je crée des menus variés qui respectent ton budget de <b>${esc(p.budget)} €</b> et ce que tu aimes, puis la liste de courses rangée par rayon pour ${esc(storeOf(p.store).name)}.</p>
+      ${S.sample ? `<button class="primary big" data-act="prep">Créer mes menus</button>` : `<p class="warn">Pour créer les menus, ouvre cette page depuis claude.ai en étant connectée à ton compte Claude.</p>`}
+    </div>`;
     return;
   }
-  const byAisle = new Map(AISLES.map((a) => [a, []]));
-  items.forEach((i) => (byAisle.get(i.aisle) || byAisle.get("Autre")).push(i));
-  let html = "";
-  for (const [aisle, list] of byAisle) {
+  const w = S.week;
+  const budget = Number(w.budget || p.budget) || 0;
+  const over = budget && w.total > budget;
+  const todayKey = DAYS[(new Date().getDay() + 6) % 7][0];
+  const groups = DAYS.map(([d, label]) => [d, label, w.meals.map((m, i) => [m, i]).filter(([m]) => m.day === d).sort((a, b) => (a[0].slot === "midi" ? 0 : 1) - (b[0].slot === "midi" ? 0 : 1))]).filter((g) => g[2].length);
+  box.innerHTML = `
+    <div class="stack">
+      <div class="card">
+        <div class="between">
+          <div><p class="muted small">Semaine du ${esc(frDate(w.weekOf))} · courses estimées</p><p class="bignum">${eur(w.total)} <span class="muted small" style="font-family:var(--body);font-weight:500">sur ${eur(budget)}</span></p></div>
+          <button data-act="prep" class="ghost">Nouvelle semaine</button>
+        </div>
+        <div class="meter${over ? " over" : ""}"><i style="width:${budget ? Math.min(100, w.total / budget * 100) : 0}%"></i></div>
+        <p class="small muted" style="margin-top:6px">${over ? `<b style="color:var(--danger)">${eur(w.total - budget)} au-dessus du budget.</b> Change un plat avec « Moins cher ».` : `${eur(Math.max(0, budget - w.total))} de marge. Prix estimés, ils peuvent varier un peu selon le magasin.`}</p>
+      </div>
+      ${w.warning ? `<p class="warn">${esc(w.warning)}</p>` : ""}
+      ${w.tips && w.tips.length ? `<details class="card"><summary style="cursor:pointer;font-weight:700">Mes conseils pour cette semaine</summary><ul class="tips" style="margin-top:10px">${w.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></details>` : ""}
+      <div>
+      ${groups.map(([d, label, list]) => `
+        <div class="day${d === todayKey ? " today" : ""}"><h3>${label}${d === todayKey ? " · aujourd’hui" : ""}</h3>
+        ${list.map(([m, i]) => `
+          <details class="meal${S.swapping === i ? " busy" : ""}" data-meal="${i}"${S.swapping === i ? " open" : ""}>
+            <summary>
+              <span class="slot">${m.slot === "midi" ? "Midi" : "Soir"}</span>
+              <span><span class="mname">${esc(m.name)}</span>${m.desc ? `<span class="mdesc" style="display:block">${esc(m.desc)}</span>` : ""}
+                <span class="chips">${m.minutes ? `<span class="tag">${m.minutes} min</span>` : ""}${m.kcal ? `<span class="tag">≈ ${m.kcal} kcal</span>` : ""}${m.tags.map((t) => `<span class="tag pop">${esc(t)}</span>`).join("")}</span></span>
+              <span class="chev" aria-hidden="true">${S.swapping === i ? "…" : "›"}</span>
+            </summary>
+            <div class="mbody">
+              ${m.ingredients.length ? `<div><h3 style="margin-bottom:6px">Ingrédients</h3><ul>${m.ingredients.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+              ${m.steps.length ? `<div><h3 style="margin-bottom:6px">Préparation</h3><ol>${m.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
+              ${m.leftover ? `<p class="leftover">${esc(m.leftover)}</p>` : ""}
+              ${S.sample ? `<div class="swap">
+                <p class="small" style="font-weight:700">Changer ce plat</p>
+                <div class="choices">${["Pas envie", "Trop long", "Moins cher", "Plus léger", "Plus copieux"].map((r) => `<button type="button" class="choice mini" data-swap="${i}" data-reason="${r}">${r}</button>`).join("")}</div>
+                <div class="extra"><input id="why-${i}" placeholder="Ou dis-moi ce que tu veux (ex. un poisson)"><button type="button" data-swap="${i}" data-free="1">Changer</button></div>
+              </div>` : ""}
+            </div>
+          </details>`).join("")}
+        </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+/* ---------- Rendering: shopping ---------- */
+const itemKey = (x) => "s_" + slug(x.product || x.name);
+function searchUrl(product) {
+  const st = storeOf(P().store);
+  if (st.search) return st.search + encodeURIComponent(product);
+  return "https://www.google.com/search?q=" + encodeURIComponent((st.site ? "site:" + st.site + " " : "") + product);
+}
+function renderCourses() {
+  const box = $("#tab-courses");
+  const w = S.week;
+  const shop = (w && w.shopping) || [];
+  const extras = Object.entries(S.extras).map(([id, x]) => ({ name: x.name, product: x.name, qty: "", aisle: x.aisle || "Autre", price: 0, extraId: id }));
+  const all = [...shop, ...extras];
+  const keyOf = (x) => x.extraId ? "x_" + x.extraId : itemKey(x);
+  const left = all.filter((x) => !S.checked[keyOf(x)]).length;
+  $("#count").textContent = left || "";
+  const leftCost = shop.filter((x) => !S.checked[keyOf(x)]).reduce((a, x) => a + x.price, 0);
+  const st = storeOf(P().store);
+  let html = `<div class="stack">
+    <div class="card stack" style="gap:8px">
+      <div class="between"><p><b>${left}</b> article${left > 1 ? "s" : ""} à prendre${shop.length ? ` · reste ≈ <b class="num">${eur(leftCost)}</b>` : ""}</p>
+        <div class="row"><button id="copyList" class="mini">Copier la liste</button><button id="doneShopping" class="mini ghost">Courses terminées</button></div></div>
+      <p class="small muted">Dans l’appli ${esc(st.name)} (ou sur le site du drive) : appuie sur un produit pour copier son nom, colle-le dans la recherche, puis coche-le ici.</p>
+    </div>
+    <form id="extraForm" class="extra"><input id="extraName" placeholder="Ajouter un article (ex. papier toilette)" aria-label="Article à ajouter" autocomplete="off"><button class="primary">Ajouter</button></form>`;
+  if (!all.length) {
+    html += `<div class="empty"><p>Ta liste se remplit toute seule quand je crée tes menus.</p>${w ? "" : `<button class="primary" data-act="goto-menus">Créer mes menus</button>`}</div></div>`;
+    box.innerHTML = html; return;
+  }
+  for (const aisle of AISLES) {
+    const list = all.filter((x) => x.aisle === aisle);
     if (!list.length) continue;
-    list.sort((a, b) => (!!state.checked[a.key] - !!state.checked[b.key]) || a.name.localeCompare(b.name, "fr"));
-    const n = list.filter((i) => !state.checked[i.key]).length;
-    html += `<div class="aisle"><h3><span>${esc(aisle)}</span><span>${n}/${list.length}</span></h3>` + list.map((i) => {
-      const done = !!state.checked[i.key];
-      const from = [...i.from.entries()].map(([name, c]) => c > 1 ? `${name} ×${c}` : name).join(", ");
-      return `<label class="item${done ? " done" : ""}">
-        <input type="checkbox" id="chk-${esc(i.key)}" data-key="${esc(i.key)}"${done ? " checked" : ""}>
-        <span class="what"><span class="name">${esc(i.name)}</span>${from ? `<span class="from">pour ${esc(from)}</span>` : ""}</span>
-        <span class="qty">${esc(fmtQty(i.qty, i.unit))}</span>
-        ${i.extraId ? `<button type="button" class="rm" data-rm="${esc(i.extraId)}" aria-label="Retirer ${esc(i.name)}">×</button>` : ""}
-      </label>`;
+    list.sort((a, b) => (!!S.checked[keyOf(a)] - !!S.checked[keyOf(b)]));
+    const n = list.filter((x) => !S.checked[keyOf(x)]).length;
+    html += `<div class="aisle"><h3><span>${esc(aisle)}</span><span>${n}/${list.length}</span></h3>` + list.map((x) => {
+      const k = keyOf(x); const done = !!S.checked[k];
+      return `<div class="item${done ? " done" : ""}">
+        <input type="checkbox" id="chk-${esc(k)}" data-key="${esc(k)}"${done ? " checked" : ""} aria-label="Pris : ${esc(x.product)}">
+        <div class="what">
+          <button type="button" class="prod" data-copy="${esc(x.product)}">${esc(x.product)}</button>
+          ${x.qty || (x.name !== x.product) ? `<div class="meta">${esc([x.qty, x.name !== x.product ? x.name : ""].filter(Boolean).join(" · "))}</div>` : ""}
+          ${x.why ? `<div class="why">${esc(x.why)}</div>` : ""}
+          ${x.promo ? `<span class="tag pop">Promo rentable</span>` : ""}
+        </div>
+        <div class="right">
+          ${x.price ? `<span class="price">≈ ${eur(x.price)}</span>` : ""}
+          ${x.extraId ? `<button type="button" class="rm" data-rm="${esc(x.extraId)}" aria-label="Retirer ${esc(x.name)}">×</button>` : `<a class="find" href="${esc(searchUrl(x.product))}" target="_blank" rel="noopener">Chercher ↗</a>`}
+        </div>
+      </div>`;
     }).join("") + `</div>`;
   }
-  $("#list").innerHTML = html;
-}
-
-function renderRecipes() {
-  const entries = Object.entries(state.recipes).sort((a, b) => a[1].name.localeCompare(b[1].name, "fr"));
-  $("#recipeCount").textContent = entries.length ? `${entries.length} recette${entries.length > 1 ? "s" : ""}` : "";
-  if (!entries.length) {
-    $("#recipes").innerHTML = `<div class="empty" style="grid-column:1/-1"><p>Aucune recette pour l’instant.<br>Ajoute les tiennes, ou commence avec ${STARTERS.length} plats classiques que tu pourras modifier.</p><div class="row"><button id="loadStarters" class="primary">Ajouter les plats classiques</button><button data-new="1">Créer ma recette</button></div></div>`;
-    return;
+  if (w && w.pantry && w.pantry.length) {
+    html += `<div class="aisle"><h3><span>À vérifier dans tes placards</span><span></span></h3>` + w.pantry.map((name) => {
+      const k = "p_" + slug(name); const done = !!S.checked[k];
+      return `<div class="item${done ? " done" : ""}"><input type="checkbox" id="chk-${esc(k)}" data-key="${esc(k)}"${done ? " checked" : ""} aria-label="J’en ai : ${esc(name)}"><div class="what"><span class="prod" style="text-decoration:none">${esc(name)}</span><div class="meta">Coche si tu en as. Sinon, ajoute-le à la liste.</div></div><div class="right"></div></div>`;
+    }).join("") + `</div>`;
   }
-  const uses = {};
-  Object.values(state.plan).forEach((s) => { uses[s.recipeId] = (uses[s.recipeId] || 0) + 1; });
-  $("#recipes").innerHTML = entries.map(([id, r]) => `
-    <article class="recipe">
-      <h2>${esc(r.name)}</h2>
-      <div class="meta">Pour ${Number(r.servings) || 1} · ${(r.ingredients || []).length} ingrédient${(r.ingredients || []).length > 1 ? "s" : ""} ${uses[id] ? `<span class="used">${uses[id]}× cette semaine</span>` : ""}</div>
-      <p class="ings">${esc((r.ingredients || []).map((i) => i.name).join(", "))}</p>
-      <div class="row"><button data-edit="${esc(id)}">Modifier</button><button class="ghost" data-del="${esc(id)}">Supprimer</button></div>
-    </article>`).join("");
+  html += `</div>`;
+  box.innerHTML = html;
 }
 
-function renderAll() {
-  if (!state.loaded) return;
-  renderWeek(); renderList(); renderRecipes();
+/* ---------- Rendering: profile ---------- */
+function renderProfil() {
+  const p = P();
+  $("#tab-profil").innerHTML = `<div class="stack">
+    <div class="card recap">
+      <div><span class="k">À table</span><span>${p.adults} adulte${p.adults > 1 ? "s" : ""}${p.kids ? `, ${p.kids} enfant${p.kids > 1 ? "s" : ""}` : ""}</span></div>
+      <div><span class="k">Alimentation</span><span>${esc(lbl(DIETS, p.diet))}</span></div>
+      <div><span class="k">Repas</span><span>${esc(lbl(GOALS, p.goal))} · ${esc(lbl(STYLES, p.style))}</span></div>
+      ${(p.restrictions || []).length ? `<div><span class="k">Contraintes</span><span>${esc(p.restrictions.join(", "))}</span></div>` : ""}
+      ${p.allergies ? `<div><span class="k">Allergies</span><span>${esc(p.allergies)}</span></div>` : ""}
+      ${p.dislikes ? `<div><span class="k">N’aime pas</span><span>${esc(p.dislikes)}</span></div>` : ""}
+      ${(p.cuisines || []).length ? `<div><span class="k">Cuisines</span><span>${esc(p.cuisines.join(", "))}</span></div>` : ""}
+      <div><span class="k">À prévoir</span><span>${esc(lbl(MEALSETS, p.meals))}${p.breakfast ? " + petits-déjeuners" : ""}</span></div>
+      <div><span class="k">Magasin</span><span>${esc(storeOf(p.store).name)}</span></div>
+      <div><span class="k">Budget</span><span>${esc(p.budget)} € par semaine</span></div>
+    </div>
+    <button class="primary" data-act="edit-profile">Modifier mes réponses</button>
+    <div class="card stack" style="gap:8px">
+      <p><b>Historique</b> · ${(S.history || []).length} semaine${(S.history || []).length > 1 ? "s" : ""} gardée${(S.history || []).length > 1 ? "s" : ""} pour ne pas reproposer les mêmes plats.</p>
+      ${(S.history || []).length ? `<button class="ghost mini" id="clearHistory">Effacer l’historique</button>` : ""}
+    </div>
+    <p class="small muted">${Store.remote ? "Données synchronisées : elles suivent ton compte Claude." : "Données enregistrées sur cet appareil."}</p>
+  </div>`;
 }
 
-/* Two-step confirmation, since the viewer blocks confirm() */
-function armConfirm(btn, label, action) {
-  if (btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("confirm"); btn.textContent = btn.dataset.label; action(); return; }
-  btn.dataset.label = btn.textContent; btn.dataset.armed = "1"; btn.classList.add("confirm"); btn.textContent = label;
-  setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("confirm"); btn.textContent = btn.dataset.label; } }, 3500);
+function renderMain() {
+  const p = P();
+  $("#hello").textContent = p.name ? `Bonjour ${p.name} !` : "Tes menus de la semaine";
+  $("#storePill").textContent = storeOf(p.store).name;
+  renderMenus(); renderCourses(); renderProfil();
 }
 
-/* Tabs */
+/* ---------- Tabs and events ---------- */
 function showTab(name) {
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
-  ["semaine","courses","recettes"].forEach((t) => { $("#tab-" + t).hidden = t !== name; });
-  try { localStorage.setItem("repas-courses:tab", name); } catch (e) {}
+  ["menus", "courses", "profil"].forEach((t) => { $("#tab-" + t).hidden = t !== name; });
+  try { localStorage.setItem("repas-courses-v2:tab", name); } catch (e) {}
 }
 document.querySelector(".tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) showTab(b.dataset.tab); });
 
-/* Week events */
-$("#week").addEventListener("change", (e) => {
-  const sel = e.target.closest("select[data-slot]"); if (!sel) return;
-  if (sel.value) Store.set("plan", sel.dataset.slot, { recipeId: sel.value });
-  else Store.del("plan", sel.dataset.slot);
+document.addEventListener("click", async (e) => {
+  const act = e.target.closest("[data-act]");
+  if (act) {
+    const a = act.dataset.act;
+    if (a === "prep") openPrep();
+    if (a === "edit-profile") openWizard(true);
+    if (a === "goto-menus") showTab("menus");
+    return;
+  }
+  if (e.target.closest("#stopGen")) { if (genCtl) genCtl.abort(); return; }
+  const sw = e.target.closest("[data-swap]");
+  if (sw) {
+    const i = Number(sw.dataset.swap);
+    let reason = sw.dataset.reason || "";
+    if (sw.dataset.free) { reason = ($("#why-" + i).value || "").trim(); if (!reason) { toast("Écris ce que tu voudrais à la place"); return; } }
+    swapMeal(i, reason); return;
+  }
+  const cp = e.target.closest("[data-copy]");
+  if (cp) {
+    try { await navigator.clipboard.writeText(cp.dataset.copy); toast("Copié : colle-le dans la recherche du magasin"); }
+    catch (err) { const r = document.createRange(); r.selectNodeContents(cp); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Sélectionné : copie-le avec ton doigt"); }
+    return;
+  }
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { Store.del("extras", rm.dataset.rm); Store.del("checked", "x_" + rm.dataset.rm); return; }
+  if (e.target.closest("#copyList")) {
+    const w = S.week || {}; const st = storeOf(P().store);
+    const items = [...(w.shopping || []), ...Object.entries(S.extras).map(([id, x]) => ({ product: x.name, aisle: x.aisle || "Autre", extraId: id, price: 0, qty: "" }))]
+      .filter((x) => !S.checked[x.extraId ? "x_" + x.extraId : itemKey(x)]);
+    if (!items.length) { toast("Rien à copier"); return; }
+    let txt = `Courses ${st.name}${w.weekOf ? " · semaine du " + frDate(w.weekOf) : ""}\n`;
+    for (const a of AISLES) { const l = items.filter((x) => x.aisle === a); if (!l.length) continue; txt += `\n${a}\n` + l.map((x) => `- ${x.product}${x.qty ? " (" + x.qty + ")" : ""}`).join("\n") + "\n"; }
+    try { await navigator.clipboard.writeText(txt); toast("Liste copiée : colle-la dans un message ou une note"); } catch (err) { toast("La copie est bloquée sur cet appareil"); }
+    return;
+  }
+  const done = e.target.closest("#doneShopping");
+  if (done) return armConfirm(done, "Tout décocher ?", async () => {
+    const ops = Object.keys(S.checked).map((k) => Store.del("checked", k));
+    Object.keys(S.extras).forEach((id) => { if (S.checked["x_" + id]) ops.push(Store.del("extras", id)); });
+    await Promise.all(ops); toast("Liste remise à zéro");
+  });
+  const ch = e.target.closest("#clearHistory");
+  if (ch) return armConfirm(ch, "Confirmer ?", () => { Store.set("history", "log", { weeks: [] }); toast("Historique effacé"); });
 });
-const setPeople = (n) => Store.set("settings", "main", { ...(state.settings.main || {}), people: Math.max(1, Math.min(20, n)) });
-$("#pMinus").addEventListener("click", () => setPeople(people() - 1));
-$("#pPlus").addEventListener("click", () => setPeople(people() + 1));
-$("#clearWeek").addEventListener("click", (e) => armConfirm(e.currentTarget, "Confirmer ?", async () => {
-  await Promise.all(Object.keys(state.plan).map((id) => Store.del("plan", id)));
-  toast("Semaine vidée");
-}));
-
-/* List events */
-$("#list").addEventListener("change", (e) => {
-  const c = e.target.closest("input[data-key]"); if (!c) return;
+document.addEventListener("change", (e) => {
+  const c = e.target.closest("#tab-courses input[data-key]"); if (!c) return;
   if (c.checked) Store.set("checked", c.dataset.key, { at: Date.now() }); else Store.del("checked", c.dataset.key);
 });
-$("#list").addEventListener("click", (e) => {
-  const rm = e.target.closest("[data-rm]");
-  if (rm) { e.preventDefault(); Store.del("extras", rm.dataset.rm); Store.del("checked", "x_" + rm.dataset.rm); return; }
-  const g = e.target.closest("[data-goto]"); if (g) showTab(g.dataset.goto);
-});
-$("#extraName").addEventListener("input", (e) => { const a = guessAisle(e.target.value); if (a !== "Autre") $("#extraAisle").value = a; });
-$("#extraForm").addEventListener("submit", (e) => {
+document.addEventListener("submit", (e) => {
+  if (e.target.id !== "extraForm") return;
   e.preventDefault();
   const name = $("#extraName").value.trim(); if (!name) return;
-  Store.set("extras", Store.newId(), { name, aisle: $("#extraAisle").value });
-  $("#extraName").value = ""; $("#extraName").focus();
+  Store.set("extras", newId(), { name, aisle: "Autre" });
+  $("#extraName").value = "";
 });
-$("#copy").addEventListener("click", async () => {
-  const items = computeList().filter((i) => !state.checked[i.key]);
-  if (!items.length) { toast("Rien à copier"); return; }
-  let txt = "Courses\n";
-  for (const a of AISLES) {
-    const l = items.filter((i) => i.aisle === a); if (!l.length) continue;
-    txt += `\n${a}\n` + l.map((i) => `- ${i.name}${i.qty ? " (" + fmtQty(i.qty, i.unit).replace("× ", "") + ")" : ""}`).join("\n") + "\n";
-  }
-  try { await navigator.clipboard.writeText(txt); toast("Liste copiée, colle-la où tu veux"); }
-  catch (err) { toast("Copie refusée par le navigateur"); }
-});
-$("#doneShopping").addEventListener("click", (e) => armConfirm(e.currentTarget, "Tout décocher ?", async () => {
-  const ops = Object.keys(state.checked).map((k) => Store.del("checked", k));
-  Object.keys(state.extras).forEach((id) => { if (state.checked["x_" + id]) ops.push(Store.del("extras", id)); });
-  await Promise.all(ops);
-  toast("Liste remise à zéro");
-}));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#prep").hidden) $("#prep").hidden = true; });
 
-/* Recipe editor */
-let editingId = null;
-let ingSeq = 0;
-function ingRow(ing = {}) {
-  const i = ingSeq++;
-  const unit = ing.unit || "pièce";
-  const aisle = ing.aisle || (ing.name ? guessAisle(ing.name) : "Autre");
-  const div = document.createElement("div");
-  div.className = "ing";
-  div.innerHTML = `
-    <input class="q" id="ing-${i}-q" type="number" min="0" step="any" inputmode="decimal" placeholder="Qté" aria-label="Quantité" value="${ing.qty ?? ""}">
-    <select class="u" id="ing-${i}-u" aria-label="Unité">${UNITS.map((u) => `<option${u === unit ? " selected" : ""}>${u}</option>`).join("")}</select>
-    <input class="n" id="ing-${i}-n" placeholder="Ingrédient" aria-label="Ingrédient" value="${esc(ing.name || "")}">
-    <select class="a" id="ing-${i}-a" aria-label="Rayon" data-auto="${ing.aisle ? "" : "1"}">${AISLES.map((a) => `<option${a === aisle ? " selected" : ""}>${esc(a)}</option>`).join("")}</select>
-    <button type="button" class="del" aria-label="Retirer cet ingrédient">×</button>`;
-  return div;
-}
-function openEditor(id) {
-  editingId = id || null;
-  const r = id ? state.recipes[id] : { name: "", servings: 4, ingredients: [] };
-  $("#sheetTitle").textContent = id ? "Modifier la recette" : "Nouvelle recette";
-  $("#rName").value = r.name || "";
-  $("#rServings").value = r.servings || 4;
-  const box = $("#ings"); box.innerHTML = "";
-  const ings = (r.ingredients || []).length ? r.ingredients : [{}, {}, {}];
-  ings.forEach((ing) => box.appendChild(ingRow(ing)));
-  $("#sheet").hidden = false;
-  setTimeout(() => $("#rName").focus(), 30);
-}
-function closeEditor() { $("#sheet").hidden = true; editingId = null; }
-$("#addIng").addEventListener("click", () => { const row = ingRow(); $("#ings").appendChild(row); row.querySelector(".n").focus(); });
-$("#ings").addEventListener("click", (e) => { const d = e.target.closest(".del"); if (d) d.parentElement.remove(); });
-$("#ings").addEventListener("input", (e) => {
-  if (!e.target.classList.contains("n")) return;
-  const a = e.target.parentElement.querySelector(".a");
-  if (a.dataset.auto) a.value = guessAisle(e.target.value);
-});
-$("#ings").addEventListener("change", (e) => { if (e.target.classList.contains("a")) e.target.dataset.auto = ""; });
-$("#cancelRecipe").addEventListener("click", closeEditor);
-$("#sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeEditor(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeEditor(); });
-$("#recipeForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const name = $("#rName").value.trim(); if (!name) return;
-  const ingredients = [...document.querySelectorAll("#ings .ing")].map((row) => ({
-    qty: row.querySelector(".q").value === "" ? 0 : Number(row.querySelector(".q").value),
-    unit: row.querySelector(".u").value,
-    name: row.querySelector(".n").value.trim(),
-    aisle: row.querySelector(".a").value
-  })).filter((i) => i.name);
-  const id = editingId || Store.newId();
-  Store.set("recipes", id, { name, servings: Math.max(1, Number($("#rServings").value) || 1), ingredients });
-  toast(editingId ? "Recette mise à jour" : "Recette ajoutée");
-  closeEditor();
-});
-$("#newRecipe").addEventListener("click", () => openEditor());
-$("#recipes").addEventListener("click", async (e) => {
-  const ed = e.target.closest("[data-edit]"); if (ed) return openEditor(ed.dataset.edit);
-  if (e.target.closest("[data-new]")) return openEditor();
-  const del = e.target.closest("[data-del]");
-  if (del) return armConfirm(del, "Confirmer ?", () => { Store.del("recipes", del.dataset.del); toast("Recette supprimée"); });
-  const ls = e.target.closest("#loadStarters");
-  if (ls) {
-    ls.disabled = true;
-    for (const s of STARTERS) {
-      await Store.set("recipes", Store.newId(), { name: s.name, servings: s.servings, ingredients: s.ingredients.map(([qty, unit, name]) => ({ qty, unit, name, aisle: guessAisle(name) })) });
-    }
-    toast("Plats classiques ajoutés");
-  }
-});
-
-/* Boot */
-try { const t = localStorage.getItem("repas-courses:tab"); if (t) showTab(t); } catch (e) {}
-renderList();
+/* ---------- Boot ---------- */
 (async () => {
-  const remote = await Store.init();
-  $("#mode").textContent = remote ? "Synchronisé sur tous tes appareils" : "Données gardées dans ce navigateur";
-  let pending = 5;
-  const done = () => { if (--pending === 0) { state.loaded = true; } renderAll(); };
-  const seen = {};
-  for (const col of ["recipes","plan","settings","checked","extras"]) {
-    Store.watch(col, (data) => { state[col] = data; if (!seen[col]) { seen[col] = 1; done(); } else renderAll(); });
-  }
+  try { const t = localStorage.getItem("repas-courses-v2:tab"); if (t) showTab(t); } catch (e) {}
+  const samplePromise = window.claude && window.claude.use ? window.claude.use("sample").catch(() => null) : Promise.resolve(null);
+  await Store.init();
+  Store.onMode = () => renderProfil();
+  const seen = new Set();
+  const ready = () => seen.size >= 5;
+  let started = false;
+  const refresh = () => {
+    if (!ready()) return;
+    if (!started) {
+      started = true; $("#loading").hidden = true;
+      if (!S.profile || !S.profile.done) { openWizard(false); return; }
+      $("#main").hidden = false;
+    }
+    if (!$("#wizard").hidden) return;
+    $("#main").hidden = false;
+    renderMain();
+  };
+  Store.watch("settings", (d) => { S.profile = d.profile || null; seen.add("settings"); refresh(); });
+  Store.watch("weeks", (d) => { S.week = d.current || null; seen.add("weeks"); refresh(); });
+  Store.watch("history", (d) => { S.history = (d.log && d.log.weeks) || []; seen.add("history"); refresh(); });
+  Store.watch("checked", (d) => { S.checked = d; seen.add("checked"); refresh(); });
+  Store.watch("extras", (d) => { S.extras = d; seen.add("extras"); refresh(); });
+  S.sample = await samplePromise;
+  if (S.sample && S.sample.limits) { try { const lim = await S.sample.limits(); S.imgLimits = lim && lim.images ? lim.images : null; } catch (e) { S.imgLimits = null; } }
+  if (started && $("#wizard").hidden) renderMenus();
 })();
 })();
 </script>
