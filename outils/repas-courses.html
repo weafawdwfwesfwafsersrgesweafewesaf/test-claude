@@ -1,252 +1,443 @@
 <title>Repas & Courses</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap">
 <style>
-/* Layout: phone-first single column (max 720px): a step-by-step questionnaire on first visit, then tabs Menus / Courses / Profil */
+/* Layout: mobile app shell (top bar + bottom tab bar, bottom sheets); from 960px a left sidebar replaces the tab bar. */
 :root {
-  --bg: #F4F7F0;
+  --bg: #F4F6F1;
   --surface: #FFFFFF;
-  --ink: #1D281C;
-  --muted: #5B6857;
-  --line: #D8E1D1;
-  --accent: #2D6838;
-  --accent-soft: #E2EDDD;
+  --surface-2: #EDF1E9;
+  --ink: #121B15;
+  --muted: #5E6A61;
+  --faint: #8C978F;
+  --line: #E1E6DC;
+  --accent: #1F7A4D;
+  --accent-strong: #165E3A;
+  --accent-soft: #E1F1E7;
   --accent-ink: #FFFFFF;
-  --pop: #A86A00;
-  --pop-soft: #FAEFD4;
-  --danger: #B33A2E;
-  --danger-soft: #FBE5E1;
+  --orange: #D9621F;
+  --orange-soft: #FCEADD;
+  --danger: #C0402C;
+  --danger-soft: #FBE5E0;
+  --shadow: 0 1px 2px rgba(18, 27, 21, .05), 0 6px 20px rgba(18, 27, 21, .06);
+  --shadow-lg: 0 -4px 30px rgba(18, 27, 21, .12);
+  --scrim: rgba(12, 18, 14, .45);
   --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
   --body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --r: 14px;
+  --r: 18px;
+  --r-sm: 12px;
+  --tabbar: 68px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #101510; --surface: #182018; --ink: #E5ECE1; --muted: #9AA895; --line: #2A3529;
-    --accent: #81C78C; --accent-soft: #1E3121; --accent-ink: #0D180E; --pop: #F0B53A; --pop-soft: #3A2E12;
-    --danger: #F08A7E; --danger-soft: #3A1D19; color-scheme: dark;
+    --bg: #0C110E; --surface: #141B16; --surface-2: #1B241E; --ink: #E7EEE9; --muted: #9AA79E; --faint: #6F7C73; --line: #242E27;
+    --accent: #5CC48B; --accent-strong: #7DD4A3; --accent-soft: #163222; --accent-ink: #052012;
+    --orange: #F39A5E; --orange-soft: #3A2415; --danger: #F08976; --danger-soft: #3A1B16;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .25); --shadow-lg: 0 -4px 30px rgba(0, 0, 0, .5); --scrim: rgba(0, 0, 0, .6);
+    color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #101510; --surface: #182018; --ink: #E5ECE1; --muted: #9AA895; --line: #2A3529;
-  --accent: #81C78C; --accent-soft: #1E3121; --accent-ink: #0D180E; --pop: #F0B53A; --pop-soft: #3A2E12;
-  --danger: #F08A7E; --danger-soft: #3A1D19; color-scheme: dark;
+  --bg: #0C110E; --surface: #141B16; --surface-2: #1B241E; --ink: #E7EEE9; --muted: #9AA79E; --faint: #6F7C73; --line: #242E27;
+  --accent: #5CC48B; --accent-strong: #7DD4A3; --accent-soft: #163222; --accent-ink: #052012;
+  --orange: #F39A5E; --orange-soft: #3A2415; --danger: #F08976; --danger-soft: #3A1B16;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .25); --shadow-lg: 0 -4px 30px rgba(0, 0, 0, .5); --scrim: rgba(0, 0, 0, .6);
+  color-scheme: dark;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
-.app { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 80px; }
-h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
-h1 { font-size: clamp(26px, 6.5vw, 34px); font-weight: 800; letter-spacing: -0.02em; }
-h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
-h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-family: var(--body); }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
 p { margin: 0; }
-.muted { color: var(--muted); }
-.small { font-size: 13px; }
-.num { font-variant-numeric: tabular-nums; }
-
-button, input, select, textarea { font: inherit; color: inherit; }
-button { cursor: pointer; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); padding: 10px 16px; font-weight: 600; }
-button:hover { border-color: var(--accent); }
-button:disabled { opacity: .55; cursor: default; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-button.big { padding: 14px 22px; font-size: 17px; }
-button.ghost { background: transparent; }
-button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-button.confirm { background: var(--danger); border-color: var(--danger); color: var(--surface); }
-input, select, textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; min-width: 0; width: 100%; }
-textarea { resize: vertical; min-height: 76px; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+button:disabled { opacity: .5; cursor: default; }
 a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.ic { width: 20px; height: 20px; flex: none; }
+.ic.sm { width: 16px; height: 16px; }
+.ic.lg { width: 26px; height: 26px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-.top .sub { font-size: 13px; color: var(--muted); }
-.store-pill { font-size: 13px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; padding: 12px 18px; font-weight: 700; font-size: 15px; background: var(--surface-2); color: var(--ink); transition: transform .08s, background .15s; }
+.btn:active { transform: scale(.98); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-strong); }
+.btn.outline { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.btn.lg { padding: 16px 22px; font-size: 17px; border-radius: 16px; }
+.btn.block { width: 100%; }
+.btn.danger { background: var(--danger); color: var(--surface); }
+.btn.sm { padding: 8px 12px; font-size: 14px; border-radius: 11px; }
+.iconbtn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); }
+.iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+.field-input { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px; font-size: 16px; min-width: 0; }
+.field-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea.field-input { resize: vertical; min-height: 84px; }
 
-.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; gap: 6px; padding-block: 8px; background: var(--bg); margin-bottom: 12px; }
-.tabs button { flex: 1; border-radius: 12px; padding: 10px 6px; background: transparent; border-color: transparent; color: var(--muted); }
-.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); }
-.badge { display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--pop-soft); color: var(--pop); font-size: 12px; font-variant-numeric: tabular-nums; }
-.badge:empty { display: none; }
+/* App shell */
+.shell { min-height: 100%; }
+.appbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); }
+.appbar-in { max-width: 760px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; white-space: nowrap; min-width: 0; }
+@media (max-width: 400px) { .brand { font-size: 16px; gap: 8px; } .mark { width: 30px; height: 30px; } .store-chip { padding: 6px 9px; font-size: 12px; } .appbar-in { gap: 8px; } }
+.mark { width: 34px; height: 34px; border-radius: 11px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.appbar .spacer { flex: 1; }
+.store-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 7px 11px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--orange-soft); color: var(--orange); display: grid; place-items: center; font-weight: 800; font-family: var(--display); }
+.content { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 6px calc(var(--tabbar) + 28px + env(safe-area-inset-bottom, 0px)); }
+.view { display: grid; gap: 16px; }
 
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
-.stack { display: grid; gap: 12px; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabbar-in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); height: var(--tabbar); }
+.tab { display: grid; justify-items: center; align-content: center; gap: 3px; font-size: 12px; font-weight: 700; color: var(--faint); position: relative; }
+.tab .ic { width: 24px; height: 24px; }
+.tab[aria-selected="true"] { color: var(--accent); }
+.tab .dot { position: absolute; top: 8px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--orange); color: var(--surface); font-size: 11px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.tab .dot:empty { display: none; }
+@media (min-width: 960px) {
+  .tabbar { top: 0; right: auto; width: 240px; border-top: 0; border-right: 1px solid var(--line); padding: 84px 14px 14px; background: var(--surface); }
+  .tabbar-in { display: grid; grid-template-columns: 1fr; height: auto; gap: 4px; }
+  .tab { grid-auto-flow: column; justify-content: start; gap: 12px; padding: 12px 14px; border-radius: 12px; font-size: 15px; }
+  .tab[aria-selected="true"] { background: var(--accent-soft); }
+  .tab .dot { position: static; margin-left: auto; }
+  .appbar { margin-left: 240px; }
+  .content { margin-left: calc(240px + max(0px, (100% - 240px - 760px) / 2)); }
+  .appbar { z-index: 16; }
+  .content { padding-bottom: 48px; }
+}
 
-/* Budget meter */
-.meter { height: 10px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; margin-top: 8px; }
-.meter > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
-.meter.over > i { background: var(--danger); }
-.bignum { font-family: var(--display); font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.warn { background: var(--danger-soft); color: var(--danger); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
-.tips { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+/* Cards */
+.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 18px; }
+.card.flat { box-shadow: inset 0 0 0 1px var(--line); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+.section-head h2 { font-size: 20px; }
+.greet h1 { font-size: clamp(26px, 7vw, 34px); font-weight: 800; }
+.greet p { color: var(--muted); margin-top: 2px; }
 
-/* Meals */
-.day h3 { margin: 6px 2px 6px; }
-.day.today h3 { color: var(--accent); }
-.meal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 8px; overflow: hidden; }
-.meal summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: start; }
-.meal summary::-webkit-details-marker { display: none; }
-.slot { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding-top: 3px; }
-.meal .mname { font-weight: 700; font-size: 17px; line-height: 1.25; }
-.meal .mdesc { font-size: 14px; color: var(--muted); margin-top: 2px; }
-.meal .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
-.tag.pop { background: var(--pop-soft); color: var(--pop); }
-.chev { color: var(--muted); font-size: 18px; transition: transform .15s; }
-details[open] .chev { transform: rotate(90deg); }
-.mbody { padding: 0 14px 14px; display: grid; gap: 12px; border-top: 1px dashed var(--line); padding-top: 12px; }
-.mbody ul, .mbody ol { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 15px; }
-.leftover { font-size: 13px; color: var(--pop); font-weight: 600; }
-.swap { display: grid; gap: 8px; background: var(--bg); border-radius: 12px; padding: 10px; }
-.meal.busy { opacity: .6; pointer-events: none; }
+/* Hero (budget) */
+.hero { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.ring { position: relative; width: 112px; height: 112px; }
+.ring svg { width: 112px; height: 112px; transform: rotate(-90deg); }
+.ring .track { stroke: var(--surface-2); }
+.ring .val { stroke: var(--accent); transition: stroke-dashoffset .6s ease; }
+.ring.over .val { stroke: var(--danger); }
+.ring .c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ring .c b { font-family: var(--display); font-size: 22px; font-weight: 800; line-height: 1; }
+.ring .c span { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 3px; }
+.hero .amount { font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.hero .of { color: var(--muted); font-size: 14px; }
+.pillrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.pill.good { background: var(--accent-soft); color: var(--accent); }
+.pill.bad { background: var(--danger-soft); color: var(--danger); }
+.pill.hot { background: var(--orange-soft); color: var(--orange); }
+.hero-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 380px) { .hero { grid-template-columns: 1fr; justify-items: start; } }
 
-/* Choice chips (questionnaire and swap) */
-.choices { display: flex; flex-wrap: wrap; gap: 8px; }
-.choice { border-radius: 14px; padding: 12px 14px; text-align: left; font-weight: 600; background: var(--surface); }
-.choice small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 2px; }
-.choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-.choices.col { flex-direction: column; }
-.choices.col .choice { width: 100%; }
-.mini { padding: 7px 12px; font-size: 14px; border-radius: 999px; }
+.notice { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-sm); font-size: 14px; font-weight: 600; }
+.notice.warn { background: var(--danger-soft); color: var(--danger); }
+.notice.info { background: var(--accent-soft); color: var(--accent-strong); }
+.notice .grow { flex: 1; }
 
-/* Questionnaire */
-.wiz { max-width: 560px; margin: 0 auto; padding-block: 8px 24px; display: grid; gap: 18px; }
-.progress { height: 6px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; }
-.progress > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .2s; }
-.wiz .q { display: grid; gap: 14px; }
-.wiz .q h2 { font-size: clamp(24px, 6vw, 30px); }
-.wiz .help { color: var(--muted); font-size: 15px; }
-.wiz .label { font-weight: 700; font-size: 15px; margin-top: 4px; }
-.wiz-nav { display: flex; justify-content: space-between; gap: 10px; position: sticky; bottom: 0; padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--bg); }
-.stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
-.stepper .ctl { display: flex; align-items: center; gap: 12px; }
-.stepper button { width: 40px; height: 40px; padding: 0; font-size: 20px; line-height: 1; }
-.stepper strong { font-family: var(--display); font-size: 24px; min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
-.toggle { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; }
-.toggle input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
-.budget-box { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-.budget-input { display: flex; align-items: center; gap: 8px; }
-.budget-input input { font-family: var(--display); font-size: 34px; font-weight: 800; width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
-.budget-input span { font-family: var(--display); font-size: 22px; color: var(--muted); }
-.recap { display: grid; gap: 6px; font-size: 15px; }
-.recap div { display: grid; grid-template-columns: 120px 1fr; gap: 10px; }
-.recap dt, .recap .k { color: var(--muted); }
+.tips { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(240px, 82%); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
+.tips::-webkit-scrollbar { display: none; }
+.tip { scroll-snap-align: start; background: var(--orange-soft); color: var(--ink); border-radius: var(--r-sm); padding: 14px; display: flex; gap: 10px; font-size: 14px; }
+.tip .ic { color: var(--orange); }
 
-/* Generation progress */
-.gen { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 26px 16px; }
-.pot { width: 54px; height: 54px; border-radius: 50%; border: 5px solid var(--accent-soft); border-top-color: var(--accent); }
-@media (prefers-reduced-motion: no-preference) { .pot { animation: spin 1s linear infinite; } }
+/* Day strip + meals */
+.days { display: flex; gap: 8px; overflow-x: auto; margin-inline: -16px; padding: 2px 16px 4px; scrollbar-width: none; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 58px); z-index: 5; background: var(--bg); padding-block: 8px; }
+.days::-webkit-scrollbar { display: none; }
+.daychip { flex: none; min-width: 54px; padding: 8px 10px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); text-align: center; font-weight: 700; font-size: 14px; }
+.daychip small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+.daychip.today { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.daychip.today small { color: var(--accent-ink); opacity: .8; }
+.dayblock { display: grid; gap: 10px; scroll-margin-top: 130px; }
+.dayblock h3 { font-size: 15px; font-family: var(--body); font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.dayblock h3 .today-tag { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+.meal { width: 100%; text-align: left; background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px; display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; transition: transform .1s; }
+.meal:active { transform: scale(.99); }
+.meal .slotic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--orange-soft); color: var(--orange); }
+.meal .slotic.soir { background: var(--accent-soft); color: var(--accent); }
+.meal .t { min-width: 0; }
+.meal .slotname { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.meal .name { font-weight: 800; font-size: 16.5px; line-height: 1.25; margin-top: 1px; }
+.meal .desc { font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.meal .meta { display: flex; gap: 12px; margin-top: 6px; font-size: 13px; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+.meal .meta span { display: inline-flex; align-items: center; gap: 4px; }
+.meal .chev { color: var(--faint); }
+.meal.busy { position: relative; overflow: hidden; pointer-events: none; }
+.meal.busy::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 70%, transparent), transparent); }
+@media (prefers-reduced-motion: no-preference) { .meal.busy::after { animation: shimmer 1.2s infinite; } }
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* Empty + generating */
+.empty-hero { text-align: center; display: grid; gap: 14px; justify-items: center; padding: 28px 18px; }
+.empty-hero h2 { font-size: 24px; }
+.empty-hero p { color: var(--muted); max-width: 42ch; }
+.illus { width: 132px; height: 132px; }
+.gen { display: grid; gap: 18px; padding: 24px 20px; }
+.gen-top { display: flex; align-items: center; gap: 14px; }
+.spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent); flex: none; }
+@media (prefers-reduced-motion: no-preference) { .spinner { animation: spin .9s linear infinite; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+.steps { display: grid; gap: 12px; }
+.gstep { display: flex; align-items: center; gap: 12px; font-weight: 600; color: var(--faint); }
+.gstep .b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); flex: none; }
+.gstep.on { color: var(--ink); }
+.gstep.on .b { background: var(--accent-soft); color: var(--accent); }
+.gstep.done { color: var(--muted); }
+.gstep.done .b { background: var(--accent); color: var(--accent-ink); }
+.bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s ease; }
+
+/* Install banner */
+.install { display: flex; align-items: center; gap: 12px; }
+.install .phone { width: 42px; height: 42px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.install .grow { flex: 1; min-width: 0; }
+.install b { display: block; }
+.install span { font-size: 13px; color: var(--muted); }
 
 /* Shopping */
-.aisle { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 4px; margin-bottom: 12px; }
-.aisle h3 { display: flex; justify-content: space-between; margin-bottom: 2px; }
-.item { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: start; padding: 11px 0; border-top: 1px dashed var(--line); }
-.aisle h3 + .item { border-top: 0; }
-.item input[type=checkbox] { margin-top: 2px; width: 22px; height: 22px; accent-color: var(--accent); }
-.item .what { min-width: 0; }
-.item .prod { font-weight: 700; background: none; border: 0; padding: 0; text-align: left; border-radius: 4px; text-decoration: underline dotted var(--line); text-underline-offset: 4px; }
-.item .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-.item .why { font-size: 13px; color: var(--pop); }
-.item .right { text-align: right; display: grid; gap: 4px; justify-items: end; }
-.item .price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.item .find { font-size: 13px; white-space: nowrap; }
-.item.done .prod, .item.done .price { text-decoration: line-through; color: var(--muted); }
-.item .rm { border: 0; background: none; padding: 0 4px; color: var(--muted); font-size: 18px; line-height: 1; }
-.extra { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.shop-head { display: grid; gap: 12px; }
+.shop-head .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.shop-head .big { font-family: var(--display); font-size: 28px; font-weight: 800; line-height: 1; }
+.shop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.addrow { display: flex; gap: 8px; }
+.addrow .btn { flex: none; }
+.aisle { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.aisle-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px; }
+.aisle-h .ai { width: 30px; height: 30px; border-radius: 10px; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; }
+.aisle-h h3 { font-size: 15px; font-family: var(--body); font-weight: 800; flex: 1; }
+.aisle-h .cnt { font-size: 13px; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.item { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: start; padding: 12px 16px; border-top: 1px solid var(--line); }
+.aisle-h + .item { border-top: 0; }
+.check { position: relative; width: 26px; height: 26px; margin-top: 1px; cursor: pointer; }
+.check input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.check span { width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line); display: grid; place-items: center; color: transparent; transition: background .15s; }
+.check input:checked + span { background: var(--accent); box-shadow: none; color: var(--accent-ink); }
+.check input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.item .w { min-width: 0; }
+.item .prod { font-weight: 700; text-align: left; line-height: 1.3; }
+.item .sub { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.item .why { font-size: 13px; color: var(--orange); margin-top: 2px; }
+.item .tagrow { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.item .r { display: grid; justify-items: end; gap: 6px; }
+.item .price { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.item .find { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--accent); text-decoration: none; padding: 4px 8px; border-radius: 8px; background: var(--accent-soft); }
+.item.done .prod, .item.done .price { color: var(--faint); text-decoration: line-through; }
+.item.done .find { opacity: .5; }
 
-.empty { text-align: center; padding: 30px 16px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); display: grid; gap: 12px; justify-items: center; }
+/* Profile */
+.profile-card { display: flex; align-items: center; gap: 14px; }
+.profile-card .avatar { width: 56px; height: 56px; font-size: 22px; }
+.profile-card h2 { font-size: 22px; }
+.list { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.lrow { width: 100%; display: grid; grid-template-columns: 36px 1fr auto 18px; gap: 12px; align-items: center; padding: 14px 16px; text-align: left; border-top: 1px solid var(--line); }
+.lrow:first-child { border-top: 0; }
+.lrow:hover { background: var(--surface-2); }
+.lrow .li { width: 36px; height: 36px; border-radius: 11px; background: var(--surface-2); color: var(--accent); display: grid; place-items: center; }
+.lrow .ll { font-weight: 700; }
+.lrow .lv { color: var(--muted); font-size: 14px; text-align: right; max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .ic.sm { color: var(--faint); }
+.fine { font-size: 13px; color: var(--muted); text-align: center; }
 
-/* Sheets */
-.sheet { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: end center; }
-.sheet-inner { background: var(--bg); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
-@media (min-width: 700px) { .sheet { place-items: center; } .sheet-inner { border-radius: 20px; } }
-.field { display: grid; gap: 6px; font-weight: 700; font-size: 15px; }
-.field .muted { font-weight: 400; font-size: 13px; }
+/* Onboarding */
+.ob { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; max-width: 560px; margin: 0 auto; padding-inline: 16px; }
+.ob-top { display: flex; align-items: center; gap: 10px; padding-block: 12px; }
+.ob-bars { flex: 1; display: grid; grid-auto-flow: column; gap: 4px; }
+.ob-bars i { height: 5px; border-radius: 999px; background: var(--line); }
+.ob-bars i.on { background: var(--accent); }
+.ob-count { font-size: 13px; font-weight: 700; color: var(--muted); min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.ob-body { display: grid; align-content: start; gap: 16px; padding-block: 10px 20px; }
+.ob-body h1 { font-size: clamp(28px, 7.5vw, 36px); font-weight: 800; line-height: 1.08; }
+.ob-body .lead { color: var(--muted); font-size: 16px; }
+.ob-body .label { font-weight: 800; font-size: 15px; margin-top: 6px; }
+.ob-foot { position: sticky; bottom: 0; padding-block: 12px calc(14px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 75%, transparent); }
+.welcome-art { display: grid; place-items: center; padding-top: 8px; }
+.welcome-art svg { width: min(260px, 70vw); height: auto; }
+.values { display: grid; gap: 12px; }
+.value { display: flex; gap: 12px; align-items: flex-start; }
+.value .vi { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.value b { display: block; }
+.value span { color: var(--muted); font-size: 14px; }
+.opts { display: grid; gap: 10px; }
+.opt { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; text-align: left; padding: 14px 16px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); transition: box-shadow .12s, background .12s; }
+.opt .oi { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; }
+.opt b { display: block; font-size: 16px; }
+.opt small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 1px; }
+.opt .radio { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line); display: grid; place-items: center; color: transparent; }
+.opt[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
+.opt[aria-pressed="true"] .oi { background: var(--accent); color: var(--accent-ink); }
+.opt[aria-pressed="true"] .radio { background: var(--accent); box-shadow: none; color: var(--accent-ink); }
+.opt.noicon { grid-template-columns: 1fr auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); font-weight: 600; font-size: 15px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.counter { display: flex; align-items: center; gap: 14px; background: var(--surface); border-radius: 16px; padding: 14px 16px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.counter .ci { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); color: var(--accent); display: grid; place-items: center; }
+.counter .cl { flex: 1; font-weight: 700; }
+.counter .cl small { display: block; color: var(--muted); font-weight: 500; font-size: 13px; }
+.counter .ctl { display: flex; align-items: center; gap: 10px; }
+.counter .ctl button { width: 38px; height: 38px; border-radius: 12px; background: var(--surface-2); display: grid; place-items: center; }
+.counter .ctl strong { font-family: var(--display); font-size: 22px; min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.switch { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); cursor: pointer; }
+.switch .sl { flex: 1; font-weight: 600; }
+.switch input { appearance: none; -webkit-appearance: none; width: 48px; height: 28px; border-radius: 999px; background: var(--line); position: relative; flex: none; cursor: pointer; transition: background .15s; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); transition: transform .15s; }
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(20px); }
+.budget-card { display: grid; gap: 14px; text-align: center; padding: 22px 18px; }
+.budget-big { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+.budget-big input { width: 3.6ch; border: 0; background: none; font-family: var(--display); font-size: 64px; font-weight: 800; text-align: right; padding: 0; font-variant-numeric: tabular-nums; color: var(--ink); }
+.budget-big input:focus { outline: none; }
+.budget-big span { font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--muted); }
+.budget-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.preset { padding: 10px 6px; border-radius: 14px; background: var(--surface-2); font-weight: 700; font-size: 14px; }
+.preset small { display: block; font-weight: 600; color: var(--muted); font-size: 12px; }
+.preset[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.recap { display: grid; }
+.recap .rr { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.recap .rr:first-child { border-top: 0; padding-top: 0; }
+.recap .rr .li { width: 34px; height: 34px; border-radius: 10px; background: var(--surface-2); color: var(--accent); display: grid; place-items: center; }
+.recap .rr small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.recap .rr b { font-weight: 700; }
+
+/* Bottom sheet */
+.sheet { position: fixed; inset: 0; z-index: 30; display: grid; align-items: end; justify-items: center; background: var(--scrim); }
+.sheet-panel { width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; background: var(--bg); border-radius: 24px 24px 0 0; box-shadow: var(--shadow-lg); padding: 8px 18px calc(22px + env(safe-area-inset-bottom, 0px)); }
+@media (prefers-reduced-motion: no-preference) { .sheet:not([hidden]) .sheet-panel { animation: up .22s ease-out; } }
+@keyframes up { from { transform: translateY(30px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (min-width: 760px) { .sheet { align-items: center; } .sheet-panel { border-radius: 24px; } }
+.grab { width: 40px; height: 5px; border-radius: 999px; background: var(--line); margin: 4px auto 12px; }
+.sheet-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.sheet-head .grow { flex: 1; min-width: 0; }
+.sheet-head h2 { font-size: 24px; line-height: 1.15; }
+.sheet-body { display: grid; gap: 14px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: 12px; padding: 4px; }
+.seg button { padding: 9px; border-radius: 9px; font-weight: 700; font-size: 14px; color: var(--muted); }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.ing { list-style: none; margin: 0; padding: 0; display: grid; }
+.ing li { padding: 11px 2px; border-top: 1px solid var(--line); display: flex; gap: 10px; }
+.ing li:first-child { border-top: 0; }
+.ing li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex: none; }
+.stepsl { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: s; }
+.stepsl li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; counter-increment: s; }
+.stepsl li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+.swapbox { background: var(--surface); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+.swapbox h4 { font-family: var(--body); font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.formfield { display: grid; gap: 6px; }
+.formfield > span { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.formfield > small { color: var(--muted); font-size: 13px; margin-top: -2px; }
 .photos { display: flex; gap: 8px; flex-wrap: wrap; }
-.photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+.photos img { width: 70px; height: 70px; object-fit: cover; border-radius: 12px; }
+.upload { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border-radius: 14px; border: 1.5px dashed var(--line); background: var(--surface); font-weight: 700; color: var(--accent); cursor: pointer; }
+.upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.howto { display: grid; gap: 12px; counter-reset: h; }
+.howto li { list-style: none; display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; counter-increment: h; }
+.howto li::before { content: counter(h); width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 800; }
+.howto { margin: 0; padding: 0; }
+.kbd { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 8px; background: var(--surface-2); font-weight: 700; font-size: 14px; vertical-align: middle; }
 
-.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); text-align: center; }
+/* Loading skeleton + toast */
+.skel { display: grid; gap: 14px; max-width: 760px; margin: 0 auto; padding: 70px 16px; }
+.skel i { display: block; height: 18px; border-radius: 10px; background: var(--surface-2); }
+.skel i.b { height: 150px; border-radius: var(--r); }
+.toast { position: fixed; left: 50%; bottom: calc(var(--tabbar) + 16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 14px; font-weight: 600; font-size: 14px; max-width: calc(100% - 32px); box-shadow: var(--shadow-lg); }
+.toast .ic { color: var(--accent-soft); }
+@media (min-width: 960px) { .toast { bottom: 24px; left: calc(50% + 120px); } }
 </style>
 
-<div class="app">
-  <div id="loading" class="gen"><div class="pot"></div><p class="muted">Chargement…</p></div>
+<div class="shell">
+  <div id="loading" class="skel" aria-label="Chargement"><i style="width:40%"></i><i style="width:65%"></i><i class="b"></i><i class="b"></i></div>
 
-  <!-- Questionnaire -->
-  <section id="wizard" hidden>
-    <div class="wiz">
-      <div class="progress"><i id="wizBar" style="width:0"></i></div>
-      <div id="wizStep" class="q"></div>
-      <div class="wiz-nav">
-        <button id="wizBack" class="ghost">Retour</button>
-        <button id="wizNext" class="primary big">Continuer</button>
-      </div>
-    </div>
-  </section>
+  <section id="onboarding" hidden></section>
 
-  <!-- Main app -->
   <section id="main" hidden>
-    <header class="top">
-      <div>
-        <h1>Repas &amp; Courses</h1>
-        <p class="sub" id="hello"></p>
-      </div>
-      <span class="store-pill" id="storePill"></span>
-    </header>
-
-    <nav class="tabs" role="tablist">
-      <button role="tab" id="t-menus" data-tab="menus" aria-selected="true">Menus</button>
-      <button role="tab" id="t-courses" data-tab="courses" aria-selected="false">Courses <span id="count" class="badge"></span></button>
-      <button role="tab" id="t-profil" data-tab="profil" aria-selected="false">Profil</button>
-    </nav>
-
-    <div id="tab-menus" role="tabpanel"></div>
-    <div id="tab-courses" role="tabpanel" hidden></div>
-    <div id="tab-profil" role="tabpanel" hidden></div>
+    <header class="appbar"><div class="appbar-in">
+      <div class="brand"><span class="mark" id="brandMark"></span><span>Repas &amp; Courses</span></div>
+      <span class="spacer"></span>
+      <span class="store-chip" id="storeChip"></span>
+      <button class="avatar" id="avatarBtn" data-act="tab" data-tab="profil" aria-label="Mon profil"></button>
+    </div></header>
+    <main class="content">
+      <div id="v-menus" class="view"></div>
+      <div id="v-courses" class="view" hidden></div>
+      <div id="v-profil" class="view" hidden></div>
+    </main>
+    <nav class="tabbar" aria-label="Navigation"><div class="tabbar-in" role="tablist">
+      <button class="tab" role="tab" data-act="tab" data-tab="menus" aria-selected="true" id="tab-menus"></button>
+      <button class="tab" role="tab" data-act="tab" data-tab="courses" aria-selected="false" id="tab-courses"></button>
+      <button class="tab" role="tab" data-act="tab" data-tab="profil" aria-selected="false" id="tab-profil"></button>
+    </div></nav>
   </section>
 </div>
 
-<!-- Prepare the week -->
-<div id="prep" class="sheet" hidden>
-  <form class="sheet-inner" id="prepForm" role="dialog" aria-modal="true" aria-labelledby="prepTitle">
-    <h2 id="prepTitle">Préparer la semaine</h2>
-    <p class="muted small">Tout est facultatif. Plus tu m’en dis, plus les menus seront justes et pas chers.</p>
-    <div class="field" id="photoField" hidden>
-      Promos du moment
-      <span class="muted">Prends en photo le catalogue ou les promos de l’appli : je construis les repas autour des promos rentables.</span>
-      <input id="promoPhotos" type="file" accept="image/*" multiple>
-      <div class="photos" id="photoPreview"></div>
-    </div>
-    <label class="field">Promos repérées (en texte)
-      <span class="muted">Ex. « cuisses de poulet −30 %, 2e paquet de pâtes à −50 % »</span>
-      <textarea id="promoText" placeholder="Rien de spécial"></textarea>
-    </label>
-    <label class="field">Ce que j’ai déjà à la maison
-      <span class="muted">Je l’utilise en priorité et je ne le remets pas dans la liste.</span>
-      <textarea id="pantryText" placeholder="Ex. 1 kg de pommes de terre, un reste de crème, des œufs"></textarea>
-    </label>
-    <label class="field">Envies ou contraintes cette semaine
-      <span class="muted">Ex. « invités samedi soir », « pas de cuisine mercredi », « envie de raclette »</span>
-      <textarea id="wishText" placeholder="Rien de spécial"></textarea>
-    </label>
-    <div class="row" style="justify-content:flex-end">
-      <button type="button" id="prepCancel" class="ghost">Annuler</button>
-      <button class="primary big">Créer mes menus</button>
-    </div>
-  </form>
-</div>
-
+<div id="sheet" class="sheet" hidden><div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><div class="grab"></div><div id="sheetBody"></div></div></div>
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script>
 (() => {
-/* ---------- Constants ---------- */
-const DAYS = [["lun","Lundi"],["mar","Mardi"],["mer","Mercredi"],["jeu","Jeudi"],["ven","Vendredi"],["sam","Samedi"],["dim","Dimanche"]];
-const DAY_LABEL = Object.fromEntries(DAYS);
-const AISLES = ["Fruits & légumes","Boucherie & poisson","Crèmerie & œufs","Épicerie salée","Épicerie sucrée","Boulangerie","Surgelés","Boissons","Maison & hygiène","Autre"];
+/* ---------- Icons ---------- */
+const ICONS = {
+  check: '<path d="M20 6 9 17l-5-5"/>', x: '<path d="M18 6 6 18M6 6l12 12"/>', plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>',
+  chevR: '<path d="m9 18 6-6-6-6"/>', chevL: '<path d="m15 18-6-6 6-6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  flame: '<path d="M12 3c1 3 4.5 4.6 4.5 9a4.5 4.5 0 0 1-9 0c0-1.7.7-3 1.7-4 .2 1.4.9 2.2 1.9 2.4C11 8 11 5.6 12 3z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.2a1 1 0 0 0 1 .8h9.7a1 1 0 0 0 1-.8L21 7H6"/>',
+  utensils: '<path d="M5 3v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V3M7 12v9M17 3c-1.8 0-3 2.2-3 5.5S15.2 13 17 13v8"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M17.5 14.3A6.5 6.5 0 0 1 21.5 20"/>',
+  child: '<circle cx="12" cy="6" r="3"/><path d="M8 21v-5l-2-3 3-3h6l3 3-2 3v5"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V5.5A2.5 2.5 0 0 1 7.5 3H15"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  sparkle: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16v4M17 18h4"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 15.4-6.4L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.4 6.4L3 16M3 21v-5h5"/>',
+  wallet: '<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18M16.5 14.5h1.5"/>',
+  store: '<path d="M4 9 5.5 4h13L20 9M4 9v11h16V9M4 9h16M10 20v-5h4v5"/>',
+  alert: '<path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4M12 17h.01"/>',
+  phone: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18h2"/>',
+  heart: '<path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9z"/>',
+  leaf: '<path d="M5 20c0-9 6-15 15-15 0 9-5.5 15-14 15"/><path d="M5 20l8-8"/>',
+  fish: '<path d="M3 12c3-4 7-6 11-6 3 0 5.2 3 7 6-1.8 3-4 6-7 6-4 0-8-2-11-6z"/><path d="M3 12 1 9M3 12l-2 3"/><circle cx="16" cy="11" r=".9"/>',
+  egg: '<path d="M12 3c3.5 0 6.5 6 6.5 10.5a6.5 6.5 0 0 1-13 0C5.5 9 8.5 3 12 3z"/>',
+  sprout: '<path d="M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 14c0-4 3-6 7-6 0 4-3 6-7 6z"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  feather: '<path d="M20 4c-8 0-14 6-14 14v2M6 18l8-8M10 18h5a5 5 0 0 0 5-5V4"/>',
+  bowl: '<path d="M3 11h18a9 9 0 0 1-18 0zM8 7c0-1.5 1-2 1-3.5M12 7c0-1.5 1-2 1-3.5M16 7c0-1.5 1-2 1-3.5"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  chef: '<path d="M7 14.5a4 4 0 1 1 1.6-7.7A4 4 0 0 1 15.4 6.8 4 4 0 1 1 17 14.5V20H7z"/><path d="M7 17h10"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
+  box: '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
+  camera: '<path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  share: '<path d="M12 3v13M7 8l5-5 5 5M5 13v7h14v-7"/>',
+  dots: '<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>',
+  apple: '<path d="M12 7.5c-2-2-7-1.5-7 4 0 4 3 9 5 9 1 0 1.3-.5 2-.5s1 .5 2 .5c2 0 5-5 5-9 0-5.5-5-6-7-4z"/><path d="M12 7.5c0-2 1-3.5 3-4.5"/>',
+  meat: '<path d="M15 4a6 6 0 0 1 4 9c-2 3-7 6-10 6a4 4 0 0 1-4-4c0-3 3-8 6-10a6 6 0 0 1 4-1z"/><circle cx="14" cy="10" r="2"/>',
+  jar: '<path d="M8 3h8v3H8zM7 6h10a1 1 0 0 1 1 1v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1zM6 11h12"/>',
+  cookie: '<circle cx="12" cy="12" r="9"/><path d="M9 9h.01M14 8h.01M15 13h.01M10 14h.01M12 17h.01"/>',
+  bread: '<path d="M4 11.5A4 4 0 0 1 7 5h10a4 4 0 0 1 3 6.5V19H4z"/><path d="M9 9v5M13 9v5"/>',
+  snow: '<path d="M12 2v20M3.3 7l17.4 10M20.7 7 3.3 17"/>',
+  bottle: '<path d="M10 2h4v4l2 3v12H8V9l2-3zM8 13h8"/>',
+  home: '<path d="M3 11 12 4l9 7v9H3z"/><path d="M10 20v-5h4v5"/>',
+  list: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>'
+};
+const ic = (n, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ""}</svg>`;
+
+/* ---------- Domain constants ---------- */
+const DAYS = [["lun","Lundi","Lun"],["mar","Mardi","Mar"],["mer","Mercredi","Mer"],["jeu","Jeudi","Jeu"],["ven","Vendredi","Ven"],["sam","Samedi","Sam"],["dim","Dimanche","Dim"]];
+const DAY_LABEL = Object.fromEntries(DAYS.map((d) => [d[0], d[1]]));
+const AISLES = [["Fruits & légumes","apple"],["Boucherie & poisson","meat"],["Crèmerie & œufs","egg"],["Épicerie salée","jar"],["Épicerie sucrée","cookie"],["Boulangerie","bread"],["Surgelés","snow"],["Boissons","bottle"],["Maison & hygiène","home"],["Autre","box"]];
+const AISLE_NAMES = AISLES.map((a) => a[0]);
 const STORES = [
   { id: "leclerc", name: "E.Leclerc", site: "e.leclerc", f: 1 },
   { id: "carrefour", name: "Carrefour", site: "carrefour.fr", f: 1.05, search: "https://www.carrefour.fr/s?q=" },
@@ -260,51 +451,37 @@ const STORES = [
   { id: "monoprix", name: "Monoprix", site: "monoprix.fr", f: 1.3 },
   { id: "franprix", name: "Franprix", site: "franprix.fr", f: 1.3 }
 ];
-const DIETS = [
-  ["tout", "Je mange de tout", "Viande, poisson, tout"],
-  ["flexi", "Peu de viande", "De la viande 2 ou 3 fois par semaine"],
-  ["pesco", "Pas de viande, mais du poisson", "Pescétarien"],
-  ["vege", "Végétarien", "Ni viande ni poisson, mais œufs et laitages"],
-  ["vegan", "Végétalien (vegan)", "Aucun produit animal"]
-];
-const GOALS = [
-  ["equilibre", "Manger équilibré", "Ni trop, ni trop peu"],
-  ["leger", "Des repas légers", "Pour perdre du poids ou faire attention"],
-  ["copieux", "Des repas copieux", "Qui tiennent au corps, bien nourrissants"],
-  ["proteines", "Riche en protéines", "Sport, prise de muscle"]
-];
-const RESTRICTIONS = ["Sans porc", "Halal", "Sans gluten", "Sans lactose", "Peu salé", "Peu sucré (diabète)", "Pas épicé", "Sans alcool en cuisine"];
-const CUISINES = ["Française traditionnelle", "Italienne", "Méditerranéenne", "Asiatique", "Orientale / maghrébine", "Indienne", "Mexicaine", "Africaine", "Antillaise", "Américaine (burgers…)", "Cuisine du monde, surprends-moi"];
-const STYLES = [
-  ["tres", "Très simple", "15–20 min, peu de vaisselle"],
-  ["simple", "Simple", "30 min environ"],
-  ["travaille", "Un peu travaillé", "45 min, des recettes plus élaborées"],
-  ["passion", "J’adore cuisiner", "Simple en semaine, plus ambitieux le week-end"]
-];
-const MEALSETS = [
-  ["soirs", "Le soir seulement", "7 dîners"],
-  ["soirs-we", "Le soir + le midi du week-end", "9 repas"],
-  ["midis-soirs", "Midi et soir, tous les jours", "14 repas"]
-];
-const lbl = (list, id) => (list.find((x) => x[0] === id) || [, ""])[1];
+const DIETS = [["tout","Je mange de tout","Viande, poisson, tout","utensils"],["flexi","Peu de viande","Viande 2 ou 3 fois par semaine","leaf"],["pesco","Poisson, pas de viande","Pescétarien","fish"],["vege","Végétarien","Œufs et laitages, ni viande ni poisson","egg"],["vegan","Végétalien (vegan)","Aucun produit animal","sprout"]];
+const GOALS = [["equilibre","Équilibrés","Ni trop, ni trop peu","target"],["leger","Légers","Pour perdre du poids ou faire attention","feather"],["copieux","Copieux","Bien nourrissants, qui tiennent au corps","bowl"],["proteines","Riches en protéines","Sport, prise de muscle","bolt"]];
+const RESTRICTIONS = ["Sans porc","Halal","Sans gluten","Sans lactose","Peu salé","Peu sucré (diabète)","Pas épicé","Sans alcool en cuisine"];
+const CUISINES = ["Française","Italienne","Méditerranéenne","Asiatique","Orientale","Indienne","Mexicaine","Africaine","Antillaise","Américaine","Surprends-moi"];
+const STYLES = [["tres","Très simple","15–20 min, peu de vaisselle","clock"],["simple","Simple","Environ 30 min","utensils"],["travaille","Un peu travaillé","45 min, plus élaboré","chef"],["passion","J’adore cuisiner","Simple en semaine, ambitieux le week-end","heart"]];
+const MEALSETS = [["soirs","Le soir seulement","7 dîners","moon"],["soirs-we","Le soir + le midi du week-end","9 repas","calendar"],["midis-soirs","Midi et soir, tous les jours","14 repas","sun"]];
+const find = (list, id) => list.find((x) => x[0] === id) || [id, "", "", "dots"];
 const storeOf = (id) => STORES.find((s) => s.id === id) || { id, name: id || "mon magasin", f: 1 };
 
 /* ---------- Helpers ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const eur = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(n) || 0);
-const norm = (s) => String(s ?? "").replace(/[œŒ]/g, "oe").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const slug = (s) => norm(s).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "x";
+const eur0 = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(n) || 0);
+const slug = (s) => String(s ?? "").replace(/[œŒ]/g, "oe").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "x";
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-let toastTimer;
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3000); }
-function armConfirm(btn, label, action) {
-  if (btn.dataset.armed) { delete btn.dataset.armed; action(); return; }
-  btn.dataset.orig = btn.textContent; btn.dataset.armed = "1"; btn.classList.add("confirm"); btn.textContent = label;
-  setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("confirm"); btn.textContent = btn.dataset.orig; } }, 3500);
-}
 const seasonOf = (d) => { const m = d.getMonth(); return m < 2 || m === 11 ? "hiver" : m < 5 ? "printemps" : m < 8 ? "été" : "automne"; };
 const frDate = (iso) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+const plural = (n, w, ws) => `${n} ${n > 1 ? (ws || w + "s") : w}`;
+let toastTimer;
+function toast(msg, icon = "check") {
+  const t = $("#toast"); t.innerHTML = ic(icon) + `<span>${esc(msg)}</span>`; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+}
+function armConfirm(btn, label, action) {
+  if (btn.dataset.armed) { delete btn.dataset.armed; action(); return; }
+  btn.dataset.orig = btn.innerHTML; btn.dataset.armed = "1"; btn.classList.add("danger"); btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("danger"); btn.innerHTML = btn.dataset.orig; } }, 3500);
+}
+const lsGet = (k) => { try { return localStorage.getItem("rc3:" + k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem("rc3:" + k, v); } catch (e) {} };
 
 /* ---------- Storage: shared database, or this device if it is unavailable or refuses writes ---------- */
 const Store = (() => {
@@ -319,7 +496,7 @@ const Store = (() => {
     if (local) { cache[s.col] = readLocal(s.col); s.cb({ ...cache[s.col] }); return; }
     s.unsub = db.collection(s.col).onSnapshot((snap) => {
       const o = {}; snap.docs.forEach((d) => { o[d.id] = d.data(); }); cache[s.col] = o; s.cb(o);
-    }, () => toast("Synchronisation interrompue. Recharge la page."));
+    }, () => toast("Synchronisation interrompue. Recharge la page.", "alert"));
   }
   function goLocal() {
     if (local) return;
@@ -328,11 +505,7 @@ const Store = (() => {
     Object.entries(cache).forEach(([c, v]) => saveLocal(c, v || {}));
     subs.forEach(attach);
     if (Store.onMode) Store.onMode();
-    toast("Tes données sont enregistrées sur cet appareil.");
-  }
-  function fail(e) {
-    if (e && e.code === "quota_exceeded") toast("Stockage plein.");
-    else toast("Enregistrement impossible pour le moment. Réessaie.");
+    toast("Tes données sont enregistrées sur ce téléphone.", "phone");
   }
   async function write(op, col, id, data) {
     if (local) {
@@ -345,7 +518,7 @@ const Store = (() => {
     } catch (e) {
       /* A refused write means this viewer may read but not write the shared data: keep going on this device */
       if (e && e.code === "invalid_argument") { goLocal(); return write(op, col, id, data); }
-      fail(e);
+      toast(e && e.code === "quota_exceeded" ? "Stockage plein." : "Enregistrement impossible pour le moment. Réessaie.", "alert");
     }
   }
   return {
@@ -362,10 +535,10 @@ const Store = (() => {
 })();
 
 /* ---------- State ---------- */
-const S = { profile: null, week: null, history: [], checked: {}, extras: {}, sample: null, imgLimits: null, busy: false, swapping: null };
+const S = { profile: null, week: null, history: [], checked: {}, extras: {}, sample: null, imgLimits: null, busy: false, swapping: null, tab: "menus", gen: null };
 const P = () => S.profile || {};
 
-/* ---------- Budget suggestion ---------- */
+/* ---------- Budget ---------- */
 function slotsFor(p) {
   const out = [];
   for (const [d] of DAYS) {
@@ -376,8 +549,7 @@ function slotsFor(p) {
 }
 function suggestBudget(p) {
   const eq = (p.adults || 1) + 0.6 * (p.kids || 0);
-  const cover = { "soirs": 0.55, "soirs-we": 0.65, "midis-soirs": 1 }[p.meals] || 0.6;
-  let b = eq * 40 * cover;
+  let b = eq * 40 * ({ "soirs": 0.55, "soirs-we": 0.65, "midis-soirs": 1 }[p.meals] || 0.6);
   if (p.breakfast) b += eq * 7 * 1.1;
   b *= { tout: 1, flexi: 0.93, pesco: 1.05, vege: 0.86, vegan: 0.86 }[p.diet] || 1;
   b *= { equilibre: 1, leger: 1.02, copieux: 1.08, proteines: 1.15 }[p.goal] || 1;
@@ -386,161 +558,182 @@ function suggestBudget(p) {
   if (p.storeBrands === false) b *= 1.2;
   return Math.max(15, Math.round(b / 5) * 5);
 }
+const r5 = (n) => Math.max(10, Math.round(n / 5) * 5);
 
-/* ---------- Questionnaire ---------- */
-let draft = {};
-let wizIdx = 0;
-const choiceList = (field, list, multi, col = true) => `<div class="choices${col ? " col" : ""}">` + list.map((it) => {
-  const [id, title, sub] = Array.isArray(it) ? it : [it, it, ""];
+/* ---------- Onboarding ---------- */
+let draft = {}, obIdx = 0, obSingle = false;
+const opt = (field, [id, title, sub, icon], multi) => {
   const on = multi ? (draft[field] || []).includes(id) : draft[field] === id;
-  return `<button type="button" class="choice${col ? "" : " mini"}" data-${multi ? "toggle" : "set"}="${field}" data-val="${esc(id)}" aria-pressed="${on}">${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ""}</button>`;
-}).join("") + `</div>`;
-const stepper = (field, label, min, max) => `<div class="stepper"><span class="label">${label}</span><div class="ctl"><button type="button" data-step="${field}" data-d="-1" data-min="${min}" aria-label="Moins">−</button><strong>${draft[field] ?? min}</strong><button type="button" data-step="${field}" data-d="1" data-max="${max}" aria-label="Plus">+</button></div></div>`;
-const toggle = (field, label) => `<label class="toggle"><input type="checkbox" id="tg-${field}" data-check="${field}"${draft[field] ? " checked" : ""}><span>${label}</span></label>`;
+  return `<button type="button" class="opt${icon ? "" : " noicon"}" data-${multi ? "toggle" : "set"}="${field}" data-val="${esc(id)}" aria-pressed="${on}">
+    ${icon ? `<span class="oi">${ic(icon)}</span>` : ""}<span><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span><span class="radio">${ic("check", "sm")}</span></button>`;
+};
+const opts = (field, list) => `<div class="opts">${list.map((x) => opt(field, x)).join("")}</div>`;
+const chips = (field, list) => `<div class="chips">${list.map((v) => `<button type="button" class="chip" data-toggle="${field}" data-val="${esc(v)}" aria-pressed="${(draft[field] || []).includes(v)}">${(draft[field] || []).includes(v) ? ic("check", "sm") : ""}${esc(v)}</button>`).join("")}</div>`;
+const counter = (field, label, sub, icon, min) => `<div class="counter"><span class="ci">${ic(icon)}</span><span class="cl">${label}<small>${sub}</small></span><span class="ctl"><button type="button" data-step="${field}" data-d="-1" data-min="${min}" aria-label="Moins">${ic("minus")}</button><strong>${draft[field] ?? min}</strong><button type="button" data-step="${field}" data-d="1" data-min="${min}" aria-label="Plus">${ic("plus")}</button></span></div>`;
+const sw = (field, label) => `<label class="switch"><span class="sl">${label}</span><input type="checkbox" id="sw-${field}" data-check="${field}"${draft[field] ? " checked" : ""}></label>`;
+const WELCOME_ART = `<svg viewBox="0 0 260 170" aria-hidden="true">
+  <ellipse cx="130" cy="150" rx="110" ry="12" fill="var(--surface-2)"/>
+  <rect x="64" y="58" width="132" height="86" rx="18" fill="var(--accent)"/>
+  <path d="M84 58c0-24 20-40 46-40s46 16 46 40" fill="none" stroke="var(--accent-strong)" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="102" cy="58" r="22" fill="var(--orange)"/><path d="M102 36c0-6 4-10 10-12" stroke="var(--accent-strong)" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <ellipse cx="150" cy="50" rx="14" ry="26" transform="rotate(25 150 50)" fill="var(--accent-soft)"/>
+  <rect x="164" y="30" width="18" height="40" rx="6" fill="var(--surface)"/><rect x="164" y="40" width="18" height="10" fill="var(--orange-soft)"/>
+  <rect x="84" y="86" width="92" height="10" rx="5" fill="var(--accent-soft)" opacity=".6"/><rect x="84" y="106" width="60" height="10" rx="5" fill="var(--accent-soft)" opacity=".6"/>
+  <circle cx="206" cy="116" r="16" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><path d="m199 116 5 5 9-10" stroke="var(--accent)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 
 const STEPS = [
-  { title: "Bienvenue", html: () => `
-      <h2>Bonjour ! Je prépare tes menus et ta liste de courses.</h2>
-      <p class="help">Quelques questions rapides (2 minutes), et je te propose une semaine de repas qui respecte ton budget, tes goûts et ton magasin. Tu pourras tout changer ensuite.</p>
-      <label class="field">Ton prénom (facultatif)<input id="w-name" value="${esc(draft.name || "")}" placeholder="Ex. Sylvie" autocomplete="given-name"></label>`,
-    read: () => { draft.name = $("#w-name").value.trim(); } },
-  { title: "Foyer", html: () => `
-      <h2>Vous êtes combien à table ?</h2>
-      ${stepper("adults", "Adultes et ados", 1, 10)}
-      ${stepper("kids", "Enfants (moins de 12 ans)", 0, 10)}` },
-  { title: "Alimentation", html: () => `
-      <h2>Comment tu manges ?</h2>
-      ${choiceList("diet", DIETS, false)}`, ok: () => !!draft.diet, need: "Choisis une réponse" },
-  { title: "Objectif", html: () => `
-      <h2>Tu préfères quel genre de repas ?</h2>
-      <p class="help">Un régime, des repas légers ou au contraire bien copieux ?</p>
-      ${choiceList("goal", GOALS, false)}
+  { id: "welcome", html: () => `
+      <div class="welcome-art">${WELCOME_ART}</div>
+      <h1>Tes menus et tes courses, faits pour toi.</h1>
+      <p class="lead">Réponds à quelques questions (2 minutes). Je prépare une semaine de repas qui respecte ton budget et tes goûts, avec la liste de courses pour ton magasin.</p>
+      <div class="values">
+        <div class="value"><span class="vi">${ic("sparkle")}</span><span><b>Des menus inventés pour toi</b><span>Variés chaque semaine, jamais un menu tout fait.</span></span></div>
+        <div class="value"><span class="vi">${ic("wallet")}</span><span><b>Dans ton budget</b><span>Prix estimés pour ton magasin, et les promos rentables en priorité.</span></span></div>
+        <div class="value"><span class="vi">${ic("cart")}</span><span><b>La liste prête pour le drive</b><span>Rangée par rayon, avec le produit précis à chercher.</span></span></div>
+      </div>
+      <label class="formfield"><span>Ton prénom</span><small>Facultatif, pour te saluer.</small><input class="field-input" id="ob-name" value="${esc(draft.name || "")}" placeholder="Ex. Sylvie" autocomplete="given-name"></label>`,
+    read: () => { draft.name = $("#ob-name").value.trim(); }, cta: "Commencer" },
+  { id: "foyer", title: "Foyer", icon: "users", html: () => `
+      <h1>Vous êtes combien à table ?</h1>
+      <p class="lead">Pour calculer les bonnes quantités.</p>
+      ${counter("adults", "Adultes et ados", "12 ans et plus", "users", 1)}
+      ${counter("kids", "Enfants", "Moins de 12 ans", "child", 0)}`,
+    value: (p) => `${plural(p.adults || 1, "adulte")}${p.kids ? ", " + plural(p.kids, "enfant") : ""}` },
+  { id: "diet", title: "Alimentation", icon: "leaf", html: () => `<h1>Comment tu manges ?</h1>${opts("diet", DIETS)}`,
+    ok: () => !!draft.diet, need: "Choisis une réponse", value: (p) => find(DIETS, p.diet)[1] },
+  { id: "goal", title: "Genre de repas", icon: "target", html: () => `
+      <h1>Tu préfères quels repas ?</h1>
+      <p class="lead">Un régime, des repas légers, ou au contraire bien copieux ?</p>
+      ${opts("goal", GOALS)}
       <p class="label">Des contraintes en plus ?</p>
-      ${choiceList("restrictions", RESTRICTIONS, true, false)}`, ok: () => !!draft.goal, need: "Choisis le genre de repas" },
-  { title: "Allergies", html: () => `
-      <h2>Allergies et aliments que tu n’aimes pas</h2>
-      <label class="field">Allergies ou intolérances <span class="muted">Je ne les mettrai jamais.</span><input id="w-allergies" value="${esc(draft.allergies || "")}" placeholder="Ex. fruits à coque, crustacés"></label>
-      <label class="field">Ce que tu n’aimes pas <span class="muted">Je l’évite.</span><input id="w-dislikes" value="${esc(draft.dislikes || "")}" placeholder="Ex. champignons, chou-fleur, poisson pané"></label>
-      <label class="field">Ce que tu adores <span class="muted">J’en mettrai plus souvent.</span><input id="w-likes" value="${esc(draft.likes || "")}" placeholder="Ex. gratins, poulet, soupes"></label>`,
-    read: () => { draft.allergies = $("#w-allergies").value.trim(); draft.dislikes = $("#w-dislikes").value.trim(); draft.likes = $("#w-likes").value.trim(); } },
-  { title: "Cuisine", html: () => `
-      <h2>Quel style de cuisine ?</h2>
-      ${choiceList("style", STYLES, false)}
+      ${chips("restrictions", RESTRICTIONS)}`,
+    ok: () => !!draft.goal, need: "Choisis le genre de repas", value: (p) => find(GOALS, p.goal)[1] + ((p.restrictions || []).length ? " · " + p.restrictions.join(", ") : "") },
+  { id: "tastes", title: "Allergies et goûts", icon: "shield", html: () => `
+      <h1>Allergies et goûts</h1>
+      <label class="formfield"><span>${ic("shield", "sm")} Allergies ou intolérances</span><small>Je ne les mettrai jamais.</small><input class="field-input" id="ob-allergies" value="${esc(draft.allergies || "")}" placeholder="Ex. fruits à coque, crustacés"></label>
+      <label class="formfield"><span>${ic("x", "sm")} Ce que tu n’aimes pas</span><small>Je l’évite.</small><input class="field-input" id="ob-dislikes" value="${esc(draft.dislikes || "")}" placeholder="Ex. champignons, chou-fleur"></label>
+      <label class="formfield"><span>${ic("heart", "sm")} Ce que tu adores</span><small>J’en mets plus souvent.</small><input class="field-input" id="ob-likes" value="${esc(draft.likes || "")}" placeholder="Ex. gratins, poulet, soupes"></label>`,
+    read: () => { draft.allergies = $("#ob-allergies").value.trim(); draft.dislikes = $("#ob-dislikes").value.trim(); draft.likes = $("#ob-likes").value.trim(); },
+    value: (p) => p.allergies ? "Allergies : " + p.allergies : p.dislikes ? "N’aime pas : " + p.dislikes : "Rien de précisé" },
+  { id: "style", title: "Style de cuisine", icon: "chef", html: () => `
+      <h1>Quel style de cuisine ?</h1>
+      ${opts("style", STYLES)}
       <p class="label">Les cuisines que tu aimes</p>
-      ${choiceList("cuisines", CUISINES, true, false)}
-      ${toggle("batch", "Cuisiner un peu plus le soir pour avoir des restes le lendemain")}
-      ${(draft.kids || 0) > 0 ? toggle("picky", "Les enfants sont difficiles : des plats qu’ils aiment") : ""}`, ok: () => !!draft.style, need: "Choisis un style de cuisine" },
-  { title: "Repas", html: () => `
-      <h2>Quels repas je prévois ?</h2>
-      ${choiceList("meals", MEALSETS, false)}
-      ${toggle("breakfast", "Ajouter le petit-déjeuner et les goûters à la liste de courses")}`, ok: () => !!draft.meals, need: "Choisis quels repas prévoir" },
-  { title: "Magasin", html: () => `
-      <h2>Tu fais tes courses où ?</h2>
-      <p class="help">Je calcule les prix et je choisis les produits pour ce magasin.</p>
-      ${choiceList("store", STORES.map((s) => [s.id, s.name]), false, false)}
-      ${toggle("storeBrands", "Les marques du magasin me vont (souvent moins chères)")}`, ok: () => !!draft.store, need: "Choisis ton magasin" },
-  { title: "Budget", html: () => {
+      ${chips("cuisines", CUISINES)}
+      ${sw("batch", "Cuisiner un peu plus pour avoir des restes le lendemain midi")}
+      ${(draft.kids || 0) > 0 ? sw("picky", "Les enfants sont difficiles") : ""}`,
+    ok: () => !!draft.style, need: "Choisis un style de cuisine", value: (p) => find(STYLES, p.style)[1] + ((p.cuisines || []).length ? " · " + p.cuisines.join(", ") : "") },
+  { id: "meals", title: "Repas à prévoir", icon: "calendar", html: () => `
+      <h1>Quels repas je prévois ?</h1>
+      ${opts("meals", MEALSETS)}
+      ${sw("breakfast", "Ajouter le petit-déjeuner et les goûters à la liste")}`,
+    ok: () => !!draft.meals, need: "Choisis quels repas prévoir", value: (p) => find(MEALSETS, p.meals)[1] + (p.breakfast ? " + petits-déj." : "") },
+  { id: "store", title: "Magasin", icon: "store", html: () => `
+      <h1>Tu fais tes courses où ?</h1>
+      <p class="lead">Je choisis les produits et j’estime les prix pour ce magasin.</p>
+      <div class="opts">${STORES.map((s) => opt("store", [s.id, s.name, "", ""])).join("")}</div>
+      ${sw("storeBrands", "Les marques du magasin me vont (souvent moins chères)")}`,
+    ok: () => !!draft.store, need: "Choisis ton magasin", value: (p) => storeOf(p.store).name },
+  { id: "budget", title: "Budget", icon: "wallet", html: () => {
       const sug = suggestBudget(draft);
       if (!draft.budgetEdited) draft.budget = sug;
+      const presets = [[r5(sug * 0.8), "Serré"], [sug, "Conseillé"], [r5(sug * 1.25), "Large"]];
       return `
-      <h2>Ton budget courses par semaine</h2>
-      <div class="budget-box">
-        <p>Pour ${draft.adults} adulte${draft.adults > 1 ? "s" : ""}${draft.kids ? ` et ${draft.kids} enfant${draft.kids > 1 ? "s" : ""}` : ""}, ${lbl(MEALSETS, draft.meals).toLowerCase()}${draft.breakfast ? " + petits-déjeuners" : ""} chez ${esc(storeOf(draft.store).name)}, je te propose :</p>
-        <div class="budget-input"><input id="w-budget" inputmode="decimal" value="${draft.budget}" aria-label="Budget par semaine en euros"><span>€ / semaine</span></div>
-        <p class="muted small">Un budget serré reste possible : je ferai plus de plats simples et de saison. Tu peux le changer quand tu veux.</p>
-        <div class="row"><button type="button" class="mini" data-budget="${Math.round(sug * 0.8 / 5) * 5}">Serré · ${Math.round(sug * 0.8 / 5) * 5} €</button><button type="button" class="mini" data-budget="${sug}">Conseillé · ${sug} €</button><button type="button" class="mini" data-budget="${Math.round(sug * 1.25 / 5) * 5}">Large · ${Math.round(sug * 1.25 / 5) * 5} €</button></div>
-      </div>`; },
-    read: () => { const v = parseFloat(String($("#w-budget").value).replace(",", ".")); if (v > 0) draft.budget = Math.round(v); },
-    ok: () => { const v = parseFloat(String($("#w-budget").value).replace(",", ".")); return v >= 5; }, need: "Indique un budget en euros" },
-  { title: "Récap", html: () => `
-      <h2>C’est tout bon${draft.name ? ", " + esc(draft.name) : ""} ?</h2>
-      <div class="card recap">
-        <div><span class="k">À table</span><span>${draft.adults} adulte${draft.adults > 1 ? "s" : ""}${draft.kids ? `, ${draft.kids} enfant${draft.kids > 1 ? "s" : ""}` : ""}</span></div>
-        <div><span class="k">Alimentation</span><span>${esc(lbl(DIETS, draft.diet))} · ${esc(lbl(GOALS, draft.goal))}</span></div>
-        ${(draft.restrictions || []).length ? `<div><span class="k">Contraintes</span><span>${esc(draft.restrictions.join(", "))}</span></div>` : ""}
-        ${draft.allergies ? `<div><span class="k">Allergies</span><span>${esc(draft.allergies)}</span></div>` : ""}
-        <div><span class="k">Cuisine</span><span>${esc(lbl(STYLES, draft.style))}${(draft.cuisines || []).length ? " · " + esc(draft.cuisines.join(", ")) : ""}</span></div>
-        <div><span class="k">Repas</span><span>${esc(lbl(MEALSETS, draft.meals))}</span></div>
-        <div><span class="k">Magasin</span><span>${esc(storeOf(draft.store).name)}</span></div>
-        <div><span class="k">Budget</span><span>${draft.budget} € par semaine</span></div>
+      <h1>Ton budget courses par semaine</h1>
+      <p class="lead">Pour ${plural(draft.adults || 1, "adulte")}${draft.kids ? ` et ${plural(draft.kids, "enfant")}` : ""}, ${find(MEALSETS, draft.meals)[1].toLowerCase()}${draft.breakfast ? " + petits-déjeuners" : ""} chez ${esc(storeOf(draft.store).name)}, je te conseille <b>${sug} €</b>.</p>
+      <div class="card budget-card">
+        <div class="budget-big"><input id="ob-budget" inputmode="numeric" value="${draft.budget}" aria-label="Budget par semaine en euros"><span>€</span></div>
+        <p class="muted">par semaine</p>
+        <div class="budget-presets">${presets.map(([v, l]) => `<button type="button" class="preset" data-budget="${v}" aria-pressed="${Number(draft.budget) === v}">${v} €<small>${l}</small></button>`).join("")}</div>
       </div>
-      <p class="help">Ensuite, je crée ta première semaine. Tu peux me donner les promos du moment juste avant.</p>` }
+      <p class="muted" style="font-size:14px">Avec un budget serré, je fais plus de plats simples et de saison. Tu peux le changer quand tu veux.</p>`; },
+    read: () => { const v = parseFloat(String($("#ob-budget").value).replace(",", ".")); if (v > 0) draft.budget = Math.round(v); },
+    ok: () => parseFloat(String($("#ob-budget").value).replace(",", ".")) >= 5, need: "Indique un budget en euros", value: (p) => `${p.budget} € / semaine` },
+  { id: "recap", html: () => `
+      <h1>C’est tout bon${draft.name ? ", " + esc(draft.name) : ""} ?</h1>
+      <div class="card recap">
+        ${STEPS.filter((s) => s.value).map((s) => `<div class="rr"><span class="li">${ic(s.icon)}</span><span><small>${esc(s.title)}</small><b>${esc(s.value(draft))}</b></span></div>`).join("")}
+      </div>
+      <p class="muted">Juste après, tu pourras me donner les promos du moment et ce que tu as déjà à la maison.</p>`, cta: "Créer mes menus" }
 ];
 
-function openWizard(fromProfile) {
+function openOnboarding(start = 0, single = false) {
   draft = JSON.parse(JSON.stringify(S.profile || { adults: 2, kids: 0, storeBrands: true, restrictions: [], cuisines: [] }));
-  draft.budgetEdited = !!fromProfile && !!draft.budget;
-  wizIdx = fromProfile ? 1 : 0;
-  $("#main").hidden = true; $("#wizard").hidden = false;
-  renderWizard();
+  draft.budgetEdited = !!S.profile;
+  obIdx = start; obSingle = single;
+  $("#main").hidden = true; $("#onboarding").hidden = false; closeSheet();
+  renderOnboarding();
 }
-function renderWizard() {
-  const st = STEPS[wizIdx];
-  $("#wizStep").innerHTML = st.html();
-  $("#wizBar").style.width = ((wizIdx + 1) / STEPS.length * 100) + "%";
-  $("#wizBack").style.visibility = wizIdx === 0 && !S.profile ? "hidden" : "visible";
-  $("#wizBack").textContent = wizIdx === 0 || (wizIdx === 1 && S.profile) ? (S.profile ? "Annuler" : "Retour") : "Retour";
-  $("#wizNext").textContent = wizIdx === STEPS.length - 1 ? (S.profile && S.week ? "Enregistrer" : "Créer mes menus") : wizIdx === 0 ? "C’est parti" : "Continuer";
+function renderOnboarding() {
+  const st = STEPS[obIdx];
+  const total = STEPS.length - 1;
+  $("#onboarding").innerHTML = `<div class="ob">
+    <div class="ob-top">
+      <button class="iconbtn" data-act="ob-back" aria-label="${obSingle || obIdx === 0 ? "Fermer" : "Retour"}"${obIdx === 0 && !S.profile ? ' style="visibility:hidden"' : ""}>${ic(obSingle ? "x" : "chevL")}</button>
+      ${obSingle ? `<span style="flex:1;font-weight:800">${esc(st.title || "")}</span>` : obIdx === 0 ? `<span style="flex:1"></span>` : `<div class="ob-bars">${Array.from({ length: total }, (_, i) => `<i class="${i < obIdx ? "on" : ""}"></i>`).join("")}</div><span class="ob-count">${obIdx ? `${Math.min(obIdx, total)}/${total}` : ""}</span>`}
+    </div>
+    <div class="ob-body">${st.html()}</div>
+    <div class="ob-foot"><button class="btn primary lg block" data-act="ob-next">${obSingle ? "Enregistrer" : st.cta || "Continuer"}${obSingle ? "" : ic("chevR")}</button></div>
+  </div>`;
   window.scrollTo(0, 0);
 }
-$("#wizStep").addEventListener("click", (e) => {
-  const set = e.target.closest("[data-set]");
-  if (set) { draft[set.dataset.set] = set.dataset.val; renderWizard(); return; }
-  const tg = e.target.closest("[data-toggle]");
-  if (tg) {
-    const f = tg.dataset.toggle; const v = tg.dataset.val; const arr = new Set(draft[f] || []);
-    arr.has(v) ? arr.delete(v) : arr.add(v);
-    if (f === "restrictions" && v === "Halal" && arr.has("Halal")) arr.add("Sans porc");
-    draft[f] = [...arr]; renderWizard(); return;
-  }
-  const stp = e.target.closest("[data-step]");
-  if (stp) {
-    const f = stp.dataset.step; const min = f === "adults" ? 1 : 0;
-    draft[f] = Math.max(min, Math.min(10, (draft[f] ?? min) + Number(stp.dataset.d)));
-    renderWizard(); return;
-  }
-  const b = e.target.closest("[data-budget]");
-  if (b) { draft.budget = Number(b.dataset.budget); draft.budgetEdited = true; $("#w-budget").value = draft.budget; }
-});
-$("#wizStep").addEventListener("change", (e) => { const c = e.target.closest("[data-check]"); if (c) draft[c.dataset.check] = c.checked; });
-$("#wizStep").addEventListener("input", (e) => { if (e.target.id === "w-budget") draft.budgetEdited = true; });
-$("#wizStep").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); $("#wizNext").click(); } });
-$("#wizBack").addEventListener("click", () => {
-  const st = STEPS[wizIdx]; if (st.read) st.read();
-  if (wizIdx === 0 || (wizIdx === 1 && S.profile)) { if (S.profile) { $("#wizard").hidden = true; $("#main").hidden = false; } return; }
-  wizIdx--; renderWizard();
-});
-$("#wizNext").addEventListener("click", async () => {
-  const st = STEPS[wizIdx];
-  if (st.ok && !st.ok()) { toast(st.need); return; }
+async function obNext() {
+  const st = STEPS[obIdx];
+  if (st.ok && !st.ok()) { toast(st.need, "alert"); return; }
   if (st.read) st.read();
-  if (wizIdx < STEPS.length - 1) { wizIdx++; renderWizard(); return; }
+  if (!obSingle && obIdx < STEPS.length - 1) { obIdx++; renderOnboarding(); return; }
   const profile = { ...draft, done: true, updatedAt: Date.now() };
   delete profile.budgetEdited;
-  const first = !S.week;
+  const first = !S.profile || !S.week;
   S.profile = profile;
   await Store.set("settings", "profile", profile);
-  $("#wizard").hidden = true; $("#main").hidden = false;
+  $("#onboarding").hidden = true; $("#main").hidden = false;
   renderMain();
-  if (first) openPrep(); else toast("Réponses enregistrées. Elles servent dès la prochaine semaine.");
+  if (obSingle) { setTab("profil"); toast("Enregistré. Ça compte dès la prochaine semaine."); }
+  else if (first) { setTab("menus"); openPrep(); }
+}
+function obBack() {
+  const st = STEPS[obIdx]; if (st.read) st.read();
+  if (obSingle || obIdx === 0) { if (S.profile) { $("#onboarding").hidden = true; $("#main").hidden = false; renderMain(); } return; }
+  obIdx--; renderOnboarding();
+}
+$("#onboarding").addEventListener("click", (e) => {
+  const set = e.target.closest("[data-set]");
+  if (set) { draft[set.dataset.set] = set.dataset.val; renderOnboarding(); return; }
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) {
+    const f = tg.dataset.toggle, v = tg.dataset.val, arr = new Set(draft[f] || []);
+    arr.has(v) ? arr.delete(v) : arr.add(v);
+    if (v === "Halal" && arr.has("Halal")) arr.add("Sans porc");
+    draft[f] = [...arr]; renderOnboarding(); return;
+  }
+  const stp = e.target.closest("[data-step]");
+  if (stp) { const f = stp.dataset.step, min = Number(stp.dataset.min); draft[f] = Math.max(min, Math.min(10, (draft[f] ?? min) + Number(stp.dataset.d))); renderOnboarding(); return; }
+  const b = e.target.closest("[data-budget]");
+  if (b) { draft.budget = Number(b.dataset.budget); draft.budgetEdited = true; renderOnboarding(); }
 });
+$("#onboarding").addEventListener("change", (e) => { const c = e.target.closest("[data-check]"); if (c) draft[c.dataset.check] = c.checked; });
+$("#onboarding").addEventListener("input", (e) => { if (e.target.id === "ob-budget") { draft.budgetEdited = true; document.querySelectorAll(".preset").forEach((p) => p.setAttribute("aria-pressed", String(Number(p.dataset.budget) === Number(e.target.value)))); } });
+$("#onboarding").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); obNext(); } });
 
-/* ---------- Prompt ---------- */
+/* ---------- Prompts ---------- */
 function profileBlock(p) {
   const st = storeOf(p.store);
   const slots = slotsFor(p).map(([d, s]) => `${d} ${s}`).join(", ");
   const maxTime = { tres: "20 min", simple: "30 min", travaille: "45 min", passion: "30 min en semaine, jusqu’à 1 h 30 le week-end" }[p.style] || "30 min";
+  const restes = !p.batch ? "non, chaque repas est préparé à part" : p.meals === "soirs" ? "oui, cuisiner plus certains soirs pour emporter le lendemain midi (compter ces portions en plus dans les quantités et le budget)" : "oui, cuisiner plus certains soirs pour le midi suivant (ce midi-là devient « Restes de … », sans nouveaux ingrédients)";
   return `PROFIL DU FOYER
 - À table : ${p.adults} adulte(s)${p.kids ? ` et ${p.kids} enfant(s) de moins de 12 ans (un enfant ≈ 0,6 portion adulte)` : ""}.${p.picky ? " Enfants difficiles : plats qu’ils acceptent facilement." : ""}
-- Alimentation : ${lbl(DIETS, p.diet)} (${(DIETS.find((d) => d[0] === p.diet) || [])[2] || ""}).
-- Genre de repas : ${lbl(GOALS, p.goal)} (${(GOALS.find((d) => d[0] === p.goal) || [])[2] || ""}).
+- Alimentation : ${find(DIETS, p.diet)[1]} (${find(DIETS, p.diet)[2]}).
+- Genre de repas : ${find(GOALS, p.goal)[1]} (${find(GOALS, p.goal)[2]}).
 - Contraintes : ${(p.restrictions || []).join(", ") || "aucune"}.
 - ALLERGIES (exclure strictement, y compris traces évidentes) : ${p.allergies || "aucune"}.
 - N’aime pas (ne jamais mettre) : ${p.dislikes || "rien de particulier"}.
 - Adore (en mettre plus souvent, sans répéter) : ${p.likes || "non précisé"}.
 - Cuisines appréciées : ${(p.cuisines || []).join(", ") || "variées"}.
-- Style : ${lbl(STYLES, p.style)}. Temps de préparation maximum : ${maxTime}.
-- Restes : ${!p.batch ? "non, chaque repas est préparé à part" : p.meals === "soirs" ? "oui, cuisiner plus certains soirs pour emporter le lendemain midi (compter ces portions en plus dans les quantités et le budget)" : "oui, cuisiner plus certains soirs pour le midi suivant (ce midi-là devient « Restes de … », sans nouveaux ingrédients)"}.
+- Style : ${find(STYLES, p.style)[1]}. Temps de préparation maximum : ${maxTime}.
+- Restes : ${restes}.
 - Magasin : ${st.name}. Marques du magasin : ${p.storeBrands === false ? "non, plutôt des grandes marques" : "oui, à privilégier quand c’est moins cher"}.
 - BUDGET COURSES DE LA SEMAINE : ${p.budget} € maximum, tout compris (viser entre 85 % et 100 %).
 - Repas à prévoir (exactement ceux-là) : ${slots}.
@@ -561,7 +754,6 @@ const RULES = (p) => `RÈGLES
 7. Recettes : faisables par quelqu’un qui n’est pas chef, avec 3 à 6 étapes courtes et claires. Ingrédients avec les quantités pour tout le foyer.`;
 const FORMAT_MEAL = `{"day":"lun","slot":"soir","name":"…","desc":"une phrase appétissante","minutes":25,"kcal":550,"tags":["léger"],"ingredients":["400 g de riz basmati","…"],"steps":["…"],"leftover":"(facultatif) ce qui resservira plus tard dans la semaine"}`;
 const FORMAT_SHOP = `{"name":"Riz basmati","product":"Riz basmati 1 kg (marque du magasin)","qty":"1 paquet","aisle":"Épicerie salée","price":2.15,"promo":false,"why":"(facultatif) utilisé lundi et jeudi, il restera 400 g"}`;
-
 function weekPrompt(p, prep) {
   const now = new Date();
   return `Tu es à la fois diététicien(ne) et cuisinier(ère) en France. Tu aides un foyer à faire ses menus de la semaine et sa liste de courses au meilleur prix.
@@ -586,7 +778,7 @@ RÉPONSE : uniquement un objet JSON, sans texte autour, de cette forme :
  "total":63.40,
  "tips":["2 à 4 conseils concrets pour économiser ou gagner du temps cette semaine"],
  "warning":""}
-"day" parmi lun, mar, mer, jeu, ven, sam, dim ; "slot" parmi midi, soir ; "aisle" parmi : ${AISLES.join(" | ")}. "price" et "total" en euros (nombres). Un repas par créneau demandé, dans l’ordre de la semaine. Variante n° ${Math.floor(Math.random() * 1e6)}.`;
+"day" parmi lun, mar, mer, jeu, ven, sam, dim ; "slot" parmi midi, soir ; "aisle" parmi : ${AISLE_NAMES.join(" | ")}. "price" et "total" en euros (nombres). Un repas par créneau demandé, dans l’ordre de la semaine. Variante n° ${Math.floor(Math.random() * 1e6)}.`;
 }
 function swapPrompt(p, week, target, reason) {
   const others = week.meals.map((m) => `- ${m.day} ${m.slot} : ${m.name} (${(m.ingredients || []).join(", ")})`).join("\n");
@@ -617,12 +809,12 @@ Variante n° ${Math.floor(Math.random() * 1e6)}.`;
 
 /* ---------- Claude calls ---------- */
 const ERR = {
-  not_granted: "Il faut autoriser la page à utiliser Claude pour créer les menus.",
+  not_granted: "Autorise la page à utiliser Claude pour créer les menus.",
   sampling_disabled: "Claude n’est pas disponible sur ce compte.",
   rate_limited: "Trop de demandes pour l’instant. Réessaie dans quelques minutes.",
   session_expired: "Reconnecte-toi à claude.ai, puis réessaie.",
   invalid_json: "La réponse est arrivée incomplète. Réessaie.",
-  image_rejected: "Une photo n’a pas pu être lue. Essaie avec une autre photo.",
+  image_rejected: "Une photo n’a pas pu être lue. Essaie avec une autre.",
   images_unavailable: "Les photos ne sont pas acceptées ici. Écris les promos en texte.",
   refused: "Je n’ai pas pu faire cette demande. Modifie le texte et réessaie."
 };
@@ -635,43 +827,22 @@ const cleanMeal = (m) => ({
 });
 const cleanShop = (list) => (Array.isArray(list) ? list : []).filter((x) => x && (x.name || x.product)).map((x) => ({
   name: String(x.name || x.product), product: String(x.product || x.name), qty: String(x.qty || ""),
-  aisle: AISLES.includes(x.aisle) ? x.aisle : "Autre", price: Math.max(0, Number(x.price) || 0), promo: !!x.promo, why: x.why ? String(x.why) : ""
+  aisle: AISLE_NAMES.includes(x.aisle) ? x.aisle : "Autre", price: Math.max(0, Number(x.price) || 0), promo: !!x.promo, why: x.why ? String(x.why) : ""
 }));
 const sumShop = (list) => Math.round(list.reduce((a, x) => a + x.price, 0) * 100) / 100;
 
-let genCtl = null;
-let prepFiles = [];
-function openPrep() {
-  if (!S.sample) { renderMenus(); toast("Ouvre la page depuis claude.ai, connectée à ton compte, pour créer les menus."); return; }
-  $("#promoText").value = ""; $("#pantryText").value = ""; $("#wishText").value = "";
-  prepFiles = []; $("#promoPhotos").value = ""; $("#photoPreview").innerHTML = "";
-  $("#photoField").hidden = !S.imgLimits;
-  $("#prep").hidden = false;
-}
-$("#prepCancel").addEventListener("click", () => { $("#prep").hidden = true; });
-$("#prep").addEventListener("click", (e) => { if (e.target.id === "prep") $("#prep").hidden = true; });
-$("#promoPhotos").addEventListener("change", (e) => {
-  const max = S.imgLimits ? S.imgLimits.maxCount : 0;
-  prepFiles = [...e.target.files].slice(0, max);
-  if (e.target.files.length > max) toast(`${max} photos maximum : j’ai gardé les ${max} premières.`);
-  $("#photoPreview").innerHTML = "";
-  prepFiles.forEach((f) => { const img = document.createElement("img"); img.alt = "Photo de promos"; img.src = URL.createObjectURL(f); $("#photoPreview").appendChild(img); });
-});
-$("#prepForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  $("#prep").hidden = true;
-  generateWeek({ promos: $("#promoText").value.trim(), pantry: $("#pantryText").value.trim(), wishes: $("#wishText").value.trim(), files: prepFiles });
-});
-
+let genCtl = null, prepFiles = [], genTimer = null;
 async function generateWeek(prep) {
   if (S.busy) return;
-  S.busy = true; genCtl = new AbortController();
-  showTab("menus"); renderGenerating("Je réfléchis à ta semaine…", "Je tiens compte de ton budget, de tes goûts et de ce que tu as déjà mangé. Ça prend en général une à deux minutes.");
+  S.busy = true; S.gen = { step: 0, n: 0, start: Date.now() }; genCtl = new AbortController();
+  setTab("menus"); renderMenus();
+  genTimer = setInterval(updateGen, 1000);
   try {
     const opts = { modelTier: "default", cache: false, signal: genCtl.signal, onText: ({ text }) => {
       const n = (text.match(/"slot"\s*:/g) || []).length;
-      const shop = text.includes('"shopping"');
-      setGenStatus(shop ? "Je fais la liste de courses…" : n ? `J’écris les menus… ${n} plat${n > 1 ? "s" : ""}` : "J’écris les menus…");
+      S.gen.n = n;
+      S.gen.step = text.includes('"total"') ? 3 : text.includes('"shopping"') ? 2 : 1;
+      updateGen();
     } };
     if (prep.files && prep.files.length) opts.images = prep.files;
     const res = await S.sample.json(weekPrompt(P(), { ...prep, photos: prep.files ? prep.files.length : 0 }), opts);
@@ -689,21 +860,20 @@ async function generateWeek(prep) {
     }
     await Store.set("weeks", "current", week);
     await Promise.all(Object.keys(S.checked).map((k) => Store.del("checked", k)));
-    for (const [id, x] of Object.entries(S.extras)) if (S.checked["x_" + id]) await Store.del("extras", id);
-    toast("Ta semaine est prête !");
+    for (const id of Object.keys(S.extras)) if (S.checked["x_" + id]) await Store.del("extras", id);
+    toast("Ta semaine est prête !", "sparkle");
   } catch (e) {
-    if (e && e.code !== "cancelled") toast(errMsg(e));
+    if (e && e.code !== "cancelled") toast(errMsg(e), "alert");
   } finally {
-    S.busy = false; genCtl = null; renderMenus(); renderCourses();
+    clearInterval(genTimer); S.busy = false; S.gen = null; genCtl = null; renderMenus(); renderCourses();
   }
 }
-
 async function swapMeal(idx, reason) {
   if (S.busy || !S.week) return;
   const target = S.week.meals[idx]; if (!target) return;
   S.busy = true; S.swapping = idx; genCtl = new AbortController();
-  const card = document.querySelector(`[data-meal="${idx}"]`); if (card) card.classList.add("busy");
-  toast("Je cherche un autre plat… (environ une minute)");
+  closeSheet(); renderMenus();
+  toast("Je cherche un autre plat… (environ une minute)", "refresh");
   try {
     const res = await S.sample.json(swapPrompt(P(), S.week, target, reason), { modelTier: "default", cache: false, signal: genCtl.signal });
     if (!res || !res.meal || !res.meal.name) throw { code: "invalid_json" };
@@ -714,77 +884,145 @@ async function swapMeal(idx, reason) {
     if (Array.isArray(res.pantry)) week.pantry = res.pantry.map(String);
     week.warning = res.warning ? String(res.warning) : "";
     await Store.set("weeks", "current", week);
-    toast(`Remplacé par : ${meal.name}`);
+    toast(`Nouveau plat : ${meal.name}`, "sparkle");
   } catch (e) {
-    if (e && e.code !== "cancelled") toast(errMsg(e));
+    if (e && e.code !== "cancelled") toast(errMsg(e), "alert");
   } finally {
     S.busy = false; S.swapping = null; genCtl = null; renderMenus(); renderCourses();
   }
 }
 
-/* ---------- Rendering: menus ---------- */
-function renderGenerating(title, sub) {
-  $("#tab-menus").innerHTML = `<div class="card gen"><div class="pot"></div><h2>${esc(title)}</h2><p class="muted" id="genStatus">${esc(sub)}</p><button id="stopGen" class="ghost">Arrêter</button></div>`;
+/* ---------- Sheets ---------- */
+function openSheet(html) { $("#sheetBody").innerHTML = html; $("#sheet").hidden = false; document.body.style.overflow = "hidden"; }
+function closeSheet() { $("#sheet").hidden = true; document.body.style.overflow = ""; }
+$("#sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeSheet(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+const sheetHead = (title, sub, extra = "") => `<div class="sheet-head"><div class="grow">${sub ? `<p class="eyebrow">${sub}</p>` : ""}<h2 id="sheetTitle">${title}</h2>${extra}</div><button class="iconbtn" data-act="close" aria-label="Fermer">${ic("x")}</button></div>`;
+
+function openPrep() {
+  if (!S.sample) { toast("Ouvre la page depuis claude.ai, connectée à ton compte, pour créer les menus.", "alert"); return; }
+  prepFiles = [];
+  openSheet(`${sheetHead("Préparer la semaine", "Nouvelle semaine")}
+    <form class="sheet-body" id="prepForm">
+      <p class="muted">Tout est facultatif. Plus tu m’en dis, plus les menus seront justes et pas chers.</p>
+      ${S.imgLimits ? `<div class="formfield"><span>${ic("camera", "sm")} Promos du moment</span><small>Prends en photo le catalogue ou les promos de l’appli : je construis les repas autour des promos rentables.</small>
+        <label class="upload">${ic("camera")}<span>Ajouter des photos</span><input id="promoPhotos" type="file" accept="image/*" multiple></label><div class="photos" id="photoPreview"></div></div>` : ""}
+      <label class="formfield"><span>${ic("tag", "sm")} Promos repérées</span><small>Ex. « cuisses de poulet −30 %, 2e paquet de pâtes à −50 % »</small><textarea class="field-input" id="promoText" placeholder="Rien de spécial"></textarea></label>
+      <label class="formfield"><span>${ic("box", "sm")} Ce que j’ai déjà</span><small>Je l’utilise en priorité et je ne le rachète pas.</small><textarea class="field-input" id="pantryText" placeholder="Ex. 1 kg de pommes de terre, des œufs, un reste de crème"></textarea></label>
+      <label class="formfield"><span>${ic("heart", "sm")} Envies ou contraintes</span><small>Ex. « invités samedi soir », « pas le temps mercredi »</small><textarea class="field-input" id="wishText" placeholder="Rien de spécial"></textarea></label>
+      <button class="btn primary lg block">${ic("sparkle")} Créer mes menus</button>
+    </form>`);
 }
-function setGenStatus(t) { const el = $("#genStatus"); if (el) el.textContent = t; }
+function openMeal(i) {
+  const m = S.week && S.week.meals[i]; if (!m) return;
+  openSheet(`${sheetHead(esc(m.name), `${DAY_LABEL[m.day]} · ${m.slot === "midi" ? "midi" : "soir"}`, m.desc ? `<p class="muted" style="margin-top:6px">${esc(m.desc)}</p>` : "")}
+    <div class="sheet-body">
+      <div class="pillrow" style="margin-top:0">${m.minutes ? `<span class="pill">${ic("clock", "sm")} ${m.minutes} min</span>` : ""}${m.kcal ? `<span class="pill">${ic("flame", "sm")} ≈ ${m.kcal} kcal</span>` : ""}${m.tags.map((t) => `<span class="pill good">${esc(t)}</span>`).join("")}</div>
+      <div class="seg" role="tablist"><button role="tab" aria-selected="true" data-act="seg" data-seg="ing">Ingrédients</button><button role="tab" aria-selected="false" data-act="seg" data-seg="steps">Préparation</button></div>
+      <div id="seg-ing" class="card flat" style="padding:6px 16px"><ul class="ing">${m.ingredients.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>—</li>"}</ul></div>
+      <div id="seg-steps" class="card flat" hidden><ol class="stepsl">${m.steps.map((x) => `<li><span>${esc(x)}</span></li>`).join("") || "<li><span>—</span></li>"}</ol></div>
+      ${m.leftover ? `<div class="notice info">${ic("refresh")}<span class="grow">${esc(m.leftover)}</span></div>` : ""}
+      ${S.sample ? `<div class="swapbox">
+        <h4>${ic("refresh", "sm")} Changer ce plat</h4>
+        <div class="chips">${["Pas envie", "Trop long", "Moins cher", "Plus léger", "Plus copieux"].map((r) => `<button type="button" class="chip" data-act="swap" data-i="${i}" data-reason="${r}">${r}</button>`).join("")}</div>
+        <div class="addrow"><input class="field-input" id="swapWhy" placeholder="Ou dis-moi ce que tu veux (ex. un poisson)"><button class="btn primary" data-act="swap" data-i="${i}" data-free="1">Changer</button></div>
+      </div>` : ""}
+    </div>`);
+}
+function openInstall() {
+  const ua = navigator.userAgent || "";
+  const ios = /iPhone|iPad|iPod/i.test(ua);
+  const ios_steps = `<ol class="howto"><li><span>Ouvre ce lien dans <b>Safari</b> (pas dans une autre appli).</span></li><li><span>Appuie sur le bouton <span class="kbd">${ic("share", "sm")} Partager</span> en bas de l’écran.</span></li><li><span>Choisis <b>« Sur l’écran d’accueil »</b>, puis <b>Ajouter</b>.</span></li></ol>`;
+  const and_steps = `<ol class="howto"><li><span>Ouvre ce lien dans <b>Chrome</b>.</span></li><li><span>Appuie sur <span class="kbd">${ic("dots", "sm")}</span> en haut à droite.</span></li><li><span>Choisis <b>« Ajouter à l’écran d’accueil »</b>, puis <b>Ajouter</b>.</span></li></ol>`;
+  openSheet(`${sheetHead("Installer sur ton téléphone", "Aucune installation compliquée")}
+    <div class="sheet-body">
+      <p class="muted">Pas besoin de l’App Store ni d’héberger quoi que ce soit : l’appli tourne déjà en ligne. Ajoute-la à ton écran d’accueil pour l’ouvrir comme une vraie appli.</p>
+      <div class="card flat stack" style="display:grid;gap:12px"><b>${ios ? "Sur iPhone" : "Sur Android"}</b>${ios ? ios_steps : and_steps}</div>
+      <details class="card flat"><summary style="cursor:pointer;font-weight:700">${ios ? "Sur Android" : "Sur iPhone"}</summary><div style="margin-top:12px">${ios ? and_steps : ios_steps}</div></details>
+      <p class="muted" style="font-size:14px">Tes menus et ta liste sont enregistrés dans ton compte Claude : tu les retrouves sur ton téléphone comme sur ton ordinateur.</p>
+      <button class="btn primary block" data-act="install-done">C’est fait</button>
+    </div>`);
+}
+
+/* ---------- Views ---------- */
+function greeting() { const h = new Date().getHours(); return h >= 5 && h < 18 ? "Bonjour" : "Bonsoir"; }
+function ringSvg(pct, over) {
+  const r = 46, c = 2 * Math.PI * r, v = Math.max(0, Math.min(1, pct));
+  return `<svg viewBox="0 0 112 112"><circle class="track" cx="56" cy="56" r="${r}" fill="none" stroke-width="10"/><circle class="val" cx="56" cy="56" r="${r}" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - v)).toFixed(1)}"/></svg>`;
+}
+const isStandalone = () => (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+
+function renderGenerating() {
+  const g = S.gen || { step: 0, n: 0, start: Date.now() };
+  const total = slotsFor(P()).length;
+  const pct = g.step === 0 ? 8 : g.step === 1 ? 10 + Math.min(60, g.n / total * 60) : g.step === 2 ? 78 : 92;
+  const steps = [["Je lis ton profil et ton historique", 0], [g.n ? `J’invente tes plats (${g.n}/${total})` : "J’invente tes plats", 1], ["J’estime les prix et je fais la liste", 2], ["Je vérifie le budget", 3]];
+  const el = Math.floor((Date.now() - g.start) / 1000);
+  return `<div class="card gen">
+    <div class="gen-top"><div class="spinner"></div><div><h2 style="font-size:20px">Je prépare ta semaine</h2><p class="muted" style="font-size:14px">En général une à deux minutes · <span class="num" id="genTime">${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")}</span></p></div></div>
+    <div class="bar"><i id="genBar" style="width:${pct}%"></i></div>
+    <div class="steps" id="genSteps">${steps.map(([t, s]) => {
+      const cls = g.step > s ? "done" : g.step === s ? "on" : "";
+      return `<div class="gstep ${cls}"><span class="b">${g.step > s ? ic("check", "sm") : ""}</span>${esc(t)}</div>`;
+    }).join("")}</div>
+    <button class="btn outline" data-act="stop">Arrêter</button>
+  </div>`;
+}
+function updateGen() { if (S.busy && S.swapping === null && S.tab === "menus") $("#v-menus").innerHTML = renderGenerating(); }
 
 function renderMenus() {
-  if (S.busy && S.swapping === null) { if (!$("#genStatus")) renderGenerating("Je réfléchis à ta semaine…", ""); return; }
-  const box = $("#tab-menus");
+  const box = $("#v-menus");
   const p = P();
+  if (S.busy && S.swapping === null) { box.innerHTML = renderGenerating(); return; }
+  const greet = `<div class="greet"><h1>${greeting()}${p.name ? " " + esc(p.name) : ""}</h1><p>${S.week ? `Semaine du ${esc(frDate(S.week.weekOf))}` : "Prête pour ta semaine ?"}</p></div>`;
+  const installCard = !isStandalone() && !lsGet("installDismissed") ? `<div class="card install"><span class="phone">${ic("phone")}</span><span class="grow"><b>Mets l’appli sur ton téléphone</b><span>En 3 gestes, sans rien installer.</span></span><button class="btn sm primary" data-act="install">Voir</button><button class="iconbtn" data-act="install-dismiss" aria-label="Masquer">${ic("x", "sm")}</button></div>` : "";
   if (!S.week || !S.week.meals) {
-    box.innerHTML = `<div class="empty">
-      <h2>Prête pour ta première semaine${p.name ? ", " + esc(p.name) : ""} ?</h2>
-      <p>Je crée des menus variés qui respectent ton budget de <b>${esc(p.budget)} €</b> et ce que tu aimes, puis la liste de courses rangée par rayon pour ${esc(storeOf(p.store).name)}.</p>
-      ${S.sample ? `<button class="primary big" data-act="prep">Créer mes menus</button>` : `<p class="warn">Pour créer les menus, ouvre cette page depuis claude.ai en étant connectée à ton compte Claude.</p>`}
-    </div>`;
+    box.innerHTML = `${greet}
+      <div class="card empty-hero">
+        <svg class="illus" viewBox="0 0 132 132" aria-hidden="true"><circle cx="66" cy="66" r="62" fill="var(--accent-soft)"/><circle cx="66" cy="70" r="36" fill="var(--surface)"/><circle cx="66" cy="70" r="26" fill="none" stroke="var(--line)" stroke-width="3"/><path d="M28 34v22a6 6 0 0 0 12 0V34M34 62v38M100 34c-5 0-8 6-8 14s3 12 8 12v40" stroke="var(--accent)" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="58" cy="64" r="6" fill="var(--orange)"/><circle cx="74" cy="72" r="5" fill="var(--accent)"/></svg>
+        <h2>Ta première semaine t’attend</h2>
+        <p>Je crée des menus variés pour <b>${esc(p.budget)} €</b> maximum, avec la liste de courses pour ${esc(storeOf(p.store).name)}, rangée par rayon.</p>
+        ${S.sample ? `<button class="btn primary lg" data-act="prep">${ic("sparkle")} Créer mes menus</button>` : `<div class="notice warn">${ic("alert")}<span class="grow">Pour créer les menus, ouvre cette page depuis claude.ai en étant connectée à ton compte Claude.</span></div>`}
+      </div>${installCard}`;
     return;
   }
   const w = S.week;
   const budget = Number(w.budget || p.budget) || 0;
   const over = budget && w.total > budget;
+  const pct = budget ? w.total / budget : 0;
+  const mins = w.meals.filter((m) => m.minutes).map((m) => m.minutes);
+  const kcals = w.meals.filter((m) => m.kcal).map((m) => m.kcal);
+  const avg = (a) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
   const todayKey = DAYS[(new Date().getDay() + 6) % 7][0];
-  const groups = DAYS.map(([d, label]) => [d, label, w.meals.map((m, i) => [m, i]).filter(([m]) => m.day === d).sort((a, b) => (a[0].slot === "midi" ? 0 : 1) - (b[0].slot === "midi" ? 0 : 1))]).filter((g) => g[2].length);
-  box.innerHTML = `
-    <div class="stack">
-      <div class="card">
-        <div class="between">
-          <div><p class="muted small">Semaine du ${esc(frDate(w.weekOf))} · courses estimées</p><p class="bignum">${eur(w.total)} <span class="muted small" style="font-family:var(--body);font-weight:500">sur ${eur(budget)}</span></p></div>
-          <button data-act="prep" class="ghost">Nouvelle semaine</button>
-        </div>
-        <div class="meter${over ? " over" : ""}"><i style="width:${budget ? Math.min(100, w.total / budget * 100) : 0}%"></i></div>
-        <p class="small muted" style="margin-top:6px">${over ? `<b style="color:var(--danger)">${eur(w.total - budget)} au-dessus du budget.</b> Change un plat avec « Moins cher ».` : `${eur(Math.max(0, budget - w.total))} de marge. Prix estimés, ils peuvent varier un peu selon le magasin.`}</p>
-      </div>
-      ${w.warning ? `<p class="warn">${esc(w.warning)}</p>` : ""}
-      ${w.tips && w.tips.length ? `<details class="card"><summary style="cursor:pointer;font-weight:700">Mes conseils pour cette semaine</summary><ul class="tips" style="margin-top:10px">${w.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></details>` : ""}
+  const groups = DAYS.map(([d, label, short]) => [d, label, short, w.meals.map((m, i) => [m, i]).filter(([m]) => m.day === d).sort((a, b) => (a[0].slot === "midi" ? 0 : 1) - (b[0].slot === "midi" ? 0 : 1))]).filter((g) => g[3].length);
+  box.innerHTML = `${greet}
+    <div class="card hero">
+      <div class="ring${over ? " over" : ""}">${ringSvg(pct, over)}<div class="c"><b class="num">${Math.round(pct * 100)}%</b><span>du budget</span></div></div>
       <div>
-      ${groups.map(([d, label, list]) => `
-        <div class="day${d === todayKey ? " today" : ""}"><h3>${label}${d === todayKey ? " · aujourd’hui" : ""}</h3>
-        ${list.map(([m, i]) => `
-          <details class="meal${S.swapping === i ? " busy" : ""}" data-meal="${i}"${S.swapping === i ? " open" : ""}>
-            <summary>
-              <span class="slot">${m.slot === "midi" ? "Midi" : "Soir"}</span>
-              <span><span class="mname">${esc(m.name)}</span>${m.desc ? `<span class="mdesc" style="display:block">${esc(m.desc)}</span>` : ""}
-                <span class="chips">${m.minutes ? `<span class="tag">${m.minutes} min</span>` : ""}${m.kcal ? `<span class="tag">≈ ${m.kcal} kcal</span>` : ""}${m.tags.map((t) => `<span class="tag pop">${esc(t)}</span>`).join("")}</span></span>
-              <span class="chev" aria-hidden="true">${S.swapping === i ? "…" : "›"}</span>
-            </summary>
-            <div class="mbody">
-              ${m.ingredients.length ? `<div><h3 style="margin-bottom:6px">Ingrédients</h3><ul>${m.ingredients.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-              ${m.steps.length ? `<div><h3 style="margin-bottom:6px">Préparation</h3><ol>${m.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
-              ${m.leftover ? `<p class="leftover">${esc(m.leftover)}</p>` : ""}
-              ${S.sample ? `<div class="swap">
-                <p class="small" style="font-weight:700">Changer ce plat</p>
-                <div class="choices">${["Pas envie", "Trop long", "Moins cher", "Plus léger", "Plus copieux"].map((r) => `<button type="button" class="choice mini" data-swap="${i}" data-reason="${r}">${r}</button>`).join("")}</div>
-                <div class="extra"><input id="why-${i}" placeholder="Ou dis-moi ce que tu veux (ex. un poisson)"><button type="button" data-swap="${i}" data-free="1">Changer</button></div>
-              </div>` : ""}
-            </div>
-          </details>`).join("")}
-        </div>`).join("")}
+        <p class="eyebrow">Courses estimées</p>
+        <p class="amount">${eur(w.total)}</p>
+        <p class="of">sur ${eur0(budget)} · ${esc(storeOf(w.store || p.store).name)}</p>
+        <div class="pillrow">${over ? `<span class="pill bad">${ic("alert", "sm")} +${eur(w.total - budget)}</span>` : `<span class="pill good">${ic("wallet", "sm")} ${eur(budget - w.total)} de marge</span>`}<span class="pill">${plural(w.meals.length, "repas", "repas")}</span>${avg(mins) ? `<span class="pill">${ic("clock", "sm")} ~${avg(mins)} min</span>` : ""}${avg(kcals) ? `<span class="pill">${ic("flame", "sm")} ~${avg(kcals)} kcal</span>` : ""}</div>
       </div>
-    </div>`;
+      <div class="hero-actions"><button class="btn primary" data-act="tab" data-tab="courses">${ic("cart")} Ma liste</button><button class="btn" data-act="prep">${ic("refresh")} Nouvelle semaine</button></div>
+    </div>
+    ${w.warning ? `<div class="notice warn">${ic("alert")}<span class="grow">${esc(w.warning)}</span></div>` : ""}
+    ${w.tips && w.tips.length ? `<div class="tips">${w.tips.map((t) => `<div class="tip">${ic("sparkle")}<span>${esc(t)}</span></div>`).join("")}</div>` : ""}
+    ${installCard}
+    <div class="days" role="list">${groups.map(([d, , short, list]) => `<button class="daychip${d === todayKey ? " today" : ""}" data-act="jump" data-day="${d}" role="listitem">${short}<small>${plural(list.length, "repas", "repas")}</small></button>`).join("")}</div>
+    ${groups.map(([d, label, , list]) => `
+      <section class="dayblock" id="day-${d}">
+        <h3>${label}${d === todayKey ? `<span class="today-tag">Aujourd’hui</span>` : ""}</h3>
+        ${list.map(([m, i]) => `
+          <button class="meal${S.swapping === i ? " busy" : ""}" data-act="meal" data-i="${i}">
+            <span class="slotic ${m.slot}">${ic(m.slot === "midi" ? "sun" : "moon")}</span>
+            <span class="t"><span class="slotname">${m.slot === "midi" ? "Midi" : "Soir"}${S.swapping === i ? " · je cherche un autre plat…" : ""}</span><span class="name" style="display:block">${esc(m.name)}</span>${m.desc ? `<span class="desc">${esc(m.desc)}</span>` : ""}
+              <span class="meta">${m.minutes ? `<span>${ic("clock", "sm")} ${m.minutes} min</span>` : ""}${m.kcal ? `<span>${ic("flame", "sm")} ${m.kcal} kcal</span>` : ""}${m.tags[0] ? `<span style="color:var(--accent)">${esc(m.tags[0])}</span>` : ""}</span></span>
+            <span class="chev">${ic("chevR")}</span>
+          </button>`).join("")}
+      </section>`).join("")}`;
 }
 
-/* ---------- Rendering: shopping ---------- */
 const itemKey = (x) => "s_" + slug(x.product || x.name);
 function searchUrl(product) {
   const st = storeOf(P().store);
@@ -792,173 +1030,184 @@ function searchUrl(product) {
   return "https://www.google.com/search?q=" + encodeURIComponent((st.site ? "site:" + st.site + " " : "") + product);
 }
 function renderCourses() {
-  const box = $("#tab-courses");
+  const box = $("#v-courses");
   const w = S.week;
   const shop = (w && w.shopping) || [];
   const extras = Object.entries(S.extras).map(([id, x]) => ({ name: x.name, product: x.name, qty: "", aisle: x.aisle || "Autre", price: 0, extraId: id }));
   const all = [...shop, ...extras];
   const keyOf = (x) => x.extraId ? "x_" + x.extraId : itemKey(x);
   const left = all.filter((x) => !S.checked[keyOf(x)]).length;
-  $("#count").textContent = left || "";
+  const doneN = all.length - left;
+  $("#tabDot").textContent = left || "";
   const leftCost = shop.filter((x) => !S.checked[keyOf(x)]).reduce((a, x) => a + x.price, 0);
   const st = storeOf(P().store);
-  let html = `<div class="stack">
-    <div class="card stack" style="gap:8px">
-      <div class="between"><p><b>${left}</b> article${left > 1 ? "s" : ""} à prendre${shop.length ? ` · reste ≈ <b class="num">${eur(leftCost)}</b>` : ""}</p>
-        <div class="row"><button id="copyList" class="mini">Copier la liste</button><button id="doneShopping" class="mini ghost">Courses terminées</button></div></div>
-      <p class="small muted">Dans l’appli ${esc(st.name)} (ou sur le site du drive) : appuie sur un produit pour copier son nom, colle-le dans la recherche, puis coche-le ici.</p>
-    </div>
-    <form id="extraForm" class="extra"><input id="extraName" placeholder="Ajouter un article (ex. papier toilette)" aria-label="Article à ajouter" autocomplete="off"><button class="primary">Ajouter</button></form>`;
+  let html = `<div class="greet"><h1>Ma liste</h1><p>${esc(st.name)}${w ? " · semaine du " + esc(frDate(w.weekOf)) : ""}</p></div>`;
   if (!all.length) {
-    html += `<div class="empty"><p>Ta liste se remplit toute seule quand je crée tes menus.</p>${w ? "" : `<button class="primary" data-act="goto-menus">Créer mes menus</button>`}</div></div>`;
-    box.innerHTML = html; return;
+    box.innerHTML = html + `<div class="card empty-hero"><svg class="illus" viewBox="0 0 132 132" aria-hidden="true"><circle cx="66" cy="66" r="62" fill="var(--accent-soft)"/><path d="M30 40h12l10 44h40l8-30H48" stroke="var(--accent)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="58" cy="98" r="6" fill="var(--accent)"/><circle cx="88" cy="98" r="6" fill="var(--accent)"/><circle cx="74" cy="60" r="8" fill="var(--orange)"/></svg><h2>Ta liste est vide</h2><p>Elle se remplit toute seule quand je crée tes menus.</p>${w ? "" : `<button class="btn primary" data-act="tab" data-tab="menus">Créer mes menus</button>`}</div>
+      <form id="extraForm" class="addrow"><input class="field-input" id="extraName" placeholder="Ajouter un article" aria-label="Article à ajouter" autocomplete="off"><button class="btn primary" aria-label="Ajouter">${ic("plus")}</button></form>`;
+    return;
   }
-  for (const aisle of AISLES) {
+  html += `<div class="card shop-head">
+      <div class="row"><div><p class="eyebrow">Dans le panier</p><p class="big num">${doneN}<span class="muted" style="font-size:18px"> / ${all.length}</span></p></div>${shop.length ? `<div style="text-align:right"><p class="eyebrow">Reste à payer</p><p class="big num" style="font-size:22px">≈ ${eur(leftCost)}</p></div>` : ""}</div>
+      <div class="bar"><i style="width:${all.length ? doneN / all.length * 100 : 0}%"></i></div>
+      <div class="shop-actions"><button class="btn" data-act="copy-list">${ic("copy")} Copier</button><button class="btn" data-act="done-shopping">${ic("check")} Terminé</button></div>
+      <p class="muted" style="font-size:13.5px">Dans l’appli ${esc(st.name)} : touche un produit pour copier son nom, colle-le dans la recherche, puis coche-le ici.</p>
+    </div>
+    <form id="extraForm" class="addrow"><input class="field-input" id="extraName" placeholder="Ajouter un article (ex. papier toilette)" aria-label="Article à ajouter" autocomplete="off"><button class="btn primary" aria-label="Ajouter">${ic("plus")}</button></form>`;
+  for (const [aisle, icon] of AISLES) {
     const list = all.filter((x) => x.aisle === aisle);
     if (!list.length) continue;
     list.sort((a, b) => (!!S.checked[keyOf(a)] - !!S.checked[keyOf(b)]));
     const n = list.filter((x) => !S.checked[keyOf(x)]).length;
-    html += `<div class="aisle"><h3><span>${esc(aisle)}</span><span>${n}/${list.length}</span></h3>` + list.map((x) => {
-      const k = keyOf(x); const done = !!S.checked[k];
+    html += `<section class="aisle"><div class="aisle-h"><span class="ai">${ic(icon, "sm")}</span><h3>${esc(aisle)}</h3><span class="cnt">${n ? n : ic("check", "sm")}</span></div>` + list.map((x) => {
+      const k = keyOf(x), done = !!S.checked[k];
       return `<div class="item${done ? " done" : ""}">
-        <input type="checkbox" id="chk-${esc(k)}" data-key="${esc(k)}"${done ? " checked" : ""} aria-label="Pris : ${esc(x.product)}">
-        <div class="what">
-          <button type="button" class="prod" data-copy="${esc(x.product)}">${esc(x.product)}</button>
-          ${x.qty || (x.name !== x.product) ? `<div class="meta">${esc([x.qty, x.name !== x.product ? x.name : ""].filter(Boolean).join(" · "))}</div>` : ""}
+        <label class="check"><input type="checkbox" data-key="${esc(k)}"${done ? " checked" : ""} aria-label="Pris : ${esc(x.product)}"><span>${ic("check", "sm")}</span></label>
+        <div class="w">
+          <button type="button" class="prod" data-act="copy" data-copy="${esc(x.product)}">${esc(x.product)}</button>
+          ${x.qty || x.name !== x.product ? `<div class="sub">${esc([x.qty, x.name !== x.product ? x.name : ""].filter(Boolean).join(" · "))}</div>` : ""}
           ${x.why ? `<div class="why">${esc(x.why)}</div>` : ""}
-          ${x.promo ? `<span class="tag pop">Promo rentable</span>` : ""}
+          ${x.promo ? `<div class="tagrow"><span class="pill hot">${ic("tag", "sm")} Promo rentable</span></div>` : ""}
         </div>
-        <div class="right">
-          ${x.price ? `<span class="price">≈ ${eur(x.price)}</span>` : ""}
-          ${x.extraId ? `<button type="button" class="rm" data-rm="${esc(x.extraId)}" aria-label="Retirer ${esc(x.name)}">×</button>` : `<a class="find" href="${esc(searchUrl(x.product))}" target="_blank" rel="noopener">Chercher ↗</a>`}
-        </div>
+        <div class="r">${x.price ? `<span class="price">${eur(x.price)}</span>` : ""}${x.extraId ? `<button class="iconbtn" data-act="rm-extra" data-id="${esc(x.extraId)}" aria-label="Retirer ${esc(x.name)}">${ic("trash", "sm")}</button>` : `<a class="find" href="${esc(searchUrl(x.product))}" target="_blank" rel="noopener">${ic("search", "sm")} Chercher</a>`}</div>
       </div>`;
-    }).join("") + `</div>`;
+    }).join("") + `</section>`;
   }
   if (w && w.pantry && w.pantry.length) {
-    html += `<div class="aisle"><h3><span>À vérifier dans tes placards</span><span></span></h3>` + w.pantry.map((name) => {
-      const k = "p_" + slug(name); const done = !!S.checked[k];
-      return `<div class="item${done ? " done" : ""}"><input type="checkbox" id="chk-${esc(k)}" data-key="${esc(k)}"${done ? " checked" : ""} aria-label="J’en ai : ${esc(name)}"><div class="what"><span class="prod" style="text-decoration:none">${esc(name)}</span><div class="meta">Coche si tu en as. Sinon, ajoute-le à la liste.</div></div><div class="right"></div></div>`;
-    }).join("") + `</div>`;
+    html += `<section class="aisle"><div class="aisle-h"><span class="ai">${ic("box", "sm")}</span><h3>À vérifier dans tes placards</h3></div>` + w.pantry.map((name) => {
+      const k = "p_" + slug(name), done = !!S.checked[k];
+      return `<div class="item${done ? " done" : ""}"><label class="check"><input type="checkbox" data-key="${esc(k)}"${done ? " checked" : ""} aria-label="J’en ai : ${esc(name)}"><span>${ic("check", "sm")}</span></label><div class="w"><span class="prod">${esc(name)}</span><div class="sub">Coche si tu en as. Sinon, ajoute-le à la liste.</div></div><div class="r"></div></div>`;
+    }).join("") + `</section>`;
   }
-  html += `</div>`;
   box.innerHTML = html;
 }
 
-/* ---------- Rendering: profile ---------- */
 function renderProfil() {
   const p = P();
-  $("#tab-profil").innerHTML = `<div class="stack">
-    <div class="card recap">
-      <div><span class="k">À table</span><span>${p.adults} adulte${p.adults > 1 ? "s" : ""}${p.kids ? `, ${p.kids} enfant${p.kids > 1 ? "s" : ""}` : ""}</span></div>
-      <div><span class="k">Alimentation</span><span>${esc(lbl(DIETS, p.diet))}</span></div>
-      <div><span class="k">Repas</span><span>${esc(lbl(GOALS, p.goal))} · ${esc(lbl(STYLES, p.style))}</span></div>
-      ${(p.restrictions || []).length ? `<div><span class="k">Contraintes</span><span>${esc(p.restrictions.join(", "))}</span></div>` : ""}
-      ${p.allergies ? `<div><span class="k">Allergies</span><span>${esc(p.allergies)}</span></div>` : ""}
-      ${p.dislikes ? `<div><span class="k">N’aime pas</span><span>${esc(p.dislikes)}</span></div>` : ""}
-      ${(p.cuisines || []).length ? `<div><span class="k">Cuisines</span><span>${esc(p.cuisines.join(", "))}</span></div>` : ""}
-      <div><span class="k">À prévoir</span><span>${esc(lbl(MEALSETS, p.meals))}${p.breakfast ? " + petits-déjeuners" : ""}</span></div>
-      <div><span class="k">Magasin</span><span>${esc(storeOf(p.store).name)}</span></div>
-      <div><span class="k">Budget</span><span>${esc(p.budget)} € par semaine</span></div>
+  const hist = (S.history || []).length;
+  $("#v-profil").innerHTML = `
+    <div class="card profile-card"><span class="avatar">${esc((p.name || "?").charAt(0).toUpperCase())}</span><div><h2>${esc(p.name || "Mon profil")}</h2><p class="muted">${esc(STEPS[1].value(p))} · ${esc(storeOf(p.store).name)} · ${esc(p.budget)} €/sem.</p></div></div>
+    <div class="section-head"><h2>Mes préférences</h2></div>
+    <div class="list">${STEPS.map((s, i) => s.value ? `<button class="lrow" data-act="edit-step" data-step="${i}"><span class="li">${ic(s.icon)}</span><span class="ll">${esc(s.title)}</span><span class="lv">${esc(s.value(p))}</span>${ic("chevR", "sm")}</button>` : "").join("")}</div>
+    <div class="section-head"><h2>Appli</h2></div>
+    <div class="list">
+      <button class="lrow" data-act="install"><span class="li">${ic("phone")}</span><span class="ll">Installer sur mon téléphone</span><span class="lv"></span>${ic("chevR", "sm")}</button>
+      <button class="lrow" data-act="clear-history"><span class="li">${ic("history")}</span><span class="ll">Historique des menus</span><span class="lv">${plural(hist, "semaine")}</span>${ic("chevR", "sm")}</button>
     </div>
-    <button class="primary" data-act="edit-profile">Modifier mes réponses</button>
-    <div class="card stack" style="gap:8px">
-      <p><b>Historique</b> · ${(S.history || []).length} semaine${(S.history || []).length > 1 ? "s" : ""} gardée${(S.history || []).length > 1 ? "s" : ""} pour ne pas reproposer les mêmes plats.</p>
-      ${(S.history || []).length ? `<button class="ghost mini" id="clearHistory">Effacer l’historique</button>` : ""}
-    </div>
-    <p class="small muted">${Store.remote ? "Données synchronisées : elles suivent ton compte Claude." : "Données enregistrées sur cet appareil."}</p>
-  </div>`;
+    <p class="fine">${Store.remote ? "Synchronisé avec ton compte Claude." : "Données enregistrées sur cet appareil."} L’historique sert à ne jamais reproposer les mêmes plats.</p>`;
 }
 
 function renderMain() {
   const p = P();
-  $("#hello").textContent = p.name ? `Bonjour ${p.name} !` : "Tes menus de la semaine";
-  $("#storePill").textContent = storeOf(p.store).name;
+  $("#brandMark").innerHTML = ic("utensils");
+  $("#storeChip").innerHTML = ic("store", "sm") + esc(storeOf(p.store).name);
+  $("#avatarBtn").textContent = (p.name || "?").charAt(0).toUpperCase();
   renderMenus(); renderCourses(); renderProfil();
 }
-
-/* ---------- Tabs and events ---------- */
-function showTab(name) {
-  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
-  ["menus", "courses", "profil"].forEach((t) => { $("#tab-" + t).hidden = t !== name; });
-  try { localStorage.setItem("repas-courses-v2:tab", name); } catch (e) {}
+function setTab(name) {
+  S.tab = name;
+  document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  ["menus", "courses", "profil"].forEach((t) => { $("#v-" + t).hidden = t !== name; });
+  if (name === "menus" && S.busy && S.swapping === null) updateGen();
+  lsSet("tab", name); window.scrollTo(0, 0);
 }
-document.querySelector(".tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) showTab(b.dataset.tab); });
+$("#tab-menus").innerHTML = ic("utensils") + "Menus";
+$("#tab-courses").innerHTML = ic("cart") + `Courses<span class="dot" id="tabDot"></span>`;
+$("#tab-profil").innerHTML = ic("user") + "Profil";
 
+/* ---------- Events ---------- */
 document.addEventListener("click", async (e) => {
-  const act = e.target.closest("[data-act]");
-  if (act) {
-    const a = act.dataset.act;
-    if (a === "prep") openPrep();
-    if (a === "edit-profile") openWizard(true);
-    if (a === "goto-menus") showTab("menus");
+  const a = e.target.closest("[data-act]");
+  if (!a) return;
+  const act = a.dataset.act;
+  if (act === "tab") return setTab(a.dataset.tab);
+  if (act === "close") return closeSheet();
+  if (act === "ob-next") return obNext();
+  if (act === "ob-back") return obBack();
+  if (act === "prep") return openPrep();
+  if (act === "stop") { if (genCtl) genCtl.abort(); return; }
+  if (act === "meal") return openMeal(Number(a.dataset.i));
+  if (act === "seg") {
+    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-selected", String(b === a)));
+    $("#seg-ing").hidden = a.dataset.seg !== "ing"; $("#seg-steps").hidden = a.dataset.seg !== "steps"; return;
+  }
+  if (act === "swap") {
+    let reason = a.dataset.reason || "";
+    if (a.dataset.free) { reason = ($("#swapWhy").value || "").trim(); if (!reason) { toast("Écris ce que tu voudrais à la place", "alert"); return; } }
+    return swapMeal(Number(a.dataset.i), reason);
+  }
+  if (act === "jump") { const el = document.getElementById("day-" + a.dataset.day); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  if (act === "install") return openInstall();
+  if (act === "install-done" || act === "install-dismiss") { lsSet("installDismissed", "1"); closeSheet(); renderMenus(); return; }
+  if (act === "edit-step") return openOnboarding(Number(a.dataset.step), true);
+  if (act === "copy") {
+    try { await navigator.clipboard.writeText(a.dataset.copy); toast("Copié : colle-le dans la recherche du magasin", "copy"); }
+    catch (err) { const r = document.createRange(); r.selectNodeContents(a); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Sélectionné : copie-le avec ton doigt", "copy"); }
     return;
   }
-  if (e.target.closest("#stopGen")) { if (genCtl) genCtl.abort(); return; }
-  const sw = e.target.closest("[data-swap]");
-  if (sw) {
-    const i = Number(sw.dataset.swap);
-    let reason = sw.dataset.reason || "";
-    if (sw.dataset.free) { reason = ($("#why-" + i).value || "").trim(); if (!reason) { toast("Écris ce que tu voudrais à la place"); return; } }
-    swapMeal(i, reason); return;
-  }
-  const cp = e.target.closest("[data-copy]");
-  if (cp) {
-    try { await navigator.clipboard.writeText(cp.dataset.copy); toast("Copié : colle-le dans la recherche du magasin"); }
-    catch (err) { const r = document.createRange(); r.selectNodeContents(cp); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Sélectionné : copie-le avec ton doigt"); }
-    return;
-  }
-  const rm = e.target.closest("[data-rm]");
-  if (rm) { Store.del("extras", rm.dataset.rm); Store.del("checked", "x_" + rm.dataset.rm); return; }
-  if (e.target.closest("#copyList")) {
-    const w = S.week || {}; const st = storeOf(P().store);
-    const items = [...(w.shopping || []), ...Object.entries(S.extras).map(([id, x]) => ({ product: x.name, aisle: x.aisle || "Autre", extraId: id, price: 0, qty: "" }))]
+  if (act === "rm-extra") { Store.del("extras", a.dataset.id); Store.del("checked", "x_" + a.dataset.id); return; }
+  if (act === "copy-list") {
+    const w = S.week || {}, st = storeOf(P().store);
+    const items = [...(w.shopping || []), ...Object.entries(S.extras).map(([id, x]) => ({ product: x.name, aisle: x.aisle || "Autre", extraId: id, qty: "" }))]
       .filter((x) => !S.checked[x.extraId ? "x_" + x.extraId : itemKey(x)]);
-    if (!items.length) { toast("Rien à copier"); return; }
+    if (!items.length) { toast("Rien à copier", "alert"); return; }
     let txt = `Courses ${st.name}${w.weekOf ? " · semaine du " + frDate(w.weekOf) : ""}\n`;
-    for (const a of AISLES) { const l = items.filter((x) => x.aisle === a); if (!l.length) continue; txt += `\n${a}\n` + l.map((x) => `- ${x.product}${x.qty ? " (" + x.qty + ")" : ""}`).join("\n") + "\n"; }
-    try { await navigator.clipboard.writeText(txt); toast("Liste copiée : colle-la dans un message ou une note"); } catch (err) { toast("La copie est bloquée sur cet appareil"); }
+    for (const name of AISLE_NAMES) { const l = items.filter((x) => x.aisle === name); if (!l.length) continue; txt += `\n${name}\n` + l.map((x) => `- ${x.product}${x.qty ? " (" + x.qty + ")" : ""}`).join("\n") + "\n"; }
+    try { await navigator.clipboard.writeText(txt); toast("Liste copiée : colle-la dans un message", "copy"); } catch (err) { toast("La copie est bloquée sur cet appareil", "alert"); }
     return;
   }
-  const done = e.target.closest("#doneShopping");
-  if (done) return armConfirm(done, "Tout décocher ?", async () => {
+  if (act === "done-shopping") return armConfirm(a, "Tout décocher ?", async () => {
     const ops = Object.keys(S.checked).map((k) => Store.del("checked", k));
     Object.keys(S.extras).forEach((id) => { if (S.checked["x_" + id]) ops.push(Store.del("extras", id)); });
     await Promise.all(ops); toast("Liste remise à zéro");
   });
-  const ch = e.target.closest("#clearHistory");
-  if (ch) return armConfirm(ch, "Confirmer ?", () => { Store.set("history", "log", { weeks: [] }); toast("Historique effacé"); });
+  if (act === "clear-history") {
+    if (!(S.history || []).length) { toast("Pas encore d’historique", "history"); return; }
+    return armConfirm(a, "Effacer l’historique ?", () => { Store.set("history", "log", { weeks: [] }); toast("Historique effacé"); });
+  }
 });
 document.addEventListener("change", (e) => {
-  const c = e.target.closest("#tab-courses input[data-key]"); if (!c) return;
-  if (c.checked) Store.set("checked", c.dataset.key, { at: Date.now() }); else Store.del("checked", c.dataset.key);
+  const c = e.target.closest("#v-courses input[data-key]");
+  if (c) { if (c.checked) Store.set("checked", c.dataset.key, { at: Date.now() }); else Store.del("checked", c.dataset.key); return; }
+  if (e.target.id === "promoPhotos") {
+    const max = S.imgLimits ? S.imgLimits.maxCount : 0;
+    prepFiles = [...e.target.files].slice(0, max);
+    if (e.target.files.length > max) toast(`${max} photos maximum : j’ai gardé les ${max} premières.`, "camera");
+    $("#photoPreview").innerHTML = "";
+    prepFiles.forEach((f) => { const img = document.createElement("img"); img.alt = "Photo de promos"; img.src = URL.createObjectURL(f); $("#photoPreview").appendChild(img); });
+  }
 });
 document.addEventListener("submit", (e) => {
-  if (e.target.id !== "extraForm") return;
-  e.preventDefault();
-  const name = $("#extraName").value.trim(); if (!name) return;
-  Store.set("extras", newId(), { name, aisle: "Autre" });
-  $("#extraName").value = "";
+  if (e.target.id === "extraForm") {
+    e.preventDefault();
+    const name = $("#extraName").value.trim(); if (!name) return;
+    Store.set("extras", newId(), { name, aisle: "Autre" });
+    $("#extraName").value = "";
+    return;
+  }
+  if (e.target.id === "prepForm") {
+    e.preventDefault();
+    const prep = { promos: $("#promoText").value.trim(), pantry: $("#pantryText").value.trim(), wishes: $("#wishText").value.trim(), files: prepFiles };
+    closeSheet(); generateWeek(prep);
+  }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#prep").hidden) $("#prep").hidden = true; });
 
 /* ---------- Boot ---------- */
 (async () => {
-  try { const t = localStorage.getItem("repas-courses-v2:tab"); if (t) showTab(t); } catch (e) {}
   const samplePromise = window.claude && window.claude.use ? window.claude.use("sample").catch(() => null) : Promise.resolve(null);
   await Store.init();
   Store.onMode = () => renderProfil();
   const seen = new Set();
-  const ready = () => seen.size >= 5;
   let started = false;
   const refresh = () => {
-    if (!ready()) return;
+    if (seen.size < 5) return;
     if (!started) {
       started = true; $("#loading").hidden = true;
-      if (!S.profile || !S.profile.done) { openWizard(false); return; }
+      if (!S.profile || !S.profile.done) { openOnboarding(0, false); return; }
       $("#main").hidden = false;
+      const t = lsGet("tab"); setTab(["menus", "courses", "profil"].includes(t) ? t : "menus");
     }
-    if (!$("#wizard").hidden) return;
+    if (!$("#onboarding").hidden) return;
     $("#main").hidden = false;
     renderMain();
   };
@@ -969,7 +1218,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#pre
   Store.watch("extras", (d) => { S.extras = d; seen.add("extras"); refresh(); });
   S.sample = await samplePromise;
   if (S.sample && S.sample.limits) { try { const lim = await S.sample.limits(); S.imgLimits = lim && lim.images ? lim.images : null; } catch (e) { S.imgLimits = null; } }
-  if (started && $("#wizard").hidden) renderMenus();
+  if (started && $("#onboarding").hidden) renderMenus();
 })();
 })();
 </script>
