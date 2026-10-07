@@ -7,6 +7,9 @@ on:
       - 'openwall/**'
       - '.github/workflows/openwall.yml'
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -29,3 +32,17 @@ jobs:
           name: OpenWall-Windows
           path: openwall/dist/*.exe
           if-no-files-found: error
+      # Publie les .exe dans une Release : lien de téléchargement direct
+      # https://github.com/<owner>/<repo>/releases/latest/download/OpenWall-Setup.exe
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: openwall-v1.0.0
+          name: OpenWall 1.0.0
+          make_latest: true
+          body: |
+            Fonds d'écran animés gratuits pour Windows.
+            - **OpenWall-Setup.exe** : installateur
+            - **OpenWall-Portable.exe** : version portable, sans installation
+          files: |
+            openwall/dist/OpenWall-Setup.exe
+            openwall/dist/OpenWall-Portable.exe

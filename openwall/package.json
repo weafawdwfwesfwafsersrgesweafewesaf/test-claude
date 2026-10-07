@@ -34,24 +34,32 @@
     ],
     "win": {
       "icon": "build/icon.png",
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "artifactName": "OpenWall-Setup.exe"
     },
     "portable": {
-      "artifactName": "OpenWall-Portable-${version}.exe"
+      "artifactName": "OpenWall-Portable.exe"
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Utility"
     },
     "mac": {
       "icon": "build/icon.png",
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     }
   }
 }

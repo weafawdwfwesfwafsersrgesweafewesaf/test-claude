@@ -28,10 +28,14 @@ OpenWall est une alternative gratuite à Wallpaper Engine : mettez **vos vidéos
 
 ## Installation (Windows)
 
-### Option 1 — télécharger le `.exe` (sans rien installer)
+### Option 1 — téléchargement direct
+- Installateur : https://github.com/weafawdwfwesfwafsersrgesweafewesaf/test-claude/releases/latest/download/OpenWall-Setup.exe
+- Version portable (sans installation) : https://github.com/weafawdwfwesfwafsersrgesweafewesaf/test-claude/releases/latest/download/OpenWall-Portable.exe
+
+### Option 1 bis — depuis l'onglet Actions
 1. Sur GitHub, ouvrez l'onglet **Actions** du dépôt, puis le workflow **Build OpenWall**.
 2. Ouvrez la dernière exécution réussie et téléchargez l'artefact **OpenWall-Windows**.
-3. Dézippez-le : `OpenWall-Portable-1.0.0.exe` se lance directement, `OpenWall Setup 1.0.0.exe` installe l'application.
+3. Dézippez-le : `OpenWall-Portable.exe` se lance directement, `OpenWall-Setup.exe` installe l'application.
 
 > Windows SmartScreen peut afficher un avertissement parce que l'application n'est pas signée : cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
 
