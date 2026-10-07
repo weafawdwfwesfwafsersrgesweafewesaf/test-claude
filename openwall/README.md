@@ -22,7 +22,7 @@ OpenWall est une alternative gratuite à Wallpaper Engine : mettez **vos vidéos
 | Qualité / FPS | ✅ Limite d'images par seconde (10 à 240), qualité de rendu, préréglages Économie / Équilibré / Qualité / Ultra |
 | Bibliothèque | ✅ Recherche, tri, filtres (type, résolution, favoris, étiquettes), favoris, étiquettes, renommage, aperçu vidéo au survol |
 | Téléchargement depuis un site | ✅ **Créer → Depuis un site** : collez l'adresse d'une page (ex. une page « tag » d'un site de fonds animés), OpenWall trouve toutes les vidéos, vous cochez celles que vous voulez, il les télécharge en HD (ou 4K / 720p) sur votre PC et les ajoute à la bibliothèque avec une étiquette |
-| Découvrir / Atelier | ✅ Onglet *Découvrir* : catalogue de fonds anime en ligne (50 par site : MotionBGs, MoeWalls, Wallpaper Waifu, DesktopHut, MyLiveWallpapers), recherche et filtre par site. Un clic sur **Télécharger** récupère la vidéo en HD et l'applique directement ; rien n'est téléchargé sans clic. Pas de Steam Workshop. |
+| Découvrir / Atelier | ✅ Onglet *Découvrir* : catalogue de fonds anime en ligne (50 par site : MotionBGs, MoeWalls, Wallpaper Waifu, DesktopHut), recherche et filtre par site. Un clic sur **Télécharger** récupère la vidéo en HD et l'applique directement ; rien n'est téléchargé sans clic. Pas de Steam Workshop. |
 | Icône de notification | ✅ Pause, couper le son, fond suivant, paramètres, quitter |
 | Démarrage avec Windows | ✅ Option, avec démarrage réduit |
 | Interface | ✅ Thème sombre ou clair, couleur d'accent, taille des vignettes, sons de l'interface (clics, curseurs dont la hauteur du son suit la valeur, transitions) |

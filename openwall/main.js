@@ -340,6 +340,8 @@ async function catalogDownload(siteId, entry, target) {
       onProgress: (p) => { st.progress = p; st.status = 'downloading'; report(); }
     });
     const [id] = await importPaths([res.file], { [res.file]: { title: res.title, tags: ['Anime', src.name], sourceUrl: entry.url } });
+    // Vignette : l'image fournie par le site (immédiat, pas besoin de décoder la vidéo).
+    await saveRemoteThumb(id, entry.thumb || res.thumb, entry.url);
     st.status = 'done';
     st.progress = 1;
     st.itemId = id;
@@ -353,6 +355,22 @@ async function catalogDownload(siteId, entry, target) {
     throw e;
   } finally {
     catalogDownloads.delete(entry.url);
+  }
+}
+
+async function saveRemoteThumb(id, url, referer) {
+  if (!id || !url || !/^https?:/.test(url)) return;
+  try {
+    const res = await session.fromPartition(siteImport.PARTITION).fetch(url, { headers: referer ? { Referer: referer } : {}, referrerPolicy: 'unsafe-url' });
+    if (!res.ok || !/^image\//.test(res.headers.get('content-type') || '')) return;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 500) return;
+    fs.mkdirSync(THUMBS, { recursive: true });
+    fs.writeFileSync(thumbPath(id), buf);
+    const it = findItem(id);
+    if (it) { it.thumbVersion = Date.now(); libraryStore.save(); pushState(); }
+  } catch {
+    /* la vignette sera générée depuis la vidéo */
   }
 }
 
