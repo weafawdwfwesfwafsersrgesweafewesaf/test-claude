@@ -1,0 +1,57 @@
+{
+  "name": "openwall",
+  "productName": "OpenWall",
+  "version": "1.0.0",
+  "description": "Fonds d'écran animés gratuits et open source : vidéos MP4, images, pages web et scènes interactives.",
+  "main": "main.js",
+  "license": "MIT",
+  "author": "OpenWall",
+  "scripts": {
+    "start": "electron .",
+    "icons": "node scripts/make-icons.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist:mac": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^44.6.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.openwall.desktop",
+    "productName": "OpenWall",
+    "files": [
+      "main.js",
+      "preload.js",
+      "wallpaper-preload.js",
+      "lib/**",
+      "shared/**",
+      "ui/**",
+      "wallpaper/**",
+      "assets/**",
+      "build/icon.png"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "OpenWall-Portable-${version}.exe"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": ["AppImage"],
+      "category": "Utility"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "target": ["dmg"]
+    }
+  }
+}
