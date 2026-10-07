@@ -225,7 +225,8 @@
       empty.classList.remove('hidden');
       empty.innerHTML = state.items.length
         ? '<p>Aucun fond d’écran ne correspond à ces filtres.</p><button class="btn" id="empty-reset">Réinitialiser les filtres</button>'
-        : `<p>Votre bibliothèque est vide.</p><button class="btn primary" id="empty-import">${icon('film')}Importer mes vidéos</button>`;
+        : `<p>Votre bibliothèque est vide.</p><button class="btn primary" id="empty-discover">${icon('download')}Découvrir des fonds anime</button>
+           <button class="btn" id="empty-import">${icon('film')}Importer mes vidéos</button>`;
     } else empty.classList.add('hidden');
   }
 
@@ -474,33 +475,117 @@
     return data;
   }
 
-  function discoverThumb(b) {
-    const inst = getItem(b.id);
-    if (inst && inst.thumbUrl) return inst.thumbUrl;
-    if (!ui.sceneThumbs[b.scene]) ui.sceneThumbs[b.scene] = sceneThumb(b.scene, Schemas.resolveProps(b));
-    return ui.sceneThumbs[b.scene];
+  // Catalogue en ligne : 50 fonds par site, chargés à la demande et mis en cache 12 h par l'application.
+  const disc = { sources: null, data: {}, site: 'all', q: '', busy: new Map(), key: '' };
+
+  async function ensureCatalog(force) {
+    if (!ow.catalogSources) return;
+    if (!disc.sources) disc.sources = await ow.catalogSources();
+    for (const src of disc.sources) {
+      const cur = disc.data[src.id];
+      if (cur && cur.loading) continue;
+      if (cur && !force && (cur.entries || []).length) continue;
+      disc.data[src.id] = { loading: true, entries: cur ? cur.entries : [] };
+      renderDiscover(true);
+    }
+    // Un site après l'autre : moins de charge réseau, et chaque section s'affiche dès qu'elle est prête.
+    for (const src of disc.sources) {
+      if (!disc.data[src.id].loading) continue;
+      try {
+        const res = await ow.catalog(src.id, !!force);
+        disc.data[src.id] = { loading: false, entries: res.entries || [], error: res.error };
+      } catch (e) {
+        disc.data[src.id] = { loading: false, entries: [], error: String(e.message || e).replace(/^.*Error: /, '') };
+      }
+      renderDiscover(true);
+    }
   }
 
-  function renderDiscover() {
-    if (ui.tab !== 'discover') return;
+  function discEntries(siteId) {
+    const d = disc.data[siteId];
+    const q = disc.q.trim().toLowerCase();
+    const list = (d && d.entries) || [];
+    return list.map((e, i) => ({ e, i })).filter(({ e }) => !q || e.title.toLowerCase().includes(q));
+  }
+
+  function discCard(siteId, e, i, installed) {
+    const busy = disc.busy.get(e.url);
+    const pct = busy ? Math.round((busy.progress || 0) * 100) : 0;
+    return `<div class="dcard${busy ? ' busy' : ''}" data-site="${esc(siteId)}" data-i="${i}" data-url="${esc(e.url)}">
+      <div class="d-img">${e.thumb ? `<img src="${esc(e.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" draggable="false">` : icon('film')}
+        ${installed ? `<span class="d-badge t-badge on-desk">${icon('check')}Installé</span>` : ''}
+        <div class="d-bar ${busy ? '' : 'hidden'}"><i style="width:${pct}%"></i></div></div>
+      <div class="d-body"><span class="d-title" title="${esc(e.title)}">${esc(e.title)}</span>
+        ${installed
+          ? `<button class="btn small" data-apply>${icon('monitor')}Appliquer</button>`
+          : `<button class="btn small primary" data-dl ${busy ? 'disabled' : ''}>${icon('download')}${busy ? pct + ' %' : 'Télécharger'}</button>`}
+      </div></div>`;
+  }
+
+  function renderDiscover(force) {
+    if (ui.tab !== 'discover' || !disc.sources) return;
+    const installed = new Set(state.items.map((i) => i.sourceUrl).filter(Boolean));
+    const key = JSON.stringify([disc.site, disc.q, [...installed].length, disc.sources.map((s) => {
+      const d = disc.data[s.id] || {};
+      return [d.loading, (d.entries || []).length, d.error];
+    })]);
+    if (!force && key === disc.key) return; // rien de neuf : on ne reconstruit pas 250 cartes
+    disc.key = key;
+
+    $('#disc-sites').innerHTML = [{ id: 'all', name: 'Tous les sites' }, ...disc.sources].map((src) => {
+      const d = disc.data[src.id];
+      const n = src.id === 'all' ? '' : d && d.loading ? ' …' : d ? ` (${(d.entries || []).length})` : '';
+      return `<button class="chip ${disc.site === src.id ? 'on' : ''}" data-site-filter="${esc(src.id)}">${esc(src.name)}${n}</button>`;
+    }).join('');
+
     const g = $('#discover-grid');
-    g.innerHTML = '';
-    for (const b of state.builtins) {
-      const card = el('div', 'card');
-      card.innerHTML = `
-        <div class="c-thumb"><img src="${esc(discoverThumb(b) || '')}" alt=""></div>
-        <div class="c-body">
-          <div class="c-title">${esc(b.title)}</div>
-          <div class="c-desc">${esc(b.description)}</div>
-          <div class="chips">${b.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>
-          <div class="c-foot">
-            <button class="btn small ${b.subscribed ? 'subscribed' : 'primary'}" data-sub="${b.id}">
-              ${b.subscribed ? icon('check') + 'Abonné' : icon('plus') + 'S’abonner'}</button>
-            ${b.subscribed ? `<button class="btn small" data-use="${b.id}">${icon('monitor')}Appliquer</button>` : ''}
-          </div>
-        </div>`;
-      g.appendChild(card);
+    g.innerHTML = disc.sources.filter((src) => disc.site === 'all' || disc.site === src.id).map((src) => {
+      const d = disc.data[src.id] || { loading: true };
+      const list = discEntries(src.id);
+      let body;
+      if (d.loading && !list.length) body = `<div class="disc-grid">${'<div class="skel"></div>'.repeat(8)}</div>`;
+      else if (!list.length && d.error) {
+        body = `<div class="disc-error">${icon('alert')}<span>Impossible de charger ce site (${esc(d.error)}).</span>
+          <div class="spacer"></div><button class="btn small" data-retry="${esc(src.id)}">Réessayer</button></div>`;
+      } else if (!list.length) body = '<div class="disc-error">Aucun résultat.</div>';
+      else body = `<div class="disc-grid">${list.map(({ e, i }) => discCard(src.id, e, i, installed.has(e.url))).join('')}</div>`;
+      return `<section class="disc-section"><div class="disc-head"><h2>${esc(src.name)}</h2>
+        <span class="sub">${d.loading ? 'Chargement…' : `${list.length} fond${list.length > 1 ? 's' : ''} d'écran`}</span></div>${body}</section>`;
+    }).join('');
+  }
+
+  async function discDownload(card) {
+    const siteId = card.dataset.site;
+    const entry = (disc.data[siteId].entries || [])[+card.dataset.i];
+    if (!entry || disc.busy.has(entry.url)) return;
+    disc.busy.set(entry.url, { progress: 0 });
+    snd('click');
+    renderDiscover(true);
+    try {
+      await ow.catalogDownload(siteId, entry, applyTarget());
+      snd('apply');
+      toast(`« ${entry.title} » est maintenant votre fond d'écran.`, 'success');
+    } catch (e) {
+      snd('error');
+      toast(`Échec du téléchargement : ${String(e.message || e).replace(/^.*Error: /, '')}`, 'error');
     }
+    disc.busy.delete(entry.url);
+    renderDiscover(true);
+  }
+
+  if (ow.onCatalogDl) {
+    ow.onCatalogDl((d) => {
+      const b = disc.busy.get(d.url);
+      if (!b) return;
+      b.progress = d.progress || 0;
+      const card = [...document.querySelectorAll('#discover-grid .dcard')].find((c) => c.dataset.url === d.url);
+      if (!card) return;
+      const pct = Math.round(b.progress * 100);
+      const bar = card.querySelector('.d-bar i');
+      if (bar) bar.style.width = pct + '%';
+      const btn = card.querySelector('[data-dl]');
+      if (btn) btn.innerHTML = icon('download') + (d.status === 'downloading' ? pct + ' %' : '…');
+    });
   }
 
   // ================================================================ Miniatures (vidéos, images, scènes)
@@ -809,11 +894,7 @@
         { label: 'Annuler' },
         {
           label: 'Créer', primary: true, onClick: async () => {
-            const base = 'scene-' + m.body.querySelector('#sc-base').value;
-            const name = m.body.querySelector('#sc-name').value.trim();
-            if (!getItem(base)) await ow.subscribe(base);
-            const id = await ow.duplicateItem(base);
-            if (name) await ow.updateItem(id, { title: name });
+            const id = await ow.addScene(m.body.querySelector('#sc-base').value, m.body.querySelector('#sc-name').value.trim());
             afterImport([id]);
           }
         }
@@ -1013,7 +1094,7 @@
     $$('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
     $$('.page').forEach((p) => p.classList.toggle('active', p.id === 'page-' + tab));
     postPreview('playback', tab === 'installed' ? 'run' : 'pause');
-    renderDiscover();
+    if (tab === 'discover') { renderDiscover(true); ensureCatalog(false); }
   }
 
   // ================================================================ Sélecteur d'écran
@@ -1395,6 +1476,7 @@
   $('#grid-empty').addEventListener('click', (e) => {
     if (e.target.closest('#empty-reset')) resetFilters();
     if (e.target.closest('#empty-import')) importDialog('video');
+    if (e.target.closest('#empty-discover')) { snd('tab'); switchTab('discover'); }
   });
 
   // Pied de grille
@@ -1461,16 +1543,38 @@
   };
 
   // Découvrir / Créer
-  $('#discover-grid').addEventListener('click', async (e) => {
-    const sub = e.target.closest('[data-sub]');
-    const use = e.target.closest('[data-use]');
-    if (sub) {
-      const b = state.builtins.find((x) => x.id === sub.dataset.sub);
-      if (b.subscribed) { const it = getItem(b.id); if (it) removeWithConfirm(it); }
-      else { snd('success'); await ow.subscribe(b.id); toast(`« ${b.title} » ajouté à vos fonds.`, 'success'); }
+  $('#discover-grid').addEventListener('click', (e) => {
+    const dl = e.target.closest('[data-dl]');
+    const ap = e.target.closest('[data-apply]');
+    const retry = e.target.closest('[data-retry]');
+    if (dl) discDownload(dl.closest('.dcard'));
+    if (ap) {
+      const url = ap.closest('.dcard').dataset.url;
+      const it = state.items.find((i) => i.sourceUrl === url);
+      if (it) { snd('apply'); ow.apply(it.id, applyTarget()); toast(`« ${it.title} » est maintenant votre fond d'écran.`, 'success'); }
     }
-    if (use) { switchTab('installed'); select(use.dataset.use, true); }
+    if (retry) {
+      snd('click');
+      disc.data[retry.dataset.retry] = null;
+      ensureCatalog(false);
+    }
   });
+  $('#discover-grid').addEventListener('error', (e) => {
+    if (e.target.tagName === 'IMG') e.target.replaceWith(Object.assign(document.createElement('span'), { innerHTML: icon('film') }));
+  }, true);
+  $('#disc-sites').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-site-filter]');
+    if (!b) return;
+    disc.site = b.dataset.siteFilter;
+    snd('click');
+    renderDiscover(true);
+  });
+  let discSearchTimer = null;
+  $('#disc-search').addEventListener('input', (e) => {
+    clearTimeout(discSearchTimer);
+    discSearchTimer = setTimeout(() => { disc.q = e.target.value; renderDiscover(true); }, 150);
+  });
+  $('#discover-refresh').onclick = () => { snd('click'); ensureCatalog(true); };
   $('#discover-import').onclick = () => importDialog('video');
   $('#discover-site').onclick = () => { snd('click'); openSiteImport(); };
   $$('.create-card').forEach((c) => {

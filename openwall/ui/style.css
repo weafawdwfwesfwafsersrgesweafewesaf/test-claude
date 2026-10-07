@@ -461,3 +461,25 @@ input[type="range"]:hover::-webkit-slider-thumb, input[type="range"]:active::-we
 .dl-item.done .s { color: #3ecf8e; }
 .dl-item.error .s { color: var(--danger); }
 .dl-summary { margin-top: 10px; color: var(--text-2); }
+
+/* Découvrir : catalogue en ligne */
+.disc-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.disc-search { width: 300px; margin: 0; }
+.disc-section { margin-bottom: 30px; }
+.disc-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.disc-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.disc-head .sub { color: var(--text-3); font-size: 12px; }
+.disc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.dcard { position: relative; border-radius: 6px; overflow: hidden; background: var(--bg-2); border: 1px solid var(--line); display: flex; flex-direction: column; transition: border-color .15s; }
+.dcard:hover { border-color: var(--line-2); }
+.dcard .d-img { position: relative; aspect-ratio: 16 / 9; background: var(--tile-bg); display: grid; place-items: center; color: var(--text-3); overflow: hidden; }
+.dcard .d-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dcard .d-body { display: flex; align-items: center; gap: 8px; padding: 8px 9px; }
+.dcard .d-title { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcard .d-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0, 0, 0, .5); }
+.dcard .d-bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s; }
+.dcard .d-badge { position: absolute; top: 6px; left: 6px; }
+.dcard.busy .d-img::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .35); }
+.skel { aspect-ratio: 16 / 9; border-radius: 6px; background: linear-gradient(90deg, var(--bg-2), var(--bg-3), var(--bg-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.disc-error { padding: 14px 16px; border-radius: 6px; background: var(--bg-2); border: 1px solid var(--line); color: var(--text-2); display: flex; align-items: center; gap: 12px; }

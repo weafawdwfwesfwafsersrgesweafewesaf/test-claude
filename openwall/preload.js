@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld('ow', {
   siteDownload: call('siteDownload'),
   siteCancel: call('siteCancel'),
   siteJob: call('siteJob'),
+  addScene: call('addScene'),
+  catalogSources: call('catalogSources'),
+  catalog: call('catalog'),
+  catalogDownload: call('catalogDownload'),
+  onCatalogDl: (cb) => ipcRenderer.on('ow:catalogDl', (_e, d) => cb(d)),
   onSiteScan: (cb) => ipcRenderer.on('ow:siteScan', (_e, p) => cb(p)),
   onSiteJob: (cb) => ipcRenderer.on('ow:siteJob', (_e, j) => cb(j)),
   pathForFile: (file) => {

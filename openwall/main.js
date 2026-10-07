@@ -125,19 +125,31 @@ function pushState() {
 }
 
 // ------------------------------------------------------------------ bibliothèque
+// Les scènes intégrées ne sont plus installées d'office : on met seulement à jour celles déjà présentes.
+// (On peut toujours en créer via Créer → Scène personnalisée.)
 function seedBuiltins() {
   const lib = L();
-  const removed = new Set(lib.removedBuiltins || []);
   for (const b of Schemas.builtinItems()) {
     const existing = lib.items.find((i) => i.id === b.id);
     if (existing) {
       existing.title = existing.customTitle ? existing.title : b.title;
       existing.description = b.description;
-    } else if (!removed.has(b.id)) {
-      lib.items.push(b);
     }
   }
   libraryStore.save();
+}
+
+function addScene(scene, title) {
+  const def = Schemas.SCENES[scene];
+  if (!def) return null;
+  const item = {
+    id: newId(), type: 'scene', scene, title: title || def.title, description: def.description,
+    tags: def.tags.slice(), favorite: false, properties: {}, createdAt: Date.now(), customTitle: true
+  };
+  L().items.push(item);
+  libraryStore.save();
+  pushState();
+  return item.id;
 }
 
 // `meta` (facultatif) : { [chemin]: { title, tags, sourceUrl } } pour les fichiers téléchargés.
@@ -252,6 +264,98 @@ function siteDownload(entries, { quality = 'hd', tag = '' } = {}) {
   return job.id;
 }
 
+// ------------------------------------------------------------------ catalogue « Découvrir »
+// 50 fonds par site, listés à la demande. Rien n'est téléchargé tant qu'on ne clique pas :
+// un clic télécharge la vidéo (HD) et la met directement en fond d'écran.
+// Plusieurs adresses par site : si la première ne donne rien, on essaie la suivante.
+const CATALOG_PER_SITE = 50;
+const CATALOG_TTL = 12 * 3600 * 1000;
+const CATALOG_SOURCES = [
+  { id: 'motionbgs', name: 'MotionBGs', urls: ['https://motionbgs.com/tag:anime/'] },
+  { id: 'moewalls', name: 'MoeWalls', urls: ['https://moewalls.com/category/anime/', 'https://moewalls.com/?s=anime', 'https://moewalls.com/'] },
+  { id: 'wallpaperwaifu', name: 'Wallpaper Waifu', urls: ['https://wallpaperwaifu.com/category/anime/', 'https://wallpaperwaifu.com/?s=anime', 'https://wallpaperwaifu.com/'] },
+  { id: 'desktophut', name: 'DesktopHut', urls: ['https://www.desktophut.com/category/anime', 'https://www.desktophut.com/search/anime', 'https://www.desktophut.com/?s=anime'] },
+  { id: 'mylivewallpapers', name: 'MyLiveWallpapers', urls: ['https://mylivewallpapers.com/category/anime/', 'https://mylivewallpapers.com/?s=anime', 'https://mylivewallpapers.com/'] }
+];
+// Pour les tests : liste de sites de remplacement (JSON) via une variable d'environnement.
+if (process.env.OPENWALL_CATALOG) CATALOG_SOURCES.splice(0, CATALOG_SOURCES.length, ...JSON.parse(process.env.OPENWALL_CATALOG));
+let catalogStore = null;
+const catalogLoading = new Map(); // id de site -> Promise
+const catalogDownloads = new Map(); // url -> { progress, status }
+
+function catalogSources() {
+  return CATALOG_SOURCES.map(({ id, name }) => ({ id, name }));
+}
+
+async function catalogGet(siteId, force) {
+  const src = CATALOG_SOURCES.find((s) => s.id === siteId);
+  if (!src) throw new Error('Site inconnu');
+  const cached = catalogStore.get()[siteId];
+  if (!force && cached && cached.entries && cached.entries.length && Date.now() - cached.fetchedAt < CATALOG_TTL) return cached;
+  if (catalogLoading.has(siteId)) return catalogLoading.get(siteId);
+  const p = (async () => {
+    let entries = [];
+    let lastErr = null;
+    for (const url of src.urls) {
+      try {
+        entries = await siteImport.scanListing(url, 6, null, CATALOG_PER_SITE);
+      } catch (e) {
+        lastErr = e;
+        entries = [];
+      }
+      if (entries.length >= 5) break;
+    }
+    if (lastErr) console.warn('[catalogue]', src.name, lastErr.message);
+    const res = { fetchedAt: Date.now(), entries, error: entries.length ? null : (lastErr ? 'site injoignable ou bloqué' : 'aucun fond trouvé sur la page') };
+    if (entries.length) catalogStore.merge({ [siteId]: res });
+    return res;
+  })();
+  catalogLoading.set(siteId, p);
+  try {
+    return await p;
+  } finally {
+    catalogLoading.delete(siteId);
+  }
+}
+
+async function catalogDownload(siteId, entry, target) {
+  const src = CATALOG_SOURCES.find((s) => s.id === siteId);
+  if (!src || !entry || !/^https?:/.test(entry.url)) throw new Error('Entrée invalide');
+  const existing = L().items.find((i) => i.sourceUrl === entry.url);
+  if (existing) { applyWallpaper(existing.id, target); return existing.id; }
+  if (catalogDownloads.has(entry.url)) return null;
+  const st = { url: entry.url, progress: 0, status: 'working' };
+  catalogDownloads.set(entry.url, st);
+  let last = 0;
+  const report = (force) => {
+    const now = Date.now();
+    if (force || now - last > 250) { last = now; sendSite('ow:catalogDl', { ...st }); }
+  };
+  report(true);
+  try {
+    const res = await siteImport.fetchEntry({ kind: entry.kind === 'video' ? 'video' : 'page', url: entry.url, title: String(entry.title || ''), thumb: entry.thumb || null }, {
+      quality: 'hd',
+      dir: DOWNLOADS,
+      isCancelled: () => st.cancelled,
+      onProgress: (p) => { st.progress = p; st.status = 'downloading'; report(); }
+    });
+    const [id] = await importPaths([res.file], { [res.file]: { title: res.title, tags: ['Anime', src.name], sourceUrl: entry.url } });
+    st.status = 'done';
+    st.progress = 1;
+    st.itemId = id;
+    report(true);
+    applyWallpaper(id, target);
+    return id;
+  } catch (e) {
+    st.status = 'error';
+    st.error = e.message;
+    report(true);
+    throw e;
+  } finally {
+    catalogDownloads.delete(entry.url);
+  }
+}
+
 function addWeb({ url, title }) {
   let u;
   try {
@@ -347,8 +451,9 @@ function removeItem(id) {
 function subscribe(id) {
   const lib = L();
   lib.removedBuiltins = (lib.removedBuiltins || []).filter((x) => x !== id);
+  const b = Schemas.builtinItems().find((x) => x.id === id);
+  if (b && !findItem(id)) lib.items.push(b);
   libraryStore.save();
-  seedBuiltins();
   pushState();
 }
 
@@ -779,7 +884,11 @@ function registerIPC() {
     opts || {}
   ));
   handle('siteCancel', () => { if (siteJob) siteJob.cancelled = true; });
-  handle('siteJob', () => siteJob && { id: siteJob.id, finished: siteJob.finished, cancelled: siteJob.cancelled, items: siteJob.items });
+  handle('addScene', (scene, title) => addScene(String(scene), title ? String(title) : ''));
+  handle('catalogSources', () => catalogSources());
+  handle('catalog', (siteId, force) => catalogGet(String(siteId), !!force));
+  handle('catalogDownload', (siteId, entry, target) => catalogDownload(String(siteId), entry, target));
+  handle('siteJob', () => siteJob &&{ id: siteJob.id, finished: siteJob.finished, cancelled: siteJob.cancelled, items: siteJob.items });
   handle('addWeb', (opts) => addWeb(opts || {}));
   handle('updateItem', (id, patch) => updateItem(id, patch || {}));
   handle('previewProps', (id, props) => {
@@ -918,6 +1027,7 @@ async function main() {
   fs.mkdirSync(THUMBS, { recursive: true });
   settingsStore = new JsonStore(path.join(DATA, 'settings.json'), DEFAULT_SETTINGS);
   libraryStore = new JsonStore(path.join(DATA, 'library.json'), { items: [], removedBuiltins: [] });
+  catalogStore = new JsonStore(path.join(DATA, 'catalog.json'), {});
   seedBuiltins();
 
   servers = await startServers({

@@ -151,14 +151,20 @@
         <div class="hero">
           <div>
             <h1>Découvrir</h1>
-            <p>Des scènes animées et interactives, 100&nbsp;% gratuites. Abonnez-vous pour les ajouter à vos fonds installés, puis personnalisez chaque détail.</p>
+            <p>Fonds d'écran animés anime, 50 par site. Cliquez sur <b>Télécharger</b> : la vidéo est récupérée en HD puis appliquée directement. Rien n'est téléchargé tant que vous ne cliquez pas.</p>
           </div>
           <div class="hero-actions">
-            <button id="discover-site" class="btn"><span class="ico" data-icon="download"></span>Télécharger depuis un site</button>
-            <button id="discover-import" class="btn primary"><span class="ico" data-icon="film"></span>Importer mes vidéos MP4</button>
+            <button id="discover-refresh" class="btn"><span class="ico" data-icon="reset"></span>Actualiser</button>
+            <button id="discover-site" class="btn"><span class="ico" data-icon="download"></span>Autre site…</button>
+            <button id="discover-import" class="btn primary"><span class="ico" data-icon="film"></span>Mes vidéos MP4</button>
           </div>
         </div>
-        <div id="discover-grid" class="cards"></div>
+        <div class="disc-toolbar">
+          <div id="disc-sites" class="chips"></div>
+          <div class="spacer"></div>
+          <div class="search disc-search"><span class="ico" data-icon="search"></span><input id="disc-search" type="search" placeholder="Rechercher un personnage, un anime…" autocomplete="off"></div>
+        </div>
+        <div id="discover-grid"></div>
       </div>
     </section>
 
