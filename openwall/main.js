@@ -270,6 +270,7 @@ function siteDownload(entries, { quality = 'hd', tag = '' } = {}) {
 // Plusieurs adresses par site : si la première ne donne rien, on essaie la suivante.
 const CATALOG_PER_SITE = 50;
 const CATALOG_TTL = 12 * 3600 * 1000;
+const CATALOG_VERSION = 2; // à augmenter quand l'analyse des sites change : invalide le cache
 const CATALOG_SOURCES = [
   { id: 'motionbgs', name: 'MotionBGs', urls: ['https://motionbgs.com/tag:anime/'] },
   { id: 'moewalls', name: 'MoeWalls', urls: ['https://moewalls.com/category/anime/', 'https://moewalls.com/?s=anime', 'https://moewalls.com/'] },
@@ -291,7 +292,7 @@ async function catalogGet(siteId, force) {
   const src = CATALOG_SOURCES.find((s) => s.id === siteId);
   if (!src) throw new Error('Site inconnu');
   const cached = catalogStore.get()[siteId];
-  if (!force && cached && cached.entries && cached.entries.length && Date.now() - cached.fetchedAt < CATALOG_TTL) return cached;
+  if (!force && cached && cached.v === CATALOG_VERSION && cached.entries && cached.entries.length && Date.now() - cached.fetchedAt < CATALOG_TTL) return cached;
   if (catalogLoading.has(siteId)) return catalogLoading.get(siteId);
   const p = (async () => {
     let entries = [];
@@ -306,7 +307,7 @@ async function catalogGet(siteId, force) {
       if (entries.length >= 5) break;
     }
     if (lastErr) console.warn('[catalogue]', src.name, lastErr.message);
-    const res = { fetchedAt: Date.now(), entries, error: entries.length ? null : (lastErr ? 'site injoignable ou bloqué' : 'aucun fond trouvé sur la page') };
+    const res = { v: CATALOG_VERSION, fetchedAt: Date.now(), entries, error: entries.length ? null : (lastErr ? 'site injoignable ou bloqué' : 'aucun fond trouvé sur la page') };
     if (entries.length) catalogStore.merge({ [siteId]: res });
     return res;
   })();
@@ -333,7 +334,7 @@ async function catalogDownload(siteId, entry, target) {
   };
   report(true);
   try {
-    const res = await siteImport.fetchEntry({ kind: entry.kind === 'video' ? 'video' : 'page', url: entry.url, title: String(entry.title || ''), thumb: entry.thumb || null }, {
+    const res = await siteImport.fetchEntry({ kind: entry.kind === 'video' ? 'video' : 'page', url: entry.url, title: String(entry.title || ''), thumb: entry.thumb || null, from: typeof entry.from === 'string' ? entry.from : null }, {
       quality: 'hd',
       dir: DOWNLOADS,
       isCancelled: () => st.cancelled,
@@ -880,7 +881,7 @@ function registerIPC() {
   handle('importPaths', (paths) => importPaths((paths || []).filter((p) => typeof p === 'string')));
   handle('siteScan', (url, pages) => siteScan(url, pages));
   handle('siteDownload', (entries, opts) => siteDownload(
-    (entries || []).filter((e) => e && /^https?:/.test(e.url)).map((e) => ({ kind: e.kind === 'video' ? 'video' : 'page', url: e.url, title: String(e.title || ''), thumb: e.thumb || null })),
+    (entries || []).filter((e) => e && /^https?:/.test(e.url)).map((e) => ({ kind: e.kind === 'video' ? 'video' : 'page', url: e.url, title: String(e.title || ''), thumb: e.thumb || null, from: typeof e.from === 'string' ? e.from : null })),
     opts || {}
   ));
   handle('siteCancel', () => { if (siteJob) siteJob.cancelled = true; });

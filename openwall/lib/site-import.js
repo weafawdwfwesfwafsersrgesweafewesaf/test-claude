@@ -45,7 +45,18 @@ function parseHTML(html, base) {
     const href = abs(attr(m[1], 'href') || '', base);
     if (!href) continue;
     const imgTag = /<img\b[^>]*>/i.exec(m[2]);
-    const img = imgTag ? abs(attr(imgTag[0], 'data-src') || attr(imgTag[0], 'src') || '', base) : null;
+    // Image de la carte : <img> (y compris chargement différé) ou image de fond CSS.
+    let img = null;
+    if (imgTag) {
+      const t = imgTag[0];
+      const srcset = (attr(t, 'data-srcset') || attr(t, 'srcset') || '').split(',')[0].trim().split(/\s+/)[0];
+      img = abs(attr(t, 'data-src') || attr(t, 'data-lazy-src') || attr(t, 'data-original') || srcset || attr(t, 'src') || '', base);
+      if (img && /^data:|\.svg(\?|$)|blank|placeholder|lazy\.(gif|png)/i.test(img)) img = abs(srcset || '', base);
+    }
+    if (!img) {
+      const bg = /(?:data-bg|data-background|data-bg-src)\s*=\s*["']([^"']+)["']|background(?:-image)?\s*:\s*url\(\s*['"]?([^'")]+)/i.exec(m[1] + m[2]);
+      if (bg) img = abs(bg[1] || bg[2] || '', base);
+    }
     anchors.push({
       href,
       text: clean(m[2]).slice(0, 160),
@@ -78,11 +89,13 @@ function parseHTML(html, base) {
 
 const COLLECT_JS = `(() => {
   const abs = (u) => { try { const x = new URL(u, location.href); return /^https?:$/.test(x.protocol) ? x.href.replace(/#.*$/, '') : null; } catch { return null; } };
+  const bgOf = (el) => { const m = /url\\(["']?([^"')]+)/.exec(getComputedStyle(el).backgroundImage || ''); return m ? abs(m[1]) : null; };
   const anchors = [...document.querySelectorAll('a[href]')].map((a) => {
     const img = a.querySelector('img');
+    let src = img ? abs(img.currentSrc || img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.src || '') : null;
+    if (!src) { src = bgOf(a); if (!src) { const c = a.querySelector('[style*="background"], div, span'); if (c) src = bgOf(c); } }
     return { href: abs(a.getAttribute('href')), text: (a.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 160),
-      title: a.title || '', img: img ? abs(img.currentSrc || img.src || img.getAttribute('data-src') || '') : null,
-      alt: img ? img.alt || '' : '', rel: (a.rel || '').toLowerCase(), download: a.hasAttribute('download') };
+      title: a.title || '', img: src, alt: img ? img.alt || '' : '', rel: (a.rel || '').toLowerCase(), download: a.hasAttribute('download') };
   }).filter((a) => a.href);
   const videos = [...document.querySelectorAll('video, video source')].map((v) => abs(v.currentSrc || v.src || v.getAttribute('src') || '')).filter(Boolean);
   document.querySelectorAll('meta[property^="og:video"]').forEach((m) => { const u = abs(m.content); if (u) videos.push(u); });
@@ -110,7 +123,8 @@ async function readWithBrowser(url) {
   }
 }
 
-async function readPage(url) {
+async function readPage(url, { browser = false } = {}) {
+  if (browser) return readWithBrowser(url);
   try {
     const res = await ses().fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
     const type = res.headers.get('content-type') || '';
@@ -152,35 +166,90 @@ function findNext(data, current, pageNum) {
   return n && n.href !== current ? n.href : null;
 }
 
-async function scanListing(url, maxPages, onProgress) {
+// « Forme » d'une adresse : /anime/xxx-live-wallpaper/ -> "2:anime" ; sert à repérer la série
+// de liens qui forment la grille de fonds d'écran sur une page de liste.
+function pathShape(u) {
+  const segs = new URL(u).pathname.split('/').filter(Boolean);
+  return segs.length + ':' + (segs.length > 1 ? segs[0] : '');
+}
+
+// Liens vers les pages de détail d'une page de liste.
+function listingLinks(data, base) {
+  const links = new Map(); // href -> infos fusionnées (un même fond a souvent 2 liens : image + titre)
+  for (const a of data.anchors) {
+    if (VIDEO_RE.test(a.href) || !sameSite(a.href, base)) continue;
+    const u = new URL(a.href);
+    if (u.pathname === '/' || a.href === base || NAV_RE.test(u.pathname + u.search) || /\.(jpe?g|png|gif|webp|css|js|xml|pdf|zip)(\?|$)/i.test(u.pathname)) continue;
+    const cur = links.get(a.href) || { href: a.href, img: null, title: '', count: 0 };
+    cur.count++;
+    cur.img = cur.img || a.img;
+    const t = a.alt || a.title || a.text;
+    if (t && t.length > cur.title.length && t.length < 120) cur.title = t;
+    links.set(a.href, cur);
+  }
+  const all = [...links.values()];
+  // 1) Cartes avec image : le cas le plus courant.
+  const withImg = all.filter((l) => l.img);
+  // 2) Sinon (images en CSS, chargées en JS…) : la plus grande famille de liens de même forme.
+  const groups = new Map();
+  for (const l of all) {
+    const k = pathShape(l.href);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(l);
+  }
+  const imgShapes = new Set(withImg.map((l) => pathShape(l.href)));
+  let best = [];
+  for (const [k, g] of groups) {
+    const score = g.length + (imgShapes.has(k) ? 1000 : 0);
+    const bestScore = best.length + (best.length && imgShapes.has(pathShape(best[0].href)) ? 1000 : 0);
+    if (g.length >= 6 && score > bestScore) best = g;
+  }
+  if (best.length) {
+    const shape = pathShape(best[0].href);
+    // garde l'ordre de la page ; ajoute les cartes avec image d'une autre forme seulement si peu nombreuses
+    return all.filter((l) => pathShape(l.href) === shape || (l.img && withImg.length < 6));
+  }
+  return withImg;
+}
+
+async function scanListing(url, maxPages, onProgress, limit = Infinity) {
   const entries = [];
   const seen = new Set();
   let pageUrl = url;
-  for (let p = 1; p <= maxPages && pageUrl; p++) {
+  for (let p = 1; p <= maxPages && pageUrl && entries.length < limit; p++) {
     onProgress && onProgress({ page: p, found: entries.length });
-    const data = await readPage(pageUrl);
-    const base = data.finalUrl || pageUrl;
-    // 1) Liens directs vers des vidéos
-    for (const v of [...data.anchors.map((x) => x.href), ...data.videos]) {
-      if (VIDEO_RE.test(v) && !seen.has(v)) {
-        seen.add(v);
-        entries.push({ kind: 'video', url: v, title: titleFromUrl(v), thumb: null });
-      }
+    let data = await readPage(pageUrl);
+    let base = data.finalUrl || pageUrl;
+    let links = listingLinks(data, base);
+    // Grille construite en JavaScript : on relit la page avec le navigateur caché.
+    if (links.length < 4) {
+      try {
+        const d2 = await readPage(pageUrl, { browser: true });
+        const l2 = listingLinks(d2, d2.finalUrl || pageUrl);
+        if (l2.length > links.length) { data = d2; base = d2.finalUrl || pageUrl; links = l2; }
+      } catch { /* on garde la lecture simple */ }
     }
-    // 2) Cartes (lien + image) vers une page de détail sur le même site
-    for (const a of data.anchors) {
-      if (!a.img || VIDEO_RE.test(a.href) || !sameSite(a.href, base) || seen.has(a.href)) continue;
-      const u = new URL(a.href);
-      if (u.pathname === '/' || a.href === base || NAV_RE.test(u.pathname + u.search)) continue;
-      seen.add(a.href);
-      entries.push({ kind: 'page', url: a.href, title: a.alt || a.title || a.text || titleFromUrl(a.href), thumb: a.img });
+    const before = entries.length;
+    for (const l of links) {
+      if (seen.has(l.href)) continue;
+      seen.add(l.href);
+      entries.push({ kind: 'page', url: l.href, title: l.title || titleFromUrl(l.href), thumb: l.img, from: base });
+    }
+    // Page qui liste directement des fichiers vidéo (sans pages de détail).
+    if (entries.length === before && !links.length) {
+      for (const v of [...data.anchors.map((x) => x.href), ...data.videos]) {
+        if (VIDEO_RE.test(v) && !seen.has(v)) {
+          seen.add(v);
+          entries.push({ kind: 'video', url: v, title: titleFromUrl(v), thumb: null, from: base });
+        }
+      }
     }
     const next = findNext(data, base, p);
     pageUrl = next && !seen.has('page:' + next) ? next : null;
     if (next) seen.add('page:' + next);
     if (pageUrl) await sleep(400);
   }
-  return entries;
+  return entries.slice(0, limit);
 }
 
 // ---- Choix du meilleur lien de téléchargement sur une page de détail ----
@@ -431,7 +500,7 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
   };
 
   if (entry.kind === 'video') {
-    const a = await attempt(entry.url, null);
+    const a = await attempt(entry.url, entry.from || null);
     if (a && a.ok) return result(a.ok, entry.url);
     throw new Error('le lien ne mène pas à une vidéo');
   }
