@@ -348,42 +348,47 @@ function rankCandidates(data, quality) {
 }
 
 // ---- Téléchargement (via la pile réseau du navigateur : cookies, redirections, en-têtes) ----
-function downloadTo(url, destNoExt, referer, onProgress, isCancelled) {
-  hookSession();
-  if (referer) refererFor.set(url, referer);
-  return new Promise((resolve, reject) => {
-    const s = ses();
-    let done = false;
-    const onWill = (_e, item) => {
-      const chain = item.getURLChain();
-      if (chain[0] !== url) return;
-      s.removeListener('will-download', onWill);
-      const mime = item.getMimeType() || '';
-      const extFromName = path.extname(item.getFilename() || '').toLowerCase();
-      const ext = /webm/.test(mime) ? '.webm' : /quicktime/.test(mime) ? '.mov' : /html/.test(mime) ? '.html'
-        : /zip/.test(mime) || extFromName === '.zip' ? '.zip'
-          : ['.mp4', '.webm', '.m4v', '.mov'].includes(extFromName) ? extFromName : '.mp4';
-      const dest = destNoExt + ext;
-      item.setSavePath(dest);
-      const timer = setInterval(() => { if (isCancelled()) item.cancel(); }, 500);
-      item.on('updated', () => {
-        const total = item.getTotalBytes();
-        onProgress(total ? item.getReceivedBytes() / total : 0, item.getReceivedBytes(), total);
-      });
-      item.once('done', (_ev, state) => {
-        clearInterval(timer);
-        done = true;
-        refererFor.delete(url);
-        if (state === 'completed') resolve({ file: dest, mime, finalUrl: chain[chain.length - 1] });
-        else { fs.promises.unlink(dest).catch(() => {}); reject(new Error(state === 'cancelled' ? 'annulé' : 'échec du téléchargement')); }
-      });
-    };
-    s.on('will-download', onWill);
-    s.downloadURL(url, referer ? { headers: { Referer: referer } } : undefined);
-    setTimeout(() => {
-      if (!done) { s.removeListener('will-download', onWill); }
-    }, 10 * 60 * 1000);
-  });
+// On envoie nous-mêmes la requête (via la pile réseau de la session : cookies, proxy, redirections)
+// pour contrôler les en-têtes : certains sites refusent le téléchargement sans le bon Referer,
+// et downloadURL ne le transmet pas de façon fiable.
+async function downloadTo(url, destNoExt, referer, onProgress, isCancelled) {
+  const ctrl = new AbortController();
+  const timer = setInterval(() => { if (isCancelled()) ctrl.abort(); }, 500);
+  let dest = null;
+  try {
+    const headers = { 'User-Agent': UA, Accept: '*/*' };
+    if (referer) headers.Referer = referer;
+    // « unsafe-url » : envoie l'adresse complète de la page (sinon Chromium annule la requête).
+    const res = await ses().fetch(url, { headers, referrerPolicy: 'unsafe-url', redirect: 'follow', signal: ctrl.signal });
+    if (!res.ok) throw new Error('erreur ' + res.status);
+    const mime = (res.headers.get('content-type') || '').toLowerCase();
+    const disp = res.headers.get('content-disposition') || '';
+    const nameM = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(disp);
+    const fromName = nameM ? decodeURIComponent(nameM[1]) : decodeURIComponent(new URL(res.url || url).pathname.split('/').pop() || '');
+    const extFromName = path.extname(fromName).toLowerCase();
+    const ext = /webm/.test(mime) ? '.webm' : /quicktime/.test(mime) ? '.mov' : /html/.test(mime) ? '.html'
+      : /zip/.test(mime) || extFromName === '.zip' ? '.zip'
+        : ['.mp4', '.webm', '.m4v', '.mov', '.mkv'].includes(extFromName) ? extFromName : '.mp4';
+    dest = destNoExt + ext;
+    const total = Number(res.headers.get('content-length')) || 0;
+    let received = 0;
+    const out = fs.createWriteStream(dest);
+    const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.length;
+      if (!out.write(Buffer.from(value))) await new Promise((r) => out.once('drain', r));
+      onProgress(total ? received / total : 0, received, total);
+    }
+    await new Promise((r, j) => out.end((e) => (e ? j(e) : r())));
+    return { file: dest, mime, finalUrl: res.url || url };
+  } catch (e) {
+    if (dest) fs.promises.unlink(dest).catch(() => {});
+    throw isCancelled() ? new Error('annulé') : e;
+  } finally {
+    clearInterval(timer);
+  }
 }
 
 const isVideoFile = (file) => {
@@ -460,18 +465,10 @@ const slug = (s) => String(s || 'video').normalize('NFD').replace(/[̀-ͯ]/g, ''
 // On ouvre la page, on clique sur « Download », et on récupère l'adresse de la vidéo
 // (téléchargement déclenché, nouvel onglet, lien .mp4 qui apparaît, ou vidéo lue par la page).
 const captures = new Map(); // id du webContents -> Set d'adresses vidéo vues sur le réseau
-// Referer à envoyer pour une adresse donnée : les options de downloadURL ne le transmettent pas
-// toujours, or certains sites (ex. Wallpaper Waifu) refusent le téléchargement sans lui.
-const refererFor = new Map();
 let hooked = false;
 function hookSession() {
   if (hooked) return;
   hooked = true;
-  ses().webRequest.onBeforeSendHeaders((details, cb) => {
-    const ref = refererFor.get(details.url);
-    if (ref) details.requestHeaders.Referer = ref;
-    cb({ requestHeaders: details.requestHeaders });
-  });
   ses().webRequest.onBeforeRequest((details, cb) => {
     const set = captures.get(details.webContentsId);
     if (set && (details.resourceType === 'media' || VIDEO_RE.test(details.url))) set.add(details.url);
