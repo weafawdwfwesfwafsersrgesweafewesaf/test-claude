@@ -64,7 +64,10 @@ function parseHTML(html, base) {
       img,
       alt: imgTag ? clean(attr(imgTag[0], 'alt') || '') : '',
       rel: (attr(m[1], 'rel') || '').toLowerCase(),
-      download: /\bdownload\b/i.test(m[1])
+      download: /\bdownload\b/i.test(m[1]),
+      id: attr(m[1], 'id') || '',
+      dataUrl: attr(m[1], 'data-url') || '',
+      dataDl: abs(attr(m[1], 'data-downloadurl') || attr(m[1], 'data-download-url') || '', base)
     });
   }
   const videos = [];
@@ -95,7 +98,8 @@ const COLLECT_JS = `(() => {
     let src = img ? abs(img.currentSrc || img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.src || '') : null;
     if (!src) { src = bgOf(a); if (!src) { const c = a.querySelector('[style*="background"], div, span'); if (c) src = bgOf(c); } }
     return { href: abs(a.getAttribute('href')), text: (a.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 160),
-      title: a.title || '', img: src, alt: img ? img.alt || '' : '', rel: (a.rel || '').toLowerCase(), download: a.hasAttribute('download') };
+      title: a.title || '', img: src, alt: img ? img.alt || '' : '', rel: (a.rel || '').toLowerCase(), download: a.hasAttribute('download'),
+      id: a.id || '', dataUrl: a.getAttribute('data-url') || '', dataDl: abs(a.getAttribute('data-downloadurl') || a.getAttribute('data-download-url') || '') };
   }).filter((a) => a.href);
   const videos = [...document.querySelectorAll('video, video source')].map((v) => abs(v.currentSrc || v.src || v.getAttribute('src') || '')).filter(Boolean);
   document.querySelectorAll('meta[property^="og:video"]').forEach((m) => { const u = abs(m.content); if (u) videos.push(u); });
@@ -149,6 +153,15 @@ const sameSite = (a, b) => {
   }
 };
 
+// Nettoie un titre : date en tête, « Live Wallpaper », « - Anime Wallpaper »…
+function cleanTitle(t) {
+  let s = String(t || '').replace(/\s+/g, ' ').trim();
+  s = s.replace(/^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2},? \d{4}\s*/i, '');
+  s = s.replace(/\s*[-–|:]\s*(anime|gaming|games?|4k|hd|pc|desktop)?\s*(live\s+)?(wallpapers?|backgrounds?)\s*$/i, '');
+  s = s.replace(/\s*(4k|hd)?\s*(live|animated|moving)\s*(wallpapers?|backgrounds?)\s*$/i, '');
+  return s.trim();
+}
+
 function titleFromUrl(u) {
   try {
     const p = decodeURIComponent(new URL(u).pathname).split('/').filter(Boolean).pop() || 'video';
@@ -177,19 +190,25 @@ function pathShape(u) {
 function listingLinks(data, base) {
   const links = new Map(); // href -> infos fusionnées (un même fond a souvent 2 liens : image + titre)
   for (const a of data.anchors) {
-    if (VIDEO_RE.test(a.href) || !sameSite(a.href, base)) continue;
+    if (VIDEO_RE.test(a.href) || !sameSite(a.href, base) || /'|%22|%27|%20\+%20|\$\{/.test(a.href)) continue;
     const u = new URL(a.href);
     if (u.pathname === '/' || a.href === base || NAV_RE.test(u.pathname + u.search) || /\.(jpe?g|png|gif|webp|css|js|xml|pdf|zip)(\?|$)/i.test(u.pathname)) continue;
     const cur = links.get(a.href) || { href: a.href, img: null, title: '', count: 0 };
     cur.count++;
     cur.img = cur.img || a.img;
-    const t = a.alt || a.title || a.text;
-    if (t && t.length > cur.title.length && t.length < 120) cur.title = t;
+    // Titre : texte alternatif de l'image ou attribut title en priorité, sinon le texte du lien.
+    const t = cleanTitle(a.alt || a.title || '');
+    if (t && (!cur.titleStrong || t.length > cur.title.length) && t.length < 120) { cur.title = t; cur.titleStrong = true; }
+    else if (!cur.titleStrong) {
+      const tx = cleanTitle(a.text);
+      if (tx && tx.length > cur.title.length && tx.length < 120) cur.title = tx;
+    }
     links.set(a.href, cur);
   }
   const all = [...links.values()];
   // 1) Cartes avec image : le cas le plus courant.
   const withImg = all.filter((l) => l.img);
+  if (withImg.length >= 6) return withImg;
   // 2) Sinon (images en CSS, chargées en JS…) : la plus grande famille de liens de même forme.
   const groups = new Map();
   for (const l of all) {
@@ -254,6 +273,7 @@ async function scanListing(url, maxPages, onProgress, limit = Infinity) {
 
 // ---- Choix du meilleur lien de téléchargement sur une page de détail ----
 function qualityOf(s) {
+  if (/\b(mobile|phone|iphone|android|vertical)\b/i.test(s)) return 'low';
   const wh = /(\d{3,4})\s*[x×]\s*(\d{3,4})/.exec(s);
   if (wh) {
     const h = Math.min(+wh[1], +wh[2]);
@@ -267,7 +287,7 @@ function qualityOf(s) {
   if (/\b(2k|1440p?|2560)\b/i.test(s)) return '2k';
   if (/\b(hd|fhd|full ?hd|1080p?|1920)\b/i.test(s)) return 'hd';
   if (/\b(720p?|1280)\b/i.test(s)) return '720';
-  if (/\b(preview|thumb|small|sd|480p?|540p?|360p?|960x540|640x360)\b/i.test(s)) return 'low';
+  if (/\b(preview|thumb|small|sd|480p?|540p?|360p?|960x540|640x360|mobile|phone|iphone|android|vertical)\b/i.test(s)) return 'low';
   return '?';
 }
 
@@ -277,24 +297,52 @@ const ORDER = {
   small: ['720', 'hd', '?', 'low', '2k', '4k']
 };
 
+// Règles propres à certains sites : leur bouton « Download » n'a pas de vrai lien, l'adresse est
+// calculée en JavaScript (et un clic ouvre aussi une publicité).
+function siteLinks(data, base) {
+  const out = [];
+  let host = '';
+  try { host = new URL(base).hostname.replace(/^www\./, ''); } catch { return out; }
+  // MoeWalls / Wallpaper Waifu : <a id="moe-download|wf-download" data-url="JETON"> -> go.<site>/download.php?video=JETON
+  if (/^(moewalls|wallpaperwaifu)\.com$/i.test(host)) {
+    for (const a of data.anchors) {
+      if (/^(moe|wf)-download$/i.test(a.id || '') && a.dataUrl && !/^https?:/i.test(a.dataUrl)) {
+        out.push({ url: `https://go.${host}/download.php?video=${a.dataUrl}`, label: 'download' });
+      }
+    }
+  }
+  return out;
+}
+
+// Rang : 1) règles de site, 2) fichiers vidéo, 3) liens de téléchargement (adresse en /download/…),
+// 4) liens dont seul le texte dit « download » ; à l'intérieur, selon la qualité voulue.
 function rankCandidates(data, quality) {
   const cands = [];
   const seen = new Set();
-  const add = (url, label, isFile, isPreview) => {
-    if (!url || seen.has(url)) return;
+  const add = (url, label, tier, isFile, isPreview) => {
+    if (!url || seen.has(url) || /%22|%27/.test(url)) return;
     seen.add(url);
-    cands.push({ url, q: isPreview ? 'low' : qualityOf(label + ' ' + url), isFile, isPreview });
+    cands.push({ url, q: isPreview ? 'low' : qualityOf(label + ' ' + url), tier, isFile, isPreview });
   };
+  const base = data.finalUrl || '';
+  for (const s of siteLinks(data, base)) add(s.url, s.label, 0, true, false);
   for (const a of data.anchors) {
     const label = `${a.text} ${a.title}`;
+    if (a.dataDl) add(a.dataDl, label + ' ' + a.dataDl, 1, true, false); // ex. WordPress Download Manager
     const isFile = VIDEO_RE.test(a.href);
-    const isDl = a.download || /\/(dl|download|downloads|get)\//i.test(a.href) || /\b(download|télécharger|telecharger)\b/i.test(label);
-    if (isFile || isDl) add(a.href, label, isFile, false);
+    const strongDl = a.download || /\/(dl|download|downloads|get)(\/|\?|$)/i.test(a.href) || /[?&](wpdmdl|download)=/i.test(a.href);
+    const weakDl = /\b(download|télécharger|telecharger)\b/i.test(label);
+    if (a.href === base) continue; // un bouton « # » renvoie à la page elle-même
+    if (isFile) add(a.href, label, 1, true, false);
+    else if (strongDl) add(a.href, label, 2, false, false);
+    else if (weakDl) add(a.href, label, 3, false, false);
   }
-  for (const v of data.videos) add(v, '', true, true);
+  for (const v of data.videos) add(v, '', 4, true, true);
   const order = ORDER[quality] || ORDER.hd;
-  cands.sort((a, b) => order.indexOf(a.q) - order.indexOf(b.q) || (b.isFile ? 1 : 0) - (a.isFile ? 1 : 0));
-  return cands;
+  cands.sort((a, b) => a.tier - b.tier || order.indexOf(a.q) - order.indexOf(b.q));
+  // On ne garde que 2 liens « faibles » : ce sont souvent des liens vers d'autres pages.
+  let weak = 0;
+  return cands.filter((c) => c.tier !== 3 || weak++ < 2);
 }
 
 // ---- Téléchargement (via la pile réseau du navigateur : cookies, redirections, en-têtes) ----
@@ -309,7 +357,8 @@ function downloadTo(url, destNoExt, referer, onProgress, isCancelled) {
       const mime = item.getMimeType() || '';
       const extFromName = path.extname(item.getFilename() || '').toLowerCase();
       const ext = /webm/.test(mime) ? '.webm' : /quicktime/.test(mime) ? '.mov' : /html/.test(mime) ? '.html'
-        : ['.mp4', '.webm', '.m4v', '.mov'].includes(extFromName) ? extFromName : '.mp4';
+        : /zip/.test(mime) || extFromName === '.zip' ? '.zip'
+          : ['.mp4', '.webm', '.m4v', '.mov'].includes(extFromName) ? extFromName : '.mp4';
       const dest = destNoExt + ext;
       item.setSavePath(dest);
       const timer = setInterval(() => { if (isCancelled()) item.cancel(); }, 500);
@@ -343,6 +392,61 @@ const isVideoFile = (file) => {
     return false;
   }
 };
+
+const isZipFile = (file) => {
+  try {
+    const fd = fs.openSync(file, 'r');
+    const b = Buffer.alloc(4);
+    fs.readSync(fd, b, 0, 4, 0);
+    fs.closeSync(fd);
+    return b.readUInt32LE(0) === 0x04034b50;
+  } catch {
+    return false;
+  }
+};
+
+// Extrait la plus grosse vidéo d'une archive ZIP (certains sites livrent le fond zippé).
+// Lecture du répertoire central puis décompression en flux (pas de gros fichier en mémoire).
+async function extractVideoFromZip(zipFile, destNoExt) {
+  const fd = fs.openSync(zipFile, 'r');
+  try {
+    const size = fs.fstatSync(fd).size;
+    const tailLen = Math.min(size, 65557);
+    const tail = Buffer.alloc(tailLen);
+    fs.readSync(fd, tail, 0, tailLen, size - tailLen);
+    const eocd = tail.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+    if (eocd < 0) return null;
+    const cdSize = tail.readUInt32LE(eocd + 12), cdOffset = tail.readUInt32LE(eocd + 16);
+    const cd = Buffer.alloc(cdSize);
+    fs.readSync(fd, cd, 0, cdSize, cdOffset);
+    let best = null;
+    for (let p = 0; p + 46 <= cd.length && cd.readUInt32LE(p) === 0x02014b50;) {
+      const method = cd.readUInt16LE(p + 10);
+      const csize = cd.readUInt32LE(p + 20), usize = cd.readUInt32LE(p + 24);
+      const nameLen = cd.readUInt16LE(p + 28), extraLen = cd.readUInt16LE(p + 30), commentLen = cd.readUInt16LE(p + 32);
+      const local = cd.readUInt32LE(p + 42);
+      const name = cd.toString('utf8', p + 46, p + 46 + nameLen);
+      if (VIDEO_RE.test(name) && !/__MACOSX/.test(name) && (method === 0 || method === 8) && (!best || usize > best.usize)) {
+        best = { name, method, csize, usize, local };
+      }
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    if (!best) return null;
+    const lh = Buffer.alloc(30);
+    fs.readSync(fd, lh, 0, 30, best.local);
+    const start = best.local + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28);
+    const out = destNoExt + path.extname(best.name).toLowerCase();
+    const src = fs.createReadStream(zipFile, { start, end: start + best.csize - 1 });
+    const zlib = require('zlib');
+    const { pipeline } = require('stream/promises');
+    await pipeline(src, ...(best.method === 8 ? [zlib.createInflateRaw()] : []), fs.createWriteStream(out));
+    return isVideoFile(out) ? out : (fs.promises.unlink(out).catch(() => {}), null);
+  } catch {
+    return null;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 
 const slug = (s) => String(s || 'video').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).toLowerCase() || 'video';
 
@@ -396,7 +500,8 @@ async function resolveWithBrowser(url, { base, onProgress, isCancelled, waitMs =
     if (!src || src.id !== id) return;
     const u = item.getURL();
     if (pending || !base) { strong.add(u); item.cancel(); return; }
-    const ext = /webm/.test(item.getMimeType() || '') ? '.webm' : '.mp4';
+    const mime = item.getMimeType() || '';
+    const ext = /webm/.test(mime) ? '.webm' : /zip/.test(mime) || /\.zip$/i.test(item.getFilename() || '') ? '.zip' : '.mp4';
     const file = base + ext;
     item.setSavePath(file);
     pending = new Promise((resolve) => {
@@ -407,8 +512,16 @@ async function resolveWithBrowser(url, { base, onProgress, isCancelled, waitMs =
       });
       item.once('done', (_ev, state) => {
         clearInterval(timer);
-        if (state === 'completed' && isVideoFile(file)) resolve({ file, url: u });
-        else { fs.promises.unlink(file).catch(() => {}); strong.add(u); resolve(null); }
+        if (state === 'completed' && isVideoFile(file)) return resolve({ file, url: u });
+        if (state === 'completed' && isZipFile(file)) {
+          return extractVideoFromZip(file, base).then((vid) => {
+            fs.promises.unlink(file).catch(() => {});
+            resolve(vid ? { file: vid, url: u } : null);
+          });
+        }
+        fs.promises.unlink(file).catch(() => {});
+        strong.add(u);
+        resolve(null);
       });
     });
   };
@@ -454,7 +567,7 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
   let data = null;
   if (entry.kind !== 'video') {
     data = await readPage(entry.url);
-    title = (data.h1 || title).replace(/\s*[-–|:]?\s*(4k|hd)?\s*(live|animated|moving)?\s*(wallpapers?|backgrounds?)\s*$/i, '').trim() || title;
+    title = cleanTitle(data.h1 || title) || title;
     thumb = data.ogImage || thumb;
   }
   fs.mkdirSync(dir, { recursive: true });
@@ -476,6 +589,11 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
     try {
       const res = await downloadTo(url, base, referer, onProgress, isCancelled);
       if (isVideoFile(res.file)) return { ok: res };
+      if (isZipFile(res.file)) {
+        const vid = await extractVideoFromZip(res.file, base);
+        fs.promises.unlink(res.file).catch(() => {});
+        return vid ? { ok: { file: vid } } : null;
+      }
       let html = '';
       try { html = fs.readFileSync(res.file, 'utf8'); } catch { /* ignore */ }
       fs.promises.unlink(res.file).catch(() => {});
@@ -531,4 +649,4 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
   throw new Error('aucun lien vidéo trouvé (le site a peut-être changé)');
 }
 
-module.exports = { scanListing, fetchEntry, parseHTML, rankCandidates, qualityOf, PARTITION };
+module.exports = { scanListing, fetchEntry, parseHTML, rankCandidates, qualityOf, PARTITION, _listingLinks: listingLinks };

@@ -270,12 +270,12 @@ function siteDownload(entries, { quality = 'hd', tag = '' } = {}) {
 // Plusieurs adresses par site : si la première ne donne rien, on essaie la suivante.
 const CATALOG_PER_SITE = 50;
 const CATALOG_TTL = 12 * 3600 * 1000;
-const CATALOG_VERSION = 2; // à augmenter quand l'analyse des sites change : invalide le cache
+const CATALOG_VERSION = 3; // à augmenter quand l'analyse des sites change : invalide le cache
 const CATALOG_SOURCES = [
   { id: 'motionbgs', name: 'MotionBGs', urls: ['https://motionbgs.com/tag:anime/'] },
   { id: 'moewalls', name: 'MoeWalls', urls: ['https://moewalls.com/category/anime/', 'https://moewalls.com/?s=anime', 'https://moewalls.com/'] },
   { id: 'wallpaperwaifu', name: 'Wallpaper Waifu', urls: ['https://wallpaperwaifu.com/category/anime/', 'https://wallpaperwaifu.com/?s=anime', 'https://wallpaperwaifu.com/'] },
-  { id: 'desktophut', name: 'DesktopHut', urls: ['https://www.desktophut.com/category/anime', 'https://www.desktophut.com/search/anime', 'https://www.desktophut.com/?s=anime'] },
+  { id: 'desktophut', name: 'DesktopHut', urls: ['https://www.desktophut.com/tag/anime', 'https://www.desktophut.com/search/anime'] },
   { id: 'mylivewallpapers', name: 'MyLiveWallpapers', urls: ['https://mylivewallpapers.com/category/anime/', 'https://mylivewallpapers.com/?s=anime', 'https://mylivewallpapers.com/'] }
 ];
 // Pour les tests : liste de sites de remplacement (JSON) via une variable d'environnement.
