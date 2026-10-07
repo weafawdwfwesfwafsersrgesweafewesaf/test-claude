@@ -12,6 +12,7 @@ const { startServers } = require('./lib/server');
 const { JsonStore, deepMerge } = require('./lib/store');
 const Schemas = require('./shared/schemas');
 const win32 = process.platform === 'win32' ? require('./lib/desktop-win') : null;
+const siteImport = require('./lib/site-import');
 
 // Le calcul d'occultation de Chromium figerait le rendu une fois la fenêtre placée derrière les icônes.
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
@@ -27,8 +28,8 @@ const DEFAULT_SETTINGS = {
   ui: { theme: 'dark', accent: '#3a8ee6', sounds: true, soundVolume: 60, gridSize: 'medium', previewOnHover: true },
   general: { startWithOS: false, startMinimized: false, closeToTray: true, copyImports: false, showTray: true },
   performance: {
-    fps: 60, quality: 'high',
-    otherFocused: 'run', otherMaximized: 'run', otherFullscreen: 'pause',
+    fps: 30, quality: 'high',
+    otherFocused: 'run', otherMaximized: 'pause', otherFullscreen: 'pause',
     onBattery: 'run', onLock: 'pause'
   },
   audio: { masterVolume: 100, muteAll: false, capture: true },
@@ -42,7 +43,7 @@ const DEFAULT_SETTINGS = {
 
 const RANK = { run: 0, mute: 1, pause: 2, stop: 3 };
 
-let DATA, THUMBS, IMPORTS;
+let DATA, THUMBS, IMPORTS, DOWNLOADS;
 let settingsStore, libraryStore;
 let servers;
 let uiWin = null;
@@ -50,7 +51,7 @@ let tray = null;
 let quitting = false;
 const wallpapers = new Map(); // clé (id d'écran ou "span") -> { win, ready, itemId, pending, bounds, closing }
 let playback = 'run';
-const rules = { foreground: 'run', locked: false, onBattery: false, manualPause: false };
+const rules = { foreground: 'run', locked: false, onBattery: false, manualPause: false, suspended: false };
 let stopForegroundWatch = null;
 let playlistTimer = null;
 
@@ -139,10 +140,12 @@ function seedBuiltins() {
   libraryStore.save();
 }
 
-async function importPaths(paths) {
+// `meta` (facultatif) : { [chemin]: { title, tags, sourceUrl } } pour les fichiers téléchargés.
+async function importPaths(paths, meta = {}) {
   const added = [];
   const copy = S().general.copyImports;
   for (const p of paths) {
+    const m = meta[p] || {};
     const type = typeOfFile(p);
     if (!type || !fs.existsSync(p)) continue;
     // Déjà dans la bibliothèque ? On renvoie l'existant au lieu de créer un doublon.
@@ -150,7 +153,7 @@ async function importPaths(paths) {
     if (dup) { added.push(dup.id); continue; }
     const id = newId();
     let file = p;
-    if (copy && type !== 'web') {
+    if (copy && type !== 'web' && !isOwnedFile(p)) {
       fs.mkdirSync(IMPORTS, { recursive: true });
       file = path.join(IMPORTS, id + path.extname(p).toLowerCase());
       await fs.promises.copyFile(p, file);
@@ -159,11 +162,12 @@ async function importPaths(paths) {
     const item = {
       id,
       type,
-      title: path.basename(p, path.extname(p)),
+      title: m.title || path.basename(p, path.extname(p)),
       file,
       sourceFile: p,
+      ...(m.sourceUrl ? { sourceUrl: m.sourceUrl } : {}),
       size: st.size,
-      tags: [],
+      tags: m.tags || [],
       favorite: false,
       properties: {},
       createdAt: Date.now()
@@ -175,6 +179,77 @@ async function importPaths(paths) {
   libraryStore.save();
   pushState();
   return added;
+}
+
+// Fichiers copiés ou téléchargés par OpenWall (supprimés avec le fond d'écran).
+function isOwnedFile(f) {
+  const d = path.dirname(f);
+  return (IMPORTS && d === IMPORTS) || (DOWNLOADS && d === DOWNLOADS);
+}
+
+// ------------------------------------------------------------------ import depuis un site
+let siteJob = null;
+
+function sendSite(channel, data) {
+  if (uiWin && !uiWin.isDestroyed()) uiWin.webContents.send(channel, data);
+}
+
+async function siteScan(url, pages) {
+  let u;
+  try { u = new URL(String(url).trim()); } catch { throw new Error('Adresse invalide'); }
+  if (!/^https?:$/.test(u.protocol)) throw new Error('Seules les adresses http(s) sont acceptées');
+  const entries = await siteImport.scanListing(u.href, Math.max(1, Math.min(20, pages || 1)), (p) => sendSite('ow:siteScan', p));
+  const have = new Set(L().items.map((i) => i.sourceUrl).filter(Boolean));
+  return entries.map((e) => ({ ...e, already: have.has(e.url) }));
+}
+
+function siteDownload(entries, { quality = 'hd', tag = '' } = {}) {
+  if (siteJob && !siteJob.finished) throw new Error('Un téléchargement est déjà en cours');
+  const job = {
+    id: newId(),
+    cancelled: false,
+    finished: false,
+    items: entries.map((e) => ({ title: e.title, status: 'waiting', progress: 0, error: null }))
+  };
+  siteJob = job;
+  const report = () => sendSite('ow:siteJob', { id: job.id, finished: job.finished, cancelled: job.cancelled, items: job.items });
+  let last = 0;
+  const throttled = () => { const now = Date.now(); if (now - last > 300) { last = now; report(); } };
+  const queue = entries.map((e, i) => i);
+  const worker = async () => {
+    while (queue.length && !job.cancelled) {
+      const i = queue.shift();
+      const st = job.items[i];
+      st.status = 'working';
+      report();
+      try {
+        const res = await siteImport.fetchEntry(entries[i], {
+          quality,
+          dir: DOWNLOADS,
+          isCancelled: () => job.cancelled,
+          onProgress: (p) => { st.progress = p; st.status = 'downloading'; throttled(); }
+        });
+        const tags = tag ? [tag] : [];
+        const [id] = await importPaths([res.file], { [res.file]: { title: res.title, tags, sourceUrl: res.sourceUrl } });
+        st.status = 'done';
+        st.progress = 1;
+        st.id = id;
+        st.quality = res.quality;
+      } catch (e) {
+        st.status = job.cancelled ? 'cancelled' : 'error';
+        st.error = e.message;
+      }
+      report();
+      await new Promise((r) => setTimeout(r, 300)); // reste poli avec le site
+    }
+  };
+  Promise.all([worker(), worker()]).then(() => {
+    job.finished = true;
+    for (const it of job.items) if (it.status === 'waiting') it.status = 'cancelled';
+    report();
+  });
+  report();
+  return job.id;
 }
 
 function addWeb({ url, title }) {
@@ -256,7 +331,7 @@ function removeItem(id) {
   if (item.builtin) {
     lib.removedBuiltins = Array.from(new Set([...(lib.removedBuiltins || []), id]));
   } else {
-    if (item.file && IMPORTS && path.dirname(item.file) === IMPORTS) fs.promises.unlink(item.file).catch(() => {});
+    if (item.file && isOwnedFile(item.file)) fs.promises.unlink(item.file).catch(() => {});
     fs.promises.unlink(thumbPath(id)).catch(() => {});
   }
   libraryStore.save();
@@ -325,6 +400,13 @@ function wpSettings() {
     transition: s.playlist.transition,
     transitionDuration: s.playlist.transitionDuration
   };
+}
+
+// Le fond réagit-il à la souris ? (sinon inutile d'envoyer sa position)
+function needsMouse(item) {
+  if (!item) return false;
+  if (item.type === 'scene') return true;
+  return item.type === 'image' && Schemas.resolveProps(item).parallax;
 }
 
 function loadPayload(item) {
@@ -422,6 +504,7 @@ function syncWallpapers(force = false) {
       w = null;
     }
     if (!w) w = createWallpaperWindow(t);
+    w.needsMouse = needsMouse(item);
     if (force || w.itemId !== item.id) {
       w.itemId = item.id;
       const payload = loadPayload(item);
@@ -434,7 +517,11 @@ function syncWallpapers(force = false) {
 
 function sendProps(item) {
   const props = Schemas.resolveProps(item);
-  for (const w of wallpapers.values()) if (w.itemId === item.id) send(w, 'wp:props', { id: item.id, props });
+  for (const w of wallpapers.values()) {
+    if (w.itemId !== item.id) continue;
+    w.needsMouse = needsMouse(item);
+    send(w, 'wp:props', { id: item.id, props });
+  }
 }
 
 function broadcast(channel, data) {
@@ -465,7 +552,7 @@ function computePlayback() {
   take(rules.foreground);
   if (rules.locked) take(p.onLock);
   if (rules.onBattery) take(p.onBattery);
-  if (rules.manualPause) take('pause');
+  if (rules.manualPause || rules.suspended) take('pause');
   return a;
 }
 
@@ -686,6 +773,13 @@ function registerIPC() {
     return importPaths(res.filePaths);
   });
   handle('importPaths', (paths) => importPaths((paths || []).filter((p) => typeof p === 'string')));
+  handle('siteScan', (url, pages) => siteScan(url, pages));
+  handle('siteDownload', (entries, opts) => siteDownload(
+    (entries || []).filter((e) => e && /^https?:/.test(e.url)).map((e) => ({ kind: e.kind === 'video' ? 'video' : 'page', url: e.url, title: String(e.title || ''), thumb: e.thumb || null })),
+    opts || {}
+  ));
+  handle('siteCancel', () => { if (siteJob) siteJob.cancelled = true; });
+  handle('siteJob', () => siteJob && { id: siteJob.id, finished: siteJob.finished, cancelled: siteJob.cancelled, items: siteJob.items });
   handle('addWeb', (opts) => addWeb(opts || {}));
   handle('updateItem', (id, patch) => updateItem(id, patch || {}));
   handle('previewProps', (id, props) => {
@@ -790,12 +884,15 @@ function watchDisplays() {
 function watchMouse() {
   let lx = -1, ly = -1;
   setInterval(() => {
-    if (!wallpapers.size || playback === 'pause' || playback === 'stop') return;
+    if (playback === 'pause' || playback === 'stop') return;
+    let wanted = false;
+    for (const w of wallpapers.values()) if (w.needsMouse) { wanted = true; break; }
+    if (!wanted) return;
     const p = screen.getCursorScreenPoint();
     if (p.x === lx && p.y === ly) return;
     lx = p.x; ly = p.y;
     for (const w of wallpapers.values()) {
-      if (!w.ready) continue;
+      if (!w.ready || !w.needsMouse) continue;
       const b = w.bounds;
       send(w, 'wp:mouse', { x: (p.x - b.x) / b.width, y: (p.y - b.y) / b.height });
     }
@@ -808,6 +905,8 @@ function watchPower() {
   powerMonitor.on('on-ac', () => { rules.onBattery = false; updatePlayback(); });
   powerMonitor.on('lock-screen', () => { rules.locked = true; updatePlayback(); });
   powerMonitor.on('unlock-screen', () => { rules.locked = false; updatePlayback(); });
+  powerMonitor.on('suspend', () => { rules.suspended = true; updatePlayback(); });
+  powerMonitor.on('resume', () => { rules.suspended = false; updatePlayback(); });
   if (win32) stopForegroundWatch = win32.watchForeground(onForeground);
 }
 
@@ -815,6 +914,7 @@ async function main() {
   DATA = app.getPath('userData');
   THUMBS = path.join(DATA, 'thumbnails');
   IMPORTS = path.join(DATA, 'imports');
+  DOWNLOADS = path.join(DATA, 'downloads');
   fs.mkdirSync(THUMBS, { recursive: true });
   settingsStore = new JsonStore(path.join(DATA, 'settings.json'), DEFAULT_SETTINGS);
   libraryStore = new JsonStore(path.join(DATA, 'library.json'), { items: [], removedBuiltins: [] });

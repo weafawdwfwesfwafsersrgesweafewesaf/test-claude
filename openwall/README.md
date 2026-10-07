@@ -21,6 +21,7 @@ OpenWall est une alternative gratuite à Wallpaper Engine : mettez **vos vidéos
 | Règles de performance | ✅ Continuer, couper le son, pause ou arrêt quand une autre application est au premier plan, maximisée ou en plein écran (jeux, films), sur batterie, ou quand la session est verrouillée |
 | Qualité / FPS | ✅ Limite d'images par seconde (10 à 240), qualité de rendu, préréglages Économie / Équilibré / Qualité / Ultra |
 | Bibliothèque | ✅ Recherche, tri, filtres (type, résolution, favoris, étiquettes), favoris, étiquettes, renommage, aperçu vidéo au survol |
+| Téléchargement depuis un site | ✅ **Créer → Depuis un site** : collez l'adresse d'une page (ex. une page « tag » d'un site de fonds animés), OpenWall trouve toutes les vidéos, vous cochez celles que vous voulez, il les télécharge en HD (ou 4K / 720p) sur votre PC et les ajoute à la bibliothèque avec une étiquette |
 | Découvrir / Atelier | ✅ Onglet *Découvrir* (abonnement aux scènes) et onglet *Créer* (import et préréglages de scènes). Pas de Steam Workshop. |
 | Icône de notification | ✅ Pause, couper le son, fond suivant, paramètres, quitter |
 | Démarrage avec Windows | ✅ Option, avec démarrage réduit |
@@ -59,6 +60,13 @@ Linux (X11) et macOS fonctionnent aussi (`npm run dist:linux` / `npm run dist:ma
 Cliquez ensuite sur la vignette : la vidéo est appliquée tout de suite. Dans le panneau de droite, vous pouvez régler le volume (coupé par défaut), la vitesse, l'ajustement (remplir, ajuster, étirer, centrer), les couleurs, ajouter une horloge, etc. **OK** garde vos changements et ferme la fenêtre ; **Annuler** revient à l'état d'avant.
 
 Par défaut, OpenWall utilise vos fichiers là où ils sont. Activez **Paramètres → Général → Copier les fichiers importés** si vous voulez pouvoir déplacer ou supprimer les originaux.
+
+## Optimisations
+- La boucle d'animation ne tourne que si le fond en a besoin : une vidéo seule est lue par le décodeur matériel, sans calcul supplémentaire.
+- La position de la souris n'est suivie que pour les fonds interactifs.
+- Par défaut : scènes limitées à 30 images/s, pause quand une application est maximisée ou en plein écran (le fond est caché de toute façon), pause pendant la mise en veille et quand la session est verrouillée.
+- La capture du son système ne s'active que pour les fonds qui réagissent au son.
+- La fenêtre de l'interface est entièrement libérée de la mémoire quand on la ferme.
 
 ## Raccourcis
 `Ctrl+O` importer · `Ctrl+F` rechercher · `F2` renommer · `Suppr` supprimer · `Espace` pause · `Entrée` appliquer · double-clic sur un curseur : valeur par défaut · clic droit sur une vignette : menu complet.

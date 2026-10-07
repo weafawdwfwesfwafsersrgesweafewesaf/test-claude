@@ -1,7 +1,7 @@
 {
   "name": "openwall",
   "productName": "OpenWall",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fonds d'écran animés gratuits et open source : vidéos MP4, images, pages web et scènes interactives.",
   "main": "main.js",
   "license": "MIT",

@@ -24,6 +24,9 @@ jobs:
           cache: npm
           cache-dependency-path: openwall/package-lock.json
       - run: npm ci
+      - id: ver
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - run: npx electron-builder --win nsis portable --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -36,8 +39,8 @@ jobs:
       # https://github.com/<owner>/<repo>/releases/latest/download/OpenWall-Setup.exe
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: openwall-v1.0.0
-          name: OpenWall 1.0.0
+          tag_name: openwall-v${{ steps.ver.outputs.version }}
+          name: OpenWall ${{ steps.ver.outputs.version }}
           make_latest: true
           body: |
             Fonds d'écran animés gratuits pour Windows.

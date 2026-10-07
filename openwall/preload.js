@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld('ow', {
   openData: call('openData'),
   openExternal: call('openExternal'),
   win: call('win'),
+  siteScan: call('siteScan'),
+  siteDownload: call('siteDownload'),
+  siteCancel: call('siteCancel'),
+  siteJob: call('siteJob'),
+  onSiteScan: (cb) => ipcRenderer.on('ow:siteScan', (_e, p) => cb(p)),
+  onSiteJob: (cb) => ipcRenderer.on('ow:siteJob', (_e, j) => cb(j)),
   pathForFile: (file) => {
     try {
       return webUtils.getPathForFile(file);

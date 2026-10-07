@@ -431,3 +431,33 @@ input[type="range"]:hover::-webkit-slider-thumb, input[type="range"]:active::-we
   #filters { width: 200px; }
   #details { width: 320px; }
 }
+
+/* Import depuis un site */
+.hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.site-form .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.site-form select { width: 100%; }
+.site-status { color: var(--text-2); margin: 8px 0 0; min-height: 20px; }
+.site-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--text-2); }
+.site-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 52vh; overflow: auto; padding: 2px; }
+.site-card { position: relative; border-radius: var(--radius); overflow: hidden; background: var(--tile-bg); cursor: pointer; outline: 2px solid transparent; }
+.site-card.on { outline-color: var(--accent); }
+.site-card .sc-img { aspect-ratio: 16 / 9; background: #000 center / cover no-repeat; display: grid; place-items: center; color: var(--text-3); }
+.site-card .sc-t { font-size: 11.5px; padding: 5px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.site-card .sc-check {
+  position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 4px; border: 2px solid #fff; background: rgba(0, 0, 0, .45);
+  display: grid; place-items: center; color: #fff;
+}
+.site-card.on .sc-check { background: var(--accent); border-color: var(--accent); }
+.site-card .sc-check .svg-ico { width: 13px; height: 13px; opacity: 0; }
+.site-card.on .sc-check .svg-ico { opacity: 1; }
+.site-card .sc-badge { position: absolute; left: 6px; top: 6px; }
+.dl-list { max-height: 52vh; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.dl-item { display: grid; grid-template-columns: 1fr 120px 90px; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.dl-item:last-child { border-bottom: 0; }
+.dl-item .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-item .bar { height: 5px; border-radius: 5px; background: var(--line-2); overflow: hidden; }
+.dl-item .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.dl-item .s { text-align: right; color: var(--text-3); }
+.dl-item.done .s { color: #3ecf8e; }
+.dl-item.error .s { color: var(--danger); }
+.dl-summary { margin-top: 10px; color: var(--text-2); }

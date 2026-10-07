@@ -847,6 +847,165 @@
     afterImport(ids);
   });
 
+  // ================================================================ Import depuis un site
+  const DEFAULT_SITE = 'https://motionbgs.com/tag:anime/';
+  const STATUS_LABEL = { waiting: 'En attente', working: 'Recherche…', downloading: '', done: 'Ajouté ✓', error: 'Échec', cancelled: 'Annulé' };
+  let siteModal = null; // { render(job) } quand la vue de progression est ouverte
+  const toastedJobs = new Set();
+
+  function tagFromUrl(u) {
+    try {
+      const m = /tag[:/=]([^/?#&]+)/i.exec(decodeURIComponent(new URL(u).pathname + new URL(u).search));
+      if (m) return m[1].replace(/[-_+]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+    } catch { /* ignore */ }
+    return '';
+  }
+
+  function siteProgressView(body, job) {
+    const done = job.items.filter((i) => i.status === 'done').length;
+    const errs = job.items.filter((i) => i.status === 'error').length;
+    body.innerHTML = `
+      <div class="site-bar">${job.finished ? icon('check') : icon('download')}
+        <span>${job.finished ? 'Terminé' : 'Téléchargement en cours…'} — ${done} / ${job.items.length} ajoutée${done > 1 ? 's' : ''}${errs ? `, ${errs} en échec` : ''}</span></div>
+      <div class="dl-list">${job.items.map((it) => `
+        <div class="dl-item ${it.status}">
+          <span class="t" title="${esc(it.error || it.title)}">${esc(it.title)}</span>
+          <span class="bar"><i style="width:${Math.round((it.status === 'done' ? 1 : it.progress || 0) * 100)}%"></i></span>
+          <span class="s">${it.status === 'downloading' ? Math.round((it.progress || 0) * 100) + ' %' : esc(STATUS_LABEL[it.status] || '')}</span>
+        </div>`).join('')}</div>
+      <div class="dl-summary">${job.finished ? 'Les vidéos ajoutées sont dans l’onglet Installés.' : 'Vous pouvez fermer cette fenêtre : le téléchargement continue en arrière-plan.'}</div>`;
+  }
+
+  function openSiteProgress(job) {
+    const m = modal({
+      title: 'Téléchargement des fonds d’écran', width: 720,
+      buttons: [
+        { label: 'Arrêter', danger: true, onClick: () => { snd('remove'); ow.siteCancel(); return false; } },
+        { label: 'Fermer', primary: true }
+      ],
+      onClose: () => { siteModal = null; }
+    });
+    const stopBtn = m.el.querySelector('.modal-foot .btn.danger');
+    const render = (j) => { siteProgressView(m.body, j); if (stopBtn) stopBtn.classList.toggle('hidden', !!j.finished); };
+    siteModal = { render };
+    render(job);
+  }
+
+  ow.onSiteJob && ow.onSiteJob((job) => {
+    if (siteModal) siteModal.render(job);
+    if (job.finished && !toastedJobs.has(job.id)) {
+      toastedJobs.add(job.id);
+      const ok = job.items.filter((i) => i.status === 'done').length;
+      if (ok) { snd('success'); toast(`${ok} vidéo${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} à la bibliothèque.`, 'success'); }
+      else if (!job.cancelled) { snd('error'); toast('Aucune vidéo n’a pu être téléchargée.', 'error'); }
+    }
+  });
+
+  async function openSiteImport() {
+    const running = ow.siteJob && (await ow.siteJob());
+    if (running && !running.finished) { openSiteProgress(running); return; }
+    const body = el('div', 'site-form');
+    body.innerHTML = `
+      <div class="field"><label>Adresse de la page</label><input type="url" id="si-url" value="${esc(DEFAULT_SITE)}" placeholder="https://…"></div>
+      <div class="row3">
+        <div class="field"><label>Qualité</label><select id="si-q">
+          <option value="hd">HD 1080p (recommandé)</option><option value="4k">4K (fichiers lourds)</option><option value="small">Légère 720p</option></select></div>
+        <div class="field"><label>Pages à parcourir</label><select id="si-pages">${[1, 2, 3, 5, 10].map((n) => `<option value="${n}">${n}</option>`).join('')}</select></div>
+        <div class="field"><label>Étiquette</label><input type="text" id="si-tag" placeholder="ex. Anime"></div>
+      </div>
+      <div class="hint">OpenWall lit la page, trouve chaque fond vidéo qu'elle liste et télécharge la version choisie sur votre PC. Vous choisirez ensuite lesquelles garder.</div>
+      <div class="site-status" id="si-status"></div>`;
+    const tagIn = body.querySelector('#si-tag'), urlIn = body.querySelector('#si-url');
+    tagIn.value = tagFromUrl(urlIn.value);
+    urlIn.addEventListener('input', () => { tagIn.value = tagFromUrl(urlIn.value) || tagIn.value; });
+    let busy = false;
+    const m = modal({
+      title: 'Télécharger depuis un site', body, width: 680,
+      buttons: [
+        { label: 'Annuler' },
+        {
+          label: 'Analyser la page', primary: true, onClick: async () => {
+            if (busy) return false;
+            busy = true;
+            const status = body.querySelector('#si-status');
+            status.textContent = 'Analyse de la page…';
+            const off = (p) => { status.textContent = `Analyse de la page ${p.page}… (${p.found} trouvée${p.found > 1 ? 's' : ''})`; };
+            scanListener = off;
+            try {
+              const entries = await ow.siteScan(urlIn.value, +body.querySelector('#si-pages').value);
+              scanListener = null;
+              busy = false;
+              if (!entries.length) { snd('error'); status.textContent = 'Aucune vidéo trouvée sur cette page.'; return false; }
+              snd('success');
+              m.close();
+              openSitePicker(entries, { quality: body.querySelector('#si-q').value, tag: tagIn.value.trim() });
+            } catch (e) {
+              scanListener = null;
+              busy = false;
+              snd('error');
+              status.textContent = 'Erreur : ' + String(e.message || e).replace(/^.*Error: /, '');
+            }
+            return false;
+          }
+        }
+      ]
+    });
+    urlIn.focus();
+  }
+
+  let scanListener = null;
+  ow.onSiteScan && ow.onSiteScan((p) => scanListener && scanListener(p));
+
+  function openSitePicker(entries, opts) {
+    const sel = new Set(entries.map((e, i) => (e.already ? -1 : i)).filter((i) => i >= 0));
+    const body = el('div');
+    const render = () => {
+      body.innerHTML = `
+        <div class="site-bar"><span>${entries.length} vidéo${entries.length > 1 ? 's' : ''} trouvée${entries.length > 1 ? 's' : ''} — ${sel.size} sélectionnée${sel.size > 1 ? 's' : ''}</span>
+          <div class="spacer"></div>
+          <button class="btn small" data-all>Tout</button><button class="btn small" data-none>Aucune</button></div>
+        <div class="site-grid">${entries.map((e, i) => `
+          <div class="site-card ${sel.has(i) ? 'on' : ''}" data-i="${i}" title="${esc(e.title)}">
+            <div class="sc-img" ${e.thumb ? `style="background-image:url('${esc(e.thumb).replace(/'/g, '%27')}')"` : ''}>${e.thumb ? '' : icon('film')}</div>
+            <div class="sc-t">${esc(e.title)}</div>
+            ${e.already ? '<span class="sc-badge t-badge on-desk">Déjà ajoutée</span>' : ''}
+            <span class="sc-check">${icon('check')}</span>
+          </div>`).join('')}</div>`;
+      body.querySelector('[data-all]').onclick = () => { entries.forEach((_, i) => sel.add(i)); snd('toggleOn'); render(); };
+      body.querySelector('[data-none]').onclick = () => { sel.clear(); snd('toggleOff'); render(); };
+      body.querySelectorAll('.site-card').forEach((c) => (c.onclick = () => {
+        const i = +c.dataset.i;
+        if (sel.has(i)) sel.delete(i); else sel.add(i);
+        snd(sel.has(i) ? 'toggleOn' : 'toggleOff');
+        c.classList.toggle('on', sel.has(i));
+        body.querySelector('.site-bar span').textContent = `${entries.length} vidéo${entries.length > 1 ? 's' : ''} trouvée${entries.length > 1 ? 's' : ''} — ${sel.size} sélectionnée${sel.size > 1 ? 's' : ''}`;
+      }));
+    };
+    render();
+    modal({
+      title: 'Choisir les fonds à télécharger', body, width: 900,
+      buttons: [
+        { label: 'Annuler' },
+        {
+          label: 'Télécharger', primary: true, onClick: async () => {
+            const chosen = [...sel].sort((a, b) => a - b).map((i) => entries[i]);
+            if (!chosen.length) { snd('error'); toast('Sélectionnez au moins une vidéo.', 'error'); return false; }
+            try {
+              await ow.siteDownload(chosen, opts);
+              snd('apply');
+              const job = await ow.siteJob();
+              setTimeout(() => openSiteProgress(job), 0);
+            } catch (e) {
+              snd('error');
+              toast(String(e.message || e).replace(/^.*Error: /, ''), 'error');
+              return false;
+            }
+          }
+        }
+      ]
+    });
+  }
+
   // ================================================================ Onglets
   function switchTab(tab) {
     if (ui.tab === tab) return;
@@ -1059,7 +1218,7 @@
       performance() {
         const p = settings().performance;
         const presets = el('div', 'presets');
-        [['Économie', 25, 'low'], ['Équilibré', 30, 'medium'], ['Qualité', 60, 'high'], ['Ultra', 144, 'high']].forEach(([l, fps, q]) => {
+        [['Économie', 20, 'low'], ['Équilibré', 30, 'high'], ['Qualité', 60, 'high'], ['Ultra', 144, 'high']].forEach(([l, fps, q]) => {
           const b = el('button', 'btn small' + (p.fps === fps && p.quality === q ? ' active' : ''), esc(l));
           b.onclick = async () => { snd('select'); await set({ performance: { fps, quality: q } }); draw(); };
           presets.appendChild(b);
@@ -1313,12 +1472,14 @@
     if (use) { switchTab('installed'); select(use.dataset.use, true); }
   });
   $('#discover-import').onclick = () => importDialog('video');
+  $('#discover-site').onclick = () => { snd('click'); openSiteImport(); };
   $$('.create-card').forEach((c) => {
     c.addEventListener('mouseenter', () => snd('hover'));
     c.addEventListener('click', () => {
       const k = c.dataset.create;
       if (k === 'url') { snd('click'); addUrl(); }
       else if (k === 'scene') { snd('click'); createScene(); }
+      else if (k === 'site') { snd('click'); openSiteImport(); }
       else importDialog(k);
     });
   });

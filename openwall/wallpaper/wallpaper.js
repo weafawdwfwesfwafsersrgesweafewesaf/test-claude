@@ -202,6 +202,7 @@
       if (this.scene) this.scene.setProps(p);
       this.buildOverlays(p);
       if (needsAudio(this.item, p)) audio.start();
+      updateLoop();
     }
 
     updateAudio() {
@@ -227,7 +228,10 @@
         this.clock.querySelector('.date').style.display = p.clockDate ? '' : 'none';
         this._lastClock = '';
         this.updateClock();
+        clearInterval(this.clockTimer);
+        this.clockTimer = setInterval(() => this.updateClock(), 1000);
       } else if (this.clock) {
+        clearInterval(this.clockTimer);
         this.clock.remove();
         this.clock = null;
       }
@@ -290,6 +294,11 @@
       }
     }
 
+    // Optimisation : une vidéo/une image fixe n'a pas besoin de la boucle d'animation.
+    needsFrames() {
+      return !!(this.scene || this.viz || (this.img && this.props.parallax));
+    }
+
     frame(dt) {
       if (this.scene) this.scene.frame(dt);
       if (this.img && this.props.parallax) {
@@ -297,7 +306,6 @@
         const x = (0.5 - env.mouse.x) * k, y = (0.5 - env.mouse.y) * k;
         this.par.style.transform = `translate(${x}px, ${y}px) scale(${1 + k / 900})`;
       }
-      if (this.clock) this.updateClock();
       if (this.viz) this.drawViz(dt);
     }
 
@@ -318,6 +326,7 @@
 
     destroy() {
       clearInterval(this.refreshTimer);
+      clearInterval(this.clockTimer);
       if (this.scene) this.scene.destroy();
       if (this.video) { this.video.pause(); this.video.removeAttribute('src'); this.video.load(); }
       if (this.iframe) this.iframe.src = 'about:blank';
@@ -339,6 +348,12 @@
   }
   function startLoop() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }
   function stopLoop() { cancelAnimationFrame(raf); raf = 0; }
+  // Ne fait tourner la boucle que si un calque en a besoin (sinon 0 % de processeur côté JS).
+  function updateLoop() {
+    const active = playback === 'run' || playback === 'mute';
+    const want = active && ((current && current.needsFrames()) || [...dying].some((l) => l.needsFrames()));
+    if (want) startLoop(); else stopLoop();
+  }
 
   // ---------------- Messages ----------------
   let loadSeq = 0;
@@ -355,8 +370,9 @@
     requestAnimationFrame(() => layer.el.classList.add('visible'));
     if (old) {
       dying.add(old);
-      setTimeout(() => { old.destroy(); dying.delete(old); }, dur + 50);
+      setTimeout(() => { old.destroy(); dying.delete(old); updateLoop(); }, dur + 50);
     }
+    updateLoop();
     // Plus besoin du son système ?
     if (!needsAudio(layer.item, layer.props)) audio.stop();
   }
@@ -368,6 +384,7 @@
     dying.forEach((l) => l.destroy());
     dying.clear();
     audio.stop();
+    updateLoop();
   }
 
   function applySettings(s) {
@@ -383,7 +400,7 @@
   function setPlayback(action) {
     playback = action;
     if (current) current.setPlayback(action);
-    if (action === 'run' || action === 'mute') startLoop(); else stopLoop();
+    updateLoop();
   }
 
   bridge.on('load', (msg) => { if (msg.settings) applySettings(msg.settings); load(msg); });
@@ -402,6 +419,5 @@
   window.addEventListener('resize', () => current && current.resize());
   window.addEventListener('error', (e) => bridge.log('Erreur : ' + e.message));
 
-  startLoop();
   bridge.ready();
 })();
