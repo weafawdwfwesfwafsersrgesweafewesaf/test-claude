@@ -349,6 +349,8 @@ function rankCandidates(data, quality) {
 
 // ---- Téléchargement (via la pile réseau du navigateur : cookies, redirections, en-têtes) ----
 function downloadTo(url, destNoExt, referer, onProgress, isCancelled) {
+  hookSession();
+  if (referer) refererFor.set(url, referer);
   return new Promise((resolve, reject) => {
     const s = ses();
     let done = false;
@@ -371,6 +373,7 @@ function downloadTo(url, destNoExt, referer, onProgress, isCancelled) {
       item.once('done', (_ev, state) => {
         clearInterval(timer);
         done = true;
+        refererFor.delete(url);
         if (state === 'completed') resolve({ file: dest, mime, finalUrl: chain[chain.length - 1] });
         else { fs.promises.unlink(dest).catch(() => {}); reject(new Error(state === 'cancelled' ? 'annulé' : 'échec du téléchargement')); }
       });
@@ -457,10 +460,18 @@ const slug = (s) => String(s || 'video').normalize('NFD').replace(/[̀-ͯ]/g, ''
 // On ouvre la page, on clique sur « Download », et on récupère l'adresse de la vidéo
 // (téléchargement déclenché, nouvel onglet, lien .mp4 qui apparaît, ou vidéo lue par la page).
 const captures = new Map(); // id du webContents -> Set d'adresses vidéo vues sur le réseau
+// Referer à envoyer pour une adresse donnée : les options de downloadURL ne le transmettent pas
+// toujours, or certains sites (ex. Wallpaper Waifu) refusent le téléchargement sans lui.
+const refererFor = new Map();
 let hooked = false;
 function hookSession() {
   if (hooked) return;
   hooked = true;
+  ses().webRequest.onBeforeSendHeaders((details, cb) => {
+    const ref = refererFor.get(details.url);
+    if (ref) details.requestHeaders.Referer = ref;
+    cb({ requestHeaders: details.requestHeaders });
+  });
   ses().webRequest.onBeforeRequest((details, cb) => {
     const set = captures.get(details.webContentsId);
     if (set && (details.resourceType === 'media' || VIDEO_RE.test(details.url))) set.add(details.url);
@@ -584,8 +595,10 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
   const result = (res, url) => ({ file: res.file, title, thumb, sourceUrl: entry.url, quality: qualityOf(url) });
 
   // Télécharge `url` : { ok } si c'est une vidéo, { html, finalUrl } si c'est une page, null sinon.
+  const dbg = (...m) => { if (process.env.OPENWALL_DEBUG) console.log('[site]', ...m); };
   const attempt = async (url, referer) => {
     if (!url || tried.has(url)) return null;
+    dbg('essai', url.slice(0, 100));
     if (isCancelled()) throw new Error('annulé');
     tried.add(url);
     try {
@@ -599,8 +612,10 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
       let html = '';
       try { html = fs.readFileSync(res.file, 'utf8'); } catch { /* ignore */ }
       fs.promises.unlink(res.file).catch(() => {});
+      dbg('pas une vidéo', res.mime, (res.finalUrl || '').slice(0, 80), JSON.stringify(html.slice(0, 160)));
       return /<html|<body|<a\b/i.test(html) ? { html, finalUrl: res.finalUrl || url } : null;
     } catch (e) {
+      dbg('échec', url.slice(0, 100), e.message);
       if (isCancelled()) throw e;
       return null;
     }
@@ -651,4 +666,4 @@ async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
   throw new Error('aucun lien vidéo trouvé (le site a peut-être changé)');
 }
 
-module.exports = { scanListing, fetchEntry, parseHTML, rankCandidates, qualityOf, PARTITION, _listingLinks: listingLinks };
+module.exports = { scanListing, fetchEntry, parseHTML, rankCandidates, qualityOf, PARTITION, _listingLinks: listingLinks, _readPage: readPage };

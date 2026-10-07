@@ -37,7 +37,7 @@
     previewReady: false,
     previewQueue: null,
     propsKey: null,
-    collapsed: {},
+    collapsed: { 'Ajustements de l\u2019image': true, Superpositions: true },
     thumbBusy: new Set(),
     sceneThumbs: {}
   };
@@ -88,7 +88,6 @@
     document.documentElement.style.setProperty('--accent', s.accent || '#3a8ee6');
     document.documentElement.style.setProperty('--tile-min', { small: '160px', medium: '220px', large: '320px' }[s.gridSize] || '220px');
     window.UISound.configure({ enabled: !!s.sounds, volume: (s.soundVolume ?? 60) / 100 });
-    $$('#grid-size button').forEach((b) => b.classList.toggle('on', b.dataset.size === (s.gridSize || 'medium')));
   }
 
   // ================================================================ Barre du haut
@@ -124,6 +123,7 @@
       label = state.displays.length > 1 ? `Écran ${d ? d.index : 1}` : 'Écran principal';
     }
     $('#display-label').textContent = label;
+    $('#btn-display').classList.toggle('hidden', state.displays.length < 2);
 
     const pt = $('#pl-toggle');
     const active = s.playlist.active;
@@ -138,12 +138,9 @@
     const counts = { video: 0, image: 0, web: 0, scene: 0 };
     state.items.forEach((i) => counts[i.type]++);
     const tf = $('#type-filters');
-    tf.innerHTML = Object.keys(TYPE_LABEL).map((t) => `
+    tf.innerHTML = Object.keys(TYPE_LABEL).filter((t) => counts[t] > 0 || ui.types.has(t)).map((t) => `
       <label class="check"><input type="checkbox" data-type="${t}" ${ui.types.has(t) ? 'checked' : ''}>
       <span>${TYPE_LABEL[t]}</span><span class="count">${counts[t]}</span></label>`).join('');
-    const rf = $('#res-filters');
-    rf.innerHTML = RES.map(([k, l]) => `
-      <label class="check"><input type="checkbox" data-res="${k}" ${ui.res.has(k) ? 'checked' : ''}><span>${l}</span></label>`).join('');
     const tags = new Map();
     state.items.forEach((i) => (i.tags || []).forEach((t) => tags.set(t, (tags.get(t) || 0) + 1)));
     const tg = $('#tag-filters');
@@ -159,10 +156,8 @@
     const q = ui.search.trim().toLowerCase();
     if (q) items = items.filter((i) => `${i.title} ${(i.tags || []).join(' ')} ${TYPE_LABEL[i.type]} ${i.description || ''}`.toLowerCase().includes(q));
     if (ui.show === 'favorites') items = items.filter((i) => i.favorite);
-    if (ui.show === 'mine') items = items.filter((i) => !i.builtin);
     if (ui.show === 'playlist') items = items.filter((i) => plItems().includes(i.id));
     if (ui.types.size) items = items.filter((i) => ui.types.has(i.type));
-    if (ui.res.size) items = items.filter((i) => resClasses(i).some((c) => ui.res.has(c)));
     if (ui.tag) items = items.filter((i) => (i.tags || []).includes(ui.tag));
     const by = {
       name: (a, b) => a.title.localeCompare(b.title, 'fr', { sensitivity: 'base', numeric: true }),
@@ -324,7 +319,6 @@
     pl.title = inPl ? 'Retirer de la playlist' : 'Ajouter à la playlist';
     $('#det-apply-all').innerHTML = icon('monitors');
     $('#det-apply-all').classList.toggle('hidden', state.displays.length < 2 || settings().display.mode !== 'per-display');
-    $('#det-dup').innerHTML = icon('copy');
     $('#det-folder').innerHTML = icon('folder');
     $('#det-folder').classList.toggle('hidden', !it.file);
     $('#det-reset').innerHTML = icon('reset');
@@ -1426,7 +1420,7 @@
   $('#filters').addEventListener('change', (e) => {
     const t = e.target;
     if (t.dataset.type) { t.checked ? ui.types.add(t.dataset.type) : ui.types.delete(t.dataset.type); snd(t.checked ? 'toggleOn' : 'toggleOff'); renderGrid(); }
-    if (t.dataset.res) { t.checked ? ui.res.add(t.dataset.res) : ui.res.delete(t.dataset.res); snd(t.checked ? 'toggleOn' : 'toggleOff'); renderGrid(); }
+    if (false && t.dataset.res) { t.checked ? ui.res.add(t.dataset.res) : ui.res.delete(t.dataset.res); snd(t.checked ? 'toggleOn' : 'toggleOff'); renderGrid(); }
   });
   $('#tag-filters').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tag]');
@@ -1437,7 +1431,7 @@
     renderGrid();
   });
   const resetFilters = () => {
-    ui.search = ''; ui.types.clear(); ui.res.clear(); ui.tag = null; ui.show = 'all';
+    ui.search = ''; ui.types.clear(); ui.tag = null; ui.show = 'all';
     $('#search').value = '';
     $$('input[name="show"]').forEach((r) => (r.checked = r.value === 'all'));
     snd('click');
@@ -1445,7 +1439,6 @@
     renderGrid();
   };
   $('#reset-filters').onclick = resetFilters;
-  $$('#grid-size button').forEach((b) => (b.onclick = () => { snd('click'); ow.setSettings({ ui: { gridSize: b.dataset.size } }); }));
 
   // Grille
   const grid = $('#grid');
@@ -1481,12 +1474,9 @@
 
   // Pied de grille
   $('#btn-open').onclick = () => importDialog();
-  $('#btn-open-url').onclick = () => { snd('click'); addUrl(); };
   $('#pl-add').onclick = () => { ui.plEdit = !ui.plEdit; snd(ui.plEdit ? 'toggleOn' : 'toggleOff'); renderTopbar(); renderGrid(); };
   $('#pl-done').onclick = () => { ui.plEdit = false; snd('toggleOff'); renderTopbar(); renderGrid(); };
   $('#pl-config').onclick = () => openPlaylistConfig();
-  $('#pl-save').onclick = () => { snd('click'); savePlaylist(); };
-  $('#pl-load').onclick = () => { snd('click'); loadPlaylistMenu(); };
   $('#pl-toggle').onclick = async () => {
     const pl = settings().playlist;
     if (!pl.active && !plItems().filter(getItem).length) {
@@ -1518,7 +1508,6 @@
   $('#det-fav').onclick = withSel(toggleFavorite);
   $('#det-playlist').onclick = withSel(togglePlaylist);
   $('#det-apply-all').onclick = withSel((it) => { snd('apply'); ow.apply(it.id, 'all'); });
-  $('#det-dup').onclick = withSel(duplicate);
   $('#det-folder').onclick = withSel((it) => { snd('click'); ow.showInFolder(it.id); });
   $('#det-reset').onclick = withSel(async (it) => {
     if (!(it.id in ui.snapshot.props)) ui.snapshot.props[it.id] = clone(it.properties || {});
@@ -1530,17 +1519,6 @@
   $('#det-delete').onclick = withSel(removeWithConfirm);
   $$('.det-actions .icon-btn').forEach((b) => b.addEventListener('mouseenter', () => snd('hover')));
 
-  $('#btn-ok').onclick = () => {
-    snd('apply');
-    ui.snapshot = { assignments: clone(settings().display.assignments), props: {} };
-    setTimeout(() => ow.win('close'), 250);
-  };
-  $('#btn-cancel').onclick = async () => {
-    snd('close');
-    await ow.restore(ui.snapshot);
-    ui.snapshot = { assignments: clone(settings().display.assignments), props: {} };
-    setTimeout(() => ow.win('close'), 150);
-  };
 
   // Découvrir / Créer
   $('#discover-grid').addEventListener('click', (e) => {
@@ -1575,8 +1553,6 @@
     discSearchTimer = setTimeout(() => { disc.q = e.target.value; renderDiscover(true); }, 150);
   });
   $('#discover-refresh').onclick = () => { snd('click'); ensureCatalog(true); };
-  $('#discover-import').onclick = () => importDialog('video');
-  $('#discover-site').onclick = () => { snd('click'); openSiteImport(); };
   $$('.create-card').forEach((c) => {
     c.addEventListener('mouseenter', () => snd('hover'));
     c.addEventListener('click', () => {

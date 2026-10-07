@@ -60,16 +60,11 @@
           <div class="filter-title">Afficher</div>
           <label class="radio"><input type="radio" name="show" value="all" checked><span>Tous</span></label>
           <label class="radio"><input type="radio" name="show" value="favorites"><span>Favoris</span></label>
-          <label class="radio"><input type="radio" name="show" value="mine"><span>Mes fonds importés</span></label>
           <label class="radio"><input type="radio" name="show" value="playlist"><span>Dans la playlist</span></label>
         </div>
         <div class="filter-block">
           <div class="filter-title">Type</div>
           <div id="type-filters"></div>
-        </div>
-        <div class="filter-block">
-          <div class="filter-title">Résolution</div>
-          <div id="res-filters"></div>
         </div>
         <div class="filter-block">
           <div class="filter-title">Étiquettes</div>
@@ -82,11 +77,6 @@
         <div id="grid-toolbar">
           <span id="grid-count"></span>
           <div class="spacer"></div>
-          <div class="seg" id="grid-size">
-            <button data-size="small" title="Petites vignettes"><span class="ico" data-icon="gridS"></span></button>
-            <button data-size="medium" title="Vignettes moyennes"><span class="ico" data-icon="gridM"></span></button>
-            <button data-size="large" title="Grandes vignettes"><span class="ico" data-icon="gridL"></span></button>
-          </div>
         </div>
         <div id="pl-banner" class="hidden">
           <span class="ico" data-icon="playlist"></span>
@@ -97,15 +87,12 @@
         <div id="grid-wrap"><div id="grid"></div><div id="grid-empty" class="hidden"></div></div>
         <footer id="grid-footer">
           <div class="foot-group">
-            <button id="btn-open" class="btn"><span class="ico" data-icon="folder"></span>Ouvrir un fond d'écran</button>
-            <button id="btn-open-url" class="btn"><span class="ico" data-icon="globe"></span>Ouvrir depuis une URL</button>
+            <button id="btn-open" class="btn primary"><span class="ico" data-icon="film"></span>Importer des vidéos</button>
           </div>
           <div class="foot-group playlist-group">
             <span class="foot-label">Playlist</span>
-            <button id="pl-load" class="btn"><span class="ico" data-icon="download"></span>Charger</button>
-            <button id="pl-save" class="btn"><span class="ico" data-icon="save"></span>Sauvegarder</button>
-            <button id="pl-config" class="btn"><span class="ico" data-icon="sliders"></span>Configurer</button>
             <button id="pl-add" class="btn"><span class="ico" data-icon="plus"></span>Ajouter des fonds</button>
+            <button id="pl-config" class="btn"><span class="ico" data-icon="sliders"></span>Configurer</button>
             <button id="pl-toggle" class="btn"><span class="ico" data-icon="play"></span><span>Démarrer</span></button>
           </div>
         </footer>
@@ -130,17 +117,12 @@
             <button id="det-fav" class="icon-btn" title="Favori"></button>
             <button id="det-apply-all" class="icon-btn" title="Appliquer sur tous les écrans"></button>
             <button id="det-playlist" class="icon-btn" title="Ajouter à la playlist"></button>
-            <button id="det-dup" class="icon-btn" title="Dupliquer comme préréglage"></button>
             <button id="det-folder" class="icon-btn" title="Afficher dans l'explorateur"></button>
             <button id="det-reset" class="icon-btn" title="Réinitialiser les propriétés"></button>
             <div class="spacer"></div>
             <button id="det-delete" class="icon-btn danger" title="Supprimer"></button>
           </div>
           <div id="props" class="props"></div>
-        </div>
-        <div class="det-footer">
-          <button id="btn-ok" class="btn primary wide">OK</button>
-          <button id="btn-cancel" class="btn wide">Annuler</button>
         </div>
       </aside>
     </section>
@@ -155,8 +137,6 @@
           </div>
           <div class="hero-actions">
             <button id="discover-refresh" class="btn"><span class="ico" data-icon="reset"></span>Actualiser</button>
-            <button id="discover-site" class="btn"><span class="ico" data-icon="download"></span>Autre site…</button>
-            <button id="discover-import" class="btn primary"><span class="ico" data-icon="film"></span>Mes vidéos MP4</button>
           </div>
         </div>
         <div class="disc-toolbar">
@@ -174,16 +154,14 @@
         <div class="hero">
           <div>
             <h1>Créer un fond d'écran</h1>
-            <p>Importez vos vidéos, images, GIF ou pages web, ou créez un préréglage à partir d'une scène.</p>
+            <p>Importez vos vidéos, images ou GIF, ou téléchargez toutes les vidéos d'une page de site.</p>
           </div>
         </div>
         <div class="create-grid">
           <button class="create-card" data-create="video"><span class="ico big" data-icon="film"></span><b>Vidéo</b><small>MP4, WebM, MOV, M4V, MKV</small></button>
           <button class="create-card" data-create="image"><span class="ico big" data-icon="image"></span><b>Image ou GIF</b><small>JPG, PNG, GIF, WebP, AVIF</small></button>
           <button class="create-card" data-create="url"><span class="ico big" data-icon="globe"></span><b>Page web (URL)</b><small>N'importe quel site ou animation en ligne</small></button>
-          <button class="create-card" data-create="web"><span class="ico big" data-icon="code"></span><b>Fichier HTML local</b><small>Vos propres fonds HTML/JS/CSS</small></button>
-          <button class="create-card" data-create="scene"><span class="ico big" data-icon="sparkles"></span><b>Scène personnalisée</b><small>Partez d'une scène et réglez-la</small></button>
-          <button class="create-card" data-create="site"><span class="ico big" data-icon="download"></span><b>Depuis un site</b><small>Téléchargez toutes les vidéos d'une page en HD</small></button>
+          <button class="create-card" data-create="site"><span class="ico big" data-icon="download"></span><b>Depuis un site</b><small>Toutes les vidéos d'une page, en HD</small></button>
         </div>
         <div id="create-drop" class="dropzone">
           <span class="ico big" data-icon="upload"></span>
