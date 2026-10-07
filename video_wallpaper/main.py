@@ -22,7 +22,7 @@ import sys
 from ctypes import wintypes
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, QTimer
 from PySide6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -129,6 +129,58 @@ def restore_desktop() -> None:
         pass
 
 
+class _MONITORINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("rcMonitor", wintypes.RECT),
+        ("rcWork", wintypes.RECT),
+        ("dwFlags", wintypes.DWORD),
+    ]
+
+
+def foreground_app_is_fullscreen() -> bool:
+    """Retourne True si la fenetre active couvre tout un ecran.
+
+    Sert a mettre la video en pause quand un jeu / une video tourne en plein
+    ecran, pour ne pas gaspiller de CPU/GPU (ex : pendant une partie de Roblox).
+    On ignore le bureau et la barre des taches.
+    """
+    if sys.platform != "win32":
+        return False
+    user32 = ctypes.windll.user32
+
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return False
+    if hwnd == user32.GetShellWindow():
+        return False
+
+    # Ignore les fenetres du shell (bureau, barre des taches, fond d'ecran).
+    cls = ctypes.create_unicode_buffer(256)
+    user32.GetClassNameW(hwnd, cls, 256)
+    if cls.value in ("Progman", "WorkerW", "Shell_TrayWnd"):
+        return False
+
+    rect = wintypes.RECT()
+    if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return False
+
+    MONITOR_DEFAULTTONEAREST = 2
+    hmon = user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
+    info = _MONITORINFO()
+    info.cbSize = ctypes.sizeof(_MONITORINFO)
+    if not user32.GetMonitorInfoW(hmon, ctypes.byref(info)):
+        return False
+
+    m = info.rcMonitor
+    return (
+        rect.left <= m.left
+        and rect.top <= m.top
+        and rect.right >= m.right
+        and rect.bottom >= m.bottom
+    )
+
+
 # --- Fenetre video ------------------------------------------------------------
 
 class WallpaperWindow(QWidget):
@@ -199,6 +251,14 @@ class VideoWallpaperApp:
         self.window = WallpaperWindow()
         self.window.set_muted(self.config.get("muted", True))
 
+        # Pause auto quand un jeu / une video tourne en plein ecran.
+        self.autopause = self.config.get("autopause", True)
+        self._paused_by_fullscreen = False
+        self.pause_timer = QTimer()
+        self.pause_timer.setInterval(2000)
+        self.pause_timer.timeout.connect(self._check_fullscreen)
+        self.pause_timer.start()
+
         self.tray = QSystemTrayIcon(make_icon())
         self.tray.setToolTip("Video Wallpaper")
         self.tray.setContextMenu(self._build_menu())
@@ -240,6 +300,12 @@ class VideoWallpaperApp:
         self.mute_action.triggered.connect(self.toggle_mute)
         menu.addAction(self.mute_action)
 
+        self.autopause_action = QAction("Pause auto en plein ecran", menu)
+        self.autopause_action.setCheckable(True)
+        self.autopause_action.setChecked(self.autopause)
+        self.autopause_action.triggered.connect(self.toggle_autopause)
+        menu.addAction(self.autopause_action)
+
         refresh = QAction("Rafraichir la liste", menu)
         refresh.triggered.connect(self.refresh_menu)
         menu.addAction(refresh)
@@ -270,6 +336,7 @@ class VideoWallpaperApp:
 
     def select_video(self, path: Path) -> None:
         self.window.play(path)
+        self._paused_by_fullscreen = False
         self.config["last"] = path.name
         save_config(self.config)
 
@@ -278,7 +345,30 @@ class VideoWallpaperApp:
         self.config["muted"] = checked
         save_config(self.config)
 
+    def toggle_autopause(self, checked: bool) -> None:
+        self.autopause = checked
+        self.config["autopause"] = checked
+        save_config(self.config)
+        if not checked and self._paused_by_fullscreen:
+            # On reactive : relance la video si c'est nous qui l'avions coupee.
+            self.window.player.play()
+            self._paused_by_fullscreen = False
+
+    def _check_fullscreen(self) -> None:
+        if not self.autopause:
+            return
+        if self.window.player.source().isEmpty():
+            return
+        fullscreen = foreground_app_is_fullscreen()
+        if fullscreen and not self._paused_by_fullscreen:
+            self.window.player.pause()
+            self._paused_by_fullscreen = True
+        elif not fullscreen and self._paused_by_fullscreen:
+            self.window.player.play()
+            self._paused_by_fullscreen = False
+
     def quit(self) -> None:
+        self.pause_timer.stop()
         self.window.player.stop()
         self.tray.hide()
         restore_desktop()

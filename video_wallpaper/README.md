@@ -9,12 +9,15 @@ technique que le vrai Wallpaper Engine : la fenêtre *WorkerW* de Windows).
 ## ✨ Fonctions
 
 - Vidéo en boucle en fond d'écran, icônes du bureau toujours cliquables
+- **Pause automatique** quand un jeu ou une vidéo passe en plein écran
+  (économise le CPU/GPU, ex. pendant une partie de Roblox) — reprend tout seul
 - Icône dans la barre des tâches pour :
   - changer de wallpaper
   - couper / activer le son
+  - activer / désactiver la pause auto
   - rafraîchir la liste
   - quitter proprement
-- Retient ton dernier wallpaper et le réglage du son
+- Retient tes réglages (dernier wallpaper, son, pause auto)
 
 ## 🚀 Installation
 
