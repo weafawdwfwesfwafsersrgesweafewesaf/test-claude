@@ -32,7 +32,8 @@ const abs = (u, base) => {
 };
 const clean = (s) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 const attr = (tag, name) => {
-  const m = new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag);
+  // (?:^|\s) et non \b : sinon « id » serait trouvé dans « data-id ».
+  const m = new RegExp(`(?:^|\\s)${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag);
   return m ? (m[2] ?? m[3] ?? m[4] ?? '') : null;
 };
 
@@ -156,6 +157,7 @@ const sameSite = (a, b) => {
 // Nettoie un titre : date en tête, « Live Wallpaper », « - Anime Wallpaper »…
 function cleanTitle(t) {
   let s = String(t || '').replace(/\s+/g, ' ').trim();
+  s = s.replace(/\s+(thumb(nail)?|preview|poster)$/i, '');
   s = s.replace(/^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2},? \d{4}\s*/i, '');
   s = s.replace(/\s*[-–|:]\s*(anime|gaming|games?|4k|hd|pc|desktop)?\s*(live\s+)?(wallpapers?|backgrounds?)\s*$/i, '');
   s = s.replace(/\s*(4k|hd)?\s*(live|animated|moving)\s*(wallpapers?|backgrounds?)\s*$/i, '');
@@ -328,7 +330,7 @@ function rankCandidates(data, quality) {
   for (const s of siteLinks(data, base)) add(s.url, s.label, 0, true, false);
   for (const a of data.anchors) {
     const label = `${a.text} ${a.title}`;
-    if (a.dataDl) add(a.dataDl, label + ' ' + a.dataDl, 1, true, false); // ex. WordPress Download Manager
+    if (a.dataDl && a.dataDl !== base) add(a.dataDl, label + ' ' + a.dataDl, 1, true, false); // ex. WordPress Download Manager
     const isFile = VIDEO_RE.test(a.href);
     const strongDl = a.download || /\/(dl|download|downloads|get)(\/|\?|$)/i.test(a.href) || /[?&](wpdmdl|download)=/i.test(a.href);
     const weakDl = /\b(download|télécharger|telecharger)\b/i.test(label);
