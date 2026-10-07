@@ -277,51 +277,189 @@ const isVideoFile = (file) => {
 
 const slug = (s) => String(s || 'video').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).toLowerCase() || 'video';
 
+// ---- Navigateur caché pour les pages de téléchargement « difficiles » ----
+// Compte à rebours, bouton à cliquer, formulaire, lien généré en JavaScript, nouvel onglet…
+// On ouvre la page, on clique sur « Download », et on récupère l'adresse de la vidéo
+// (téléchargement déclenché, nouvel onglet, lien .mp4 qui apparaît, ou vidéo lue par la page).
+const captures = new Map(); // id du webContents -> Set d'adresses vidéo vues sur le réseau
+let hooked = false;
+function hookSession() {
+  if (hooked) return;
+  hooked = true;
+  ses().webRequest.onBeforeRequest((details, cb) => {
+    const set = captures.get(details.webContentsId);
+    if (set && (details.resourceType === 'media' || VIDEO_RE.test(details.url))) set.add(details.url);
+    cb({});
+  });
+}
+
+const CLICK_JS = `(() => {
+  const re = /(download|télécharger|telecharger|get (the )?(video|file|wallpaper))/i;
+  const els = [...document.querySelectorAll('a, button, input[type=submit], input[type=button], [role=button]')];
+  const el = els.find((e) => !e.dataset.owClicked && e.offsetParent !== null &&
+    re.test([e.textContent, e.value, e.title, e.getAttribute('aria-label'), e.id, e.className].join(' ')));
+  if (!el) return false;
+  el.dataset.owClicked = '1';
+  el.click();
+  return true;
+})()`;
+
+// Si la page déclenche elle-même un téléchargement (formulaire, lien à usage unique…), on le garde
+// directement dans `base` au lieu de le relancer : retourne alors { downloaded: { file, url } }.
+async function resolveWithBrowser(url, { base, onProgress, isCancelled, waitMs = 16000 } = {}) {
+  hookSession();
+  const win = new BrowserWindow({
+    show: false, width: 1366, height: 900,
+    webPreferences: { partition: PARTITION, sandbox: true, backgroundThrottling: false }
+  });
+  const wc = win.webContents;
+  wc.setAudioMuted(true);
+  const strong = new Set(); // liens de téléchargement certains
+  const weak = new Set(); // vidéos lues par la page (souvent un aperçu)
+  const id = wc.id;
+  captures.set(id, weak);
+  let pending = null; // téléchargement lancé par la page
+  wc.setWindowOpenHandler(({ url: u }) => {
+    if (/^https?:/.test(u)) strong.add(u);
+    return { action: 'deny' };
+  });
+  const onWill = (_e, item, src) => {
+    if (!src || src.id !== id) return;
+    const u = item.getURL();
+    if (pending || !base) { strong.add(u); item.cancel(); return; }
+    const ext = /webm/.test(item.getMimeType() || '') ? '.webm' : '.mp4';
+    const file = base + ext;
+    item.setSavePath(file);
+    pending = new Promise((resolve) => {
+      const timer = setInterval(() => { if (isCancelled && isCancelled()) item.cancel(); }, 500);
+      item.on('updated', () => {
+        const total = item.getTotalBytes();
+        if (onProgress) onProgress(total ? item.getReceivedBytes() / total : 0);
+      });
+      item.once('done', (_ev, state) => {
+        clearInterval(timer);
+        if (state === 'completed' && isVideoFile(file)) resolve({ file, url: u });
+        else { fs.promises.unlink(file).catch(() => {}); strong.add(u); resolve(null); }
+      });
+    });
+  };
+  ses().on('will-download', onWill);
+  try {
+    wc.loadURL(url, { userAgent: UA }).catch(() => {});
+    const t0 = Date.now();
+    let clicks = 0;
+    let misses = 0; // aucun bouton « Download » trouvé
+    while (Date.now() - t0 < waitMs && !strong.size && !pending && misses < 4) {
+      await sleep(800);
+      if (win.isDestroyed() || (isCancelled && isCancelled())) break;
+      const data = await wc.executeJavaScript(COLLECT_JS).catch(() => null);
+      if (data) {
+        for (const a of data.anchors) if (VIDEO_RE.test(a.href)) strong.add(a.href);
+        for (const v of data.videos) weak.add(v);
+      }
+      if (strong.size || pending) break;
+      // Laisse la page s'afficher (et un éventuel compte à rebours tourner), puis clique sur « Download ».
+      if (Date.now() - t0 > 2500 && clicks < 4 && (Date.now() - t0) / 3000 > clicks) {
+        if (await wc.executeJavaScript(CLICK_JS).catch(() => false)) clicks++;
+        else if (!clicks) misses++;
+      }
+    }
+    const downloaded = pending ? await pending : null;
+    return { downloaded, strong: [...strong], weak: [...weak] };
+  } finally {
+    ses().removeListener('will-download', onWill);
+    captures.delete(id);
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
+
 /**
  * Récupère une entrée : trouve le bon lien, télécharge, vérifie que c'est bien une vidéo.
- * Retourne { file, title, thumb, sourceUrl }.
+ * Ordre d'essai : liens « Download » de la page → pages intermédiaires (lecture simple puis
+ * navigateur caché avec clic) → navigateur caché sur la page elle-même → vidéo affichée sur la page.
+ * Retourne { file, title, thumb, sourceUrl, quality }.
  */
 async function fetchEntry(entry, { quality, dir, onProgress, isCancelled }) {
   let title = entry.title;
   let thumb = entry.thumb;
-  let cands;
-  if (entry.kind === 'video') cands = [{ url: entry.url, q: qualityOf(entry.url), isFile: true }];
-  else {
-    const data = await readPage(entry.url);
+  let data = null;
+  if (entry.kind !== 'video') {
+    data = await readPage(entry.url);
     title = (data.h1 || title).replace(/\s*[-–|:]?\s*(4k|hd)?\s*(live|animated|moving)?\s*(wallpapers?|backgrounds?)\s*$/i, '').trim() || title;
     thumb = data.ogImage || thumb;
-    cands = rankCandidates(data, quality);
   }
-  if (!cands.length) throw new Error('aucune vidéo trouvée sur la page');
   fs.mkdirSync(dir, { recursive: true });
   let base = path.join(dir, slug(title));
   for (let i = 2; fs.existsSync(base + '.mp4') || fs.existsSync(base + '.webm'); i++) base = path.join(dir, `${slug(title)}-${i}`);
 
-  let lastErr = null;
-  for (const c of cands.slice(0, 6)) {
+  const order = ORDER[quality] || ORDER.hd;
+  const byQ = (a, b) => order.indexOf(qualityOf(a)) - order.indexOf(qualityOf(b));
+  const tried = new Set();
+  const browsed = new Set();
+  const weak = [];
+  const result = (res, url) => ({ file: res.file, title, thumb, sourceUrl: entry.url, quality: qualityOf(url) });
+
+  // Télécharge `url` : { ok } si c'est une vidéo, { html, finalUrl } si c'est une page, null sinon.
+  const attempt = async (url, referer) => {
+    if (!url || tried.has(url)) return null;
     if (isCancelled()) throw new Error('annulé');
+    tried.add(url);
     try {
-      const res = await downloadTo(c.url, base, entry.url, onProgress, isCancelled);
-      if (isVideoFile(res.file)) return { file: res.file, title, thumb, sourceUrl: entry.url, quality: c.q };
-      // C'était une page intermédiaire : on cherche la vidéo dedans.
+      const res = await downloadTo(url, base, referer, onProgress, isCancelled);
+      if (isVideoFile(res.file)) return { ok: res };
       let html = '';
       try { html = fs.readFileSync(res.file, 'utf8'); } catch { /* ignore */ }
       fs.promises.unlink(res.file).catch(() => {});
-      if (html) {
-        const inner = rankCandidates(parseHTML(html, res.finalUrl || c.url), quality).filter((x) => x.isFile);
-        for (const ic of inner.slice(0, 3)) {
-          const r2 = await downloadTo(ic.url, base, res.finalUrl || c.url, onProgress, isCancelled);
-          if (isVideoFile(r2.file)) return { file: r2.file, title, thumb, sourceUrl: entry.url, quality: ic.q };
-          fs.promises.unlink(r2.file).catch(() => {});
-        }
-      }
-      lastErr = new Error('le lien ne mène pas à une vidéo');
+      return /<html|<body|<a\b/i.test(html) ? { html, finalUrl: res.finalUrl || url } : null;
     } catch (e) {
       if (isCancelled()) throw e;
-      lastErr = e;
+      return null;
     }
+  };
+
+  const viaBrowser = async (pageUrl) => {
+    if (browsed.has(pageUrl) || isCancelled()) return null;
+    browsed.add(pageUrl);
+    const r = await resolveWithBrowser(pageUrl, { base, onProgress, isCancelled });
+    if (r.downloaded) return result(r.downloaded, r.downloaded.url);
+    for (const u of r.strong.sort(byQ)) {
+      const a = await attempt(u, pageUrl);
+      if (a && a.ok) return result(a.ok, u);
+    }
+    weak.push(...r.weak);
+    return null;
+  };
+
+  if (entry.kind === 'video') {
+    const a = await attempt(entry.url, null);
+    if (a && a.ok) return result(a.ok, entry.url);
+    throw new Error('le lien ne mène pas à une vidéo');
   }
-  throw lastErr || new Error('téléchargement impossible');
+
+  const cands = rankCandidates(data, quality);
+  for (const c of cands.filter((x) => !x.isPreview).slice(0, 4)) {
+    const a = await attempt(c.url, entry.url);
+    if (!a) continue;
+    if (a.ok) return result(a.ok, c.url);
+    // Page intermédiaire : lien direct dans le HTML ?
+    const inner = rankCandidates(parseHTML(a.html, a.finalUrl), quality).filter((x) => x.isFile && !x.isPreview);
+    for (const ic of inner.slice(0, 3)) {
+      const b = await attempt(ic.url, a.finalUrl);
+      if (b && b.ok) return result(b.ok, ic.url);
+    }
+    // Sinon : compte à rebours / bouton / JavaScript → navigateur caché.
+    const r = await viaBrowser(a.finalUrl);
+    if (r) return r;
+  }
+  const r = await viaBrowser(entry.url);
+  if (r) return r;
+  // Dernier recours : la vidéo affichée sur la page (souvent la vidéo complète sur ces sites).
+  const fallback = [...cands.filter((x) => x.isPreview).map((x) => x.url), ...weak].sort(byQ);
+  for (const u of fallback) {
+    const a = await attempt(u, entry.url);
+    if (a && a.ok) return result(a.ok, u);
+  }
+  throw new Error('aucun lien vidéo trouvé (le site a peut-être changé)');
 }
 
 module.exports = { scanListing, fetchEntry, parseHTML, rankCandidates, qualityOf, PARTITION };
