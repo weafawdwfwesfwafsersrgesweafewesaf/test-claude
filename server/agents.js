@@ -43,7 +43,7 @@ export function publicInfo(a) {
     command: a.commandLine,
     role: a.role || null,
     model: a.model || null,
-    permissionMode: a.permissionMode || null,
+    permissionMode: a.autonomous ? 'autonome' : a.permissionMode || null,
     inbox: a.inbox.length,
   };
 }
@@ -98,7 +98,21 @@ function prepare(a, project) {
     ];
     const settingsFile = path.join(runDir, 'settings.json');
     writeJson(settingsFile, {
-      permissions: { allow: ['mcp__roswarm'] },
+      permissions: a.autonomous
+        ? {
+            // Mode autonome « sans danger » : outils de fichiers, outils RoSwarm et commandes en LECTURE seule
+            // autorisés sans demander. Toute autre commande demande encore une confirmation.
+            allow: [
+              'mcp__roswarm', 'Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'TodoWrite', 'Skill',
+              'Bash(ls:*)', 'Bash(dir:*)', 'Bash(pwd)', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)',
+              'Bash(Get-ChildItem:*)', 'Bash(Get-Content:*)',
+            ],
+            deny: [
+              'Bash(rm -rf:*)', 'Bash(rm -r:*)', 'Bash(rmdir:*)', 'Bash(del:*)', 'Bash(rd:*)', 'Bash(Remove-Item:*)', 'Bash(format:*)',
+              'Bash(git reset --hard:*)', 'Bash(git checkout .:*)', 'Bash(git clean:*)', 'Bash(git stash:*)', 'Bash(git push:*)',
+            ],
+          }
+        : { allow: ['mcp__roswarm'] },
       hooks: {
         PreToolUse: [{ matcher: 'Write|Edit|MultiEdit|NotebookEdit', hooks: hook('pre') }],
         PostToolUse: [{ matcher: '*', hooks: hook('post') }],
@@ -211,7 +225,7 @@ function start(a) {
 }
 
 const MODELS = ['sonnet', 'opus', 'haiku'];
-const MODES = ['acceptEdits', 'default', 'plan', 'auto'];
+const MODES = ['acceptEdits', 'default', 'plan', 'auto', 'autonome'];
 
 export function spawn({ projectId = null, tabId = 't1', type, command, setup = false, cols = 100, rows = 30, role, model, permissionMode }) {
   const t = AGENT_TYPES[type];
@@ -232,7 +246,16 @@ export function spawn({ projectId = null, tabId = 't1', type, command, setup = f
     name: setup ? label : `#${num} ${label}` + (role ? ` · ${ROLES[role].label}` : ''),
     role,
     model: type === 'claude' && MODELS.includes(model) ? model : null,
-    permissionMode: type === 'claude' && MODES.includes(permissionMode) && permissionMode !== 'default' ? permissionMode : null,
+    // « autonome » = acceptEdits + outils sûrs autorisés sans demander (voir prepare). C'est le mode par défaut.
+    autonomous: type === 'claude' && (permissionMode === undefined || permissionMode === null || permissionMode === 'autonome'),
+    permissionMode:
+      type === 'claude'
+        ? permissionMode === undefined || permissionMode === null || permissionMode === 'autonome'
+          ? 'acceptEdits'
+          : MODES.includes(permissionMode) && permissionMode !== 'default'
+            ? permissionMode
+            : null
+        : null,
     inbox: [],
     ready: false,
     startedAt: Date.now(),

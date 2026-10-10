@@ -60,6 +60,7 @@ export function systemPromptFor(agentName, roleKey) {
     role ? role.prompt : 'Tu es polyvalent : prends les tâches qu\'on te donne.',
     "Les messages qui commencent par [RoSwarm] sont des notifications de l'équipe (nouvelle tâche, message, tâche terminée) : traite-les.",
     "Respecte les règles d'équipe d'AGENTS.md (claim avant de modifier, task_update, post_message). Réponds en français.",
+    "SOIS AUTONOME : ne demande jamais à l'utilisateur la permission de continuer, de passer à l'étape suivante ou de lancer la suite. Enchaîne toutes les étapes jusqu'au bout de ta tâche, puis fais un résumé. Ne pose une question que si tu es vraiment bloqué (information indispensable que tu ne peux pas trouver ni deviner raisonnablement), et dans ce cas choisis d'abord l'option la plus raisonnable si possible.",
     'Utilise les skills du projet (.claude/skills) : sobriete-code avant de coder, reponses-courtes, memoire-projet (MEMOIRE.md au début et à la fin), et les skills roblox-* selon la tâche.',
   ];
   return parts.join(' ').replace(/["%^!`$\r\n]/g, ' ');

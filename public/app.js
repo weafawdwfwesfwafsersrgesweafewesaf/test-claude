@@ -776,7 +776,8 @@ function renderTeamForm() {
     <div class="skill-chips">${(S.skills || []).map((k) => `<span class="skill-chip" title="${esc(k.description)}">${esc(k.name)}</span>`).join('')}</div>
     <div class="tf-label">Autorisations</div>
     <select id="team-mode">
-      <option value="acceptEdits">Accepter les modifications de fichiers automatiquement (recommandé)</option>
+      <option value="autonome">Autonome : fichiers et outils Roblox sans demander, commandes sensibles confirmées (recommandé)</option>
+      <option value="acceptEdits">Accepte les fichiers, demande pour les commandes</option>
       <option value="default">Me demander à chaque modification</option>
       <option value="plan">Mode plan (ils proposent avant d’agir)</option>
     </select>
@@ -785,14 +786,24 @@ function renderTeamForm() {
     <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" id="team-cancel">Annuler</button>
     <button class="btn primary" id="team-launch">Lancer l’équipe</button></div>
   </div>`;
+  restoreTeamMode();
+}
+
+function restoreTeamMode() {
+  try {
+    const m = localStorage.getItem('roswarm-mode');
+    if (m && $('#team-mode')) $('#team-mode').value = m;
+  } catch {}
 }
 
 async function launchTeam() {
   const p = project();
   const members = $$('.team-row').map((r) => ({ role: $('select[data-k=role]', r).value, model: $('select[data-k=model]', r).value }));
-  const list = await attempt(() =>
-    api('POST', `/api/projects/${p.id}/team`, { tabId: currentTab(), permissionMode: $('#team-mode').value, members }),
-  );
+  const mode = $('#team-mode').value;
+  try {
+    localStorage.setItem('roswarm-mode', mode);
+  } catch {}
+  const list = await attempt(() => api('POST', `/api/projects/${p.id}/team`, { tabId: currentTab(), permissionMode: mode, members }));
   if (!list) return;
   closeModal();
   toast(`${list.length} Claude lancés. Parle au chef : il répartit le travail.`);
@@ -822,7 +833,11 @@ async function addAgent(type) {
     command = prompt('Commande à lancer dans le dossier du projet (ex. « aider », « grok », « qwen »)');
     if (!command) return;
   }
-  await attempt(() => api('POST', '/api/agents', { projectId: p.id, tabId: currentTab(), type, command }));
+  let permissionMode = 'autonome';
+  try {
+    permissionMode = localStorage.getItem('roswarm-mode') || 'autonome';
+  } catch {}
+  await attempt(() => api('POST', '/api/agents', { projectId: p.id, tabId: currentTab(), type, command, permissionMode }));
 }
 
 async function sendComposer() {
@@ -1023,6 +1038,11 @@ document.addEventListener('change', async (e) => {
   if (d.taskStatus) await attempt(() => api('PATCH', `/api/projects/${p.id}/tasks/${d.taskStatus}`, { status: e.target.value }));
   if (d.taskGive && e.target.value) await attempt(() => api('POST', `/api/agents/${e.target.value}/task`, { taskId: Number(d.taskGive) }), 'Tâche envoyée à l’agent');
   if (e.target.id === 'ws-sync') await attempt(() => api('PATCH', '/api/projects/' + p.id, { sync: e.target.checked }));
+  if (e.target.id === 'team-mode') {
+    try {
+      localStorage.setItem('roswarm-mode', e.target.value);
+    } catch {}
+  }
   if (e.target.id === 'session-select') await attempt(() => api('POST', '/api/studio/active', { sessionId: e.target.value }));
 });
 

@@ -31,6 +31,11 @@ Les Claude se réservent les fichiers : deux Claude ne peuvent pas écrire le m�
 
 ![Lancer une équipe de Claude](docs/equipe.png)
 
+> 🤖 **Mode Autonome (par défaut)** : les Claude modifient les fichiers et utilisent les outils RoSwarm/Studio sans
+> demander, et ont pour consigne d'enchaîner leurs tâches sans demander « je continue ? ». Seules les commandes
+> système qui ne sont pas en lecture seule demandent encore une confirmation, et les commandes destructrices
+> (`rm -rf`, `git reset --hard`, `git push`…) sont interdites.
+
 > 💡 Tous les Claude partagent les limites de **ton** abonnement. Avec Claude Pro, 2 ou 3 Claude suffisent ;
 > avec Max, tu peux en lancer plus. Mets **Opus** au Chef et **Par défaut/Sonnet** aux autres pour économiser.
 > Le mode « Accepter les modifications automatiquement » évite d'avoir à valider chaque fichier dans chaque terminal.
