@@ -132,6 +132,7 @@ function snapshot() {
     sync: pid ? sync.forProject(pid)?.stats() || null : null,
     logs: studio.getLogs(200),
     roles: { list: ROLES, order: TEAM_ORDER },
+    skills: projects.bundledSkills(),
     types: Object.fromEntries(Object.entries(setup.AGENT_TYPES).map(([k, t]) => [k, { label: t.label, color: t.color, hint: t.hint }])),
   };
 }

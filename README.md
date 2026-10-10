@@ -37,6 +37,28 @@ Les Claude se réservent les fichiers : deux Claude ne peuvent pas écrire le m�
 
 ---
 
+## 🧠 Skills intégrés
+
+Chaque projet reçoit automatiquement 12 **skills** (dans `.claude/skills/`, que Claude Code charge tout seul).
+Chaque Claude de l'équipe les a, sans rien installer :
+
+| Skill | Utilité |
+|---|---|
+| `sobriete-code` | Écrire moins de code : réutiliser Roblox et l'existant avant de créer (inspiré de Ponytail). Moins de tokens, moins de bugs. |
+| `reponses-courtes` | Messages brefs entre agents (inspiré de Caveman) : économise ton abonnement. |
+| `memoire-projet` | Mémoire partagée dans `MEMOIRE.md` : architecture, décisions, où se trouve quoi. |
+| `coordination-equipe` | Comment le Chef découpe et répartit, et comment chacun rend son travail. |
+| `roblox-luau` | Luau propre : structure, types, performance, pièges. |
+| `roblox-client-serveur` | Client/serveur, RemoteEvents sécurisés, anti-triche. |
+| `roblox-donnees` | Sauvegarde fiable des joueurs (DataStore). |
+| `roblox-interface` | Interfaces adaptées au mobile et au PC. |
+| `roblox-map` | Construire la map proprement dans Studio. |
+| `roblox-modeles-3d` | Modèles du Creator Store : choisir, nettoyer les scripts suspects, placer. |
+| `roblox-monetisation` | Gamepasses et produits développeur sans bug d'achat. |
+| `roblox-debug` | Trouver les erreurs et ne jamais prétendre avoir testé en jeu sans l'avoir fait. |
+
+Pour modifier un skill, édite son fichier et supprime la ligne `<!-- roswarm:auto … -->` : RoSwarm ne l'écrasera plus.
+
 ## Ce que ça fait
 
 | | |

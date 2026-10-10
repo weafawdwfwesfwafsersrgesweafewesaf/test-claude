@@ -312,3 +312,6 @@ select { width: auto; }
 /* ---------- micro ---------- */
 .btn.mic { height: 38px; font-size: 16px; }
 .btn.mic.on { background: #dc2626; border-color: #dc2626; color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+
+.skill-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.skill-chip { font-size: 11.5px; padding: 2px 8px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--border-2); color: var(--muted); cursor: help; }

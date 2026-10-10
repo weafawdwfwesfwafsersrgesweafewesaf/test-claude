@@ -43,6 +43,21 @@ test('création de projet', async () => {
   assert.ok(fs.existsSync(path.join(PROJECT_DIR, 'src', 'ServerScriptService')));
   assert.match(fs.readFileSync(path.join(PROJECT_DIR, 'AGENTS.md'), 'utf8'), /équipe d'agents IA/);
   assert.ok(fs.existsSync(path.join(PROJECT_DIR, 'CLAUDE.md')));
+  // skills installés là où Claude Code les découvre, avec l'en-tête YAML en première ligne
+  const skillsDir = path.join(PROJECT_DIR, '.claude', 'skills');
+  const names = fs.readdirSync(skillsDir).sort();
+  for (const n of ['coordination-equipe', 'memoire-projet', 'reponses-courtes', 'roblox-luau', 'roblox-map', 'sobriete-code']) assert.ok(names.includes(n), n);
+  for (const n of names) {
+    const text = fs.readFileSync(path.join(skillsDir, n, 'SKILL.md'), 'utf8');
+    assert.match(text, new RegExp(`^---\\nname: ${n}\\ndescription: .+\\n---\\n<!-- roswarm:auto`), n);
+  }
+  assert.ok(fs.existsSync(path.join(PROJECT_DIR, 'MEMOIRE.md')));
+  // un skill personnalisé (marqueur retiré) n'est jamais écrasé
+  const custom = path.join(skillsDir, 'roblox-map', 'SKILL.md');
+  fs.writeFileSync(custom, '---\nname: roblox-map\ndescription: perso\n---\nma version');
+  await api('POST', `/api/projects/${project.id}/open`);
+  assert.equal(fs.readFileSync(custom, 'utf8'), '---\nname: roblox-map\ndescription: perso\n---\nma version');
+  assert.ok((await api('GET', '/api/state')).skills.length >= 12);
 });
 
 test('installation du plugin', async () => {

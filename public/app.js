@@ -772,6 +772,8 @@ function renderTeamForm() {
     <div class="size-picker">${[2, 3, 4, 5, 6].map((n) => `<button class="btn sm ${n === teamSize ? 'primary' : ''}" data-size="${n}">${n}</button>`).join('')}</div>
     <div class="tf-label">Rôles et modèles</div>
     ${rows}
+    <div class="tf-label">Skills intégrés (${(S.skills || []).length}) — chaque Claude les a automatiquement</div>
+    <div class="skill-chips">${(S.skills || []).map((k) => `<span class="skill-chip" title="${esc(k.description)}">${esc(k.name)}</span>`).join('')}</div>
     <div class="tf-label">Autorisations</div>
     <select id="team-mode">
       <option value="acceptEdits">Accepter les modifications de fichiers automatiquement (recommandé)</option>

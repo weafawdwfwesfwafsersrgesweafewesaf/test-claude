@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { bus } from './bus.js';
-import { DATA_DIR, DEFAULT_PROJECTS_DIR, readJson, writeJson } from './config.js';
+import { APP_ROOT, DATA_DIR, DEFAULT_PROJECTS_DIR, readJson, writeJson } from './config.js';
 
 const FILE = path.join(DATA_DIR, 'projects.json');
 const state = readJson(FILE, { projects: [], activeProjectId: null });
@@ -139,6 +139,13 @@ sur le même jeu Roblox. L'utilisateur ne sait pas forcément coder : explique s
    (nouvelle tâche pour toi, message d'un coéquipier, tâche terminée) : traite-les.
 6. Ne fais jamais \`git reset --hard\`, \`git checkout .\` ou \`git stash\` : d'autres agents travaillent dans ce dossier.
 
+## Skills (dans .claude/skills, utilise-les)
+- **sobriete-code** avant d'écrire du code : réutiliser Roblox et l'existant, écrire moins.
+- **reponses-courtes** : messages brefs entre agents (économie de tokens).
+- **memoire-projet** : lis \`MEMOIRE.md\` au début, mets-le à jour à la fin.
+- **roblox-luau**, **roblox-client-serveur**, **roblox-donnees**, **roblox-interface**, **roblox-map**,
+  **roblox-modeles-3d**, **roblox-monetisation**, **roblox-debug**, **coordination-equipe**.
+
 ## Où va le code
 - Les scripts vivent dans **\`src/\`** et sont synchronisés automatiquement avec Studio :
   - \`src/<Service>/<Dossiers>/<Nom>.server.luau\` → Script
@@ -157,9 +164,69 @@ sur le même jeu Roblox. L'utilisateur ne sait pas forcément coder : explique s
 `;
 }
 
+const SKILL_MARK = '<!-- roswarm:auto (supprime cette ligne pour garder tes modifications) -->';
+const SKILLS_DIR = path.join(APP_ROOT, 'skills');
+
+/** Skills fournis avec RoSwarm (dossier skills/ de l'application). */
+export function bundledSkills() {
+  try {
+    return fs
+      .readdirSync(SKILLS_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && fs.existsSync(path.join(SKILLS_DIR, d.name, 'SKILL.md')))
+      .map((d) => {
+        const text = fs.readFileSync(path.join(SKILLS_DIR, d.name, 'SKILL.md'), 'utf8');
+        return { name: d.name, description: (text.match(/^description:\s*(.+)$/m) || [])[1] || '' };
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Installe les skills de RoSwarm dans <projet>/.claude/skills/, où Claude Code les découvre tout seul.
+ * Un skill modifié à la main (marqueur retiré) n'est jamais écrasé.
+ */
+function installSkills(project) {
+  for (const { name } of bundledSkills()) {
+    const src = fs.readFileSync(path.join(SKILLS_DIR, name, 'SKILL.md'), 'utf8');
+    // le marqueur va juste après l'en-tête YAML (qui doit rester en première ligne)
+    const content = src.replace(/^(---\n[\s\S]*?\n---\n)/, `$1${SKILL_MARK}\n`);
+    const dest = path.join(project.dir, '.claude', 'skills', name, 'SKILL.md');
+    let current = null;
+    try {
+      current = fs.readFileSync(dest, 'utf8');
+    } catch {}
+    if (current === content || (current !== null && !current.includes(SKILL_MARK))) continue;
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, content);
+  }
+}
+
+const MEMORY_TEMPLATE = `# Mémoire du projet
+
+Mémoire partagée par tous les agents (voir le skill « memoire-projet »). Courte, à jour, sans code.
+
+## Architecture
+
+## Conventions
+
+## Décisions
+
+## Où se trouve quoi
+
+## À faire / problèmes connus
+`;
+
 /** (Ré)écrit les fichiers de consignes s'ils n'ont pas été personnalisés. */
 export function ensureFiles(project) {
   if (!project || !fs.existsSync(project.dir)) return;
+  try {
+    installSkills(project);
+  } catch (e) {
+    console.error('[RoSwarm] Installation des skills impossible :', e.message);
+  }
+  const mem = path.join(project.dir, 'MEMOIRE.md');
+  if (!fs.existsSync(mem)) fs.writeFileSync(mem, MEMORY_TEMPLATE);
   const guide = agentGuide(project);
   for (const f of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md']) {
     const file = path.join(project.dir, f);

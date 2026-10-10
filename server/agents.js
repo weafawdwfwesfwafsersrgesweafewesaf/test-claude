@@ -217,6 +217,7 @@ export function spawn({ projectId = null, tabId = 't1', type, command, setup = f
   const t = AGENT_TYPES[type];
   if (!t) throw new Error('Type d’agent inconnu : ' + type);
   if (!setup && !projects.get(projectId)) throw new Error('Projet introuvable');
+  if (!setup) projects.ensureFiles(projects.get(projectId)); // consignes + skills à jour avant le démarrage
   if (type === 'custom' && !String(command || '').trim()) throw new Error('Indique la commande à lancer.');
   const id = 'a' + ++seq;
   const sameProject = all().filter((x) => x.projectId === projectId && !x.setup);
