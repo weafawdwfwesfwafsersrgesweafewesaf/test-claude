@@ -89,8 +89,12 @@ function prepare(a, project) {
   if (a.type === 'claude') {
     const mcpFile = path.join(runDir, 'mcp.json');
     writeJson(mcpFile, { mcpServers: { roswarm: { type: 'stdio', command: NODE, args: bridgeArgs } } });
+    // Sous Windows, Claude Code exécute les hooks avec PowerShell, qui refuse une commande commençant par un chemin
+    // entre guillemets ("C:/Program Files/…/node.exe" "…" = erreur de syntaxe). On commence donc par `node` tout court,
+    // valable dans PowerShell, cmd et bash (Node est dans le PATH : c'est lui qui lance RoSwarm).
+    const nodeCmd = IS_WIN ? 'node' : `"${fwd(NODE)}"`;
     const hook = (event) => [
-      { type: 'command', command: `"${fwd(NODE)}" "${fwd(HOOK)}" --agent ${a.id} --event ${event} --home "${fwd(DATA_DIR)}"`, timeout: 10 },
+      { type: 'command', command: `${nodeCmd} "${fwd(HOOK)}" --agent ${a.id} --event ${event} --home "${fwd(DATA_DIR)}"`, timeout: 10 },
     ];
     const settingsFile = path.join(runDir, 'settings.json');
     writeJson(settingsFile, {
