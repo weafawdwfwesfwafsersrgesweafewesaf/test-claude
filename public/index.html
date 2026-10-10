@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="roswarm-token" content="__ROSWARM_TOKEN__">
+  <title>RoSwarm</title>
+  <link rel="icon" href="/static/logo.svg">
+  <link rel="stylesheet" href="/vendor/xterm.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand">
+        <img src="/static/logo.svg" alt="" width="28" height="28">
+        <span>RoSwarm</span>
+        <span class="badge-free">Gratuit</span>
+      </div>
+      <nav>
+        <button class="nav-item" id="nav-home" data-view="home">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>
+          Accueil
+        </button>
+      </nav>
+      <div class="side-title">Projets</div>
+      <div id="project-list"></div>
+      <div class="side-bottom">
+        <div id="studio-pill" class="pill"></div>
+        <div class="muted small">v<span id="version"></span> · open source</div>
+      </div>
+    </aside>
+
+    <main id="main">
+      <section id="view-home" class="view"></section>
+      <section id="view-workspace" class="view hidden">
+        <header class="ws-header">
+          <div class="ws-title">
+            <h1 id="ws-name"></h1>
+            <button class="link small" id="ws-dir" title="Ouvrir le dossier"></button>
+          </div>
+          <div class="ws-actions">
+            <label class="switch" title="Synchroniser automatiquement les scripts de src/ avec Studio">
+              <input type="checkbox" id="ws-sync"><span></span> Sync src/ ↔ Studio
+            </label>
+            <button class="btn ghost" id="ws-pull" title="Copier tous les scripts de la place ouverte dans src/">⬇ Importer de Studio</button>
+            <button class="btn ghost" id="ws-push" title="Envoyer tous les scripts de src/ dans Studio">⬆ Envoyer à Studio</button>
+            <div class="dropdown">
+              <button class="btn primary" id="add-agent-btn">＋ Agent</button>
+              <div class="menu hidden" id="add-agent-menu"></div>
+            </div>
+          </div>
+        </header>
+        <div class="tabs-bar">
+          <div class="workshop-label">Atelier</div>
+          <div id="tabs"></div>
+          <button class="tab-add" id="tab-add" title="Nouvel onglet">＋</button>
+        </div>
+        <div id="grid"></div>
+        <footer class="composer">
+          <select id="composer-target"></select>
+          <textarea id="composer-text" rows="1" placeholder="Décris ce que tu veux… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)"></textarea>
+          <button class="btn primary" id="composer-send">Envoyer</button>
+        </footer>
+      </section>
+    </main>
+
+    <aside id="panel">
+      <div class="panel-head">
+        <div class="panel-title">Studio · <span id="panel-place">—</span></div>
+        <div id="panel-status"></div>
+        <select id="session-select" class="hidden"></select>
+      </div>
+      <div class="panel-section">
+        <div class="section-title">Agents au travail</div>
+        <div id="at-work"></div>
+      </div>
+      <div class="panel-tabs">
+        <button data-ptab="tasks" class="active">Tâches</button>
+        <button data-ptab="explorer">Explorateur</button>
+        <button data-ptab="console">Console</button>
+        <button data-ptab="activity">Activité</button>
+      </div>
+      <div class="panel-body">
+        <div id="ptab-tasks" class="ptab"></div>
+        <div id="ptab-explorer" class="ptab hidden"></div>
+        <div id="ptab-console" class="ptab hidden"></div>
+        <div id="ptab-activity" class="ptab hidden"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div id="modal-title"></div>
+        <button class="icon-btn" id="modal-close" title="Fermer">✕</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <div id="toasts"></div>
+
+  <script src="/vendor/xterm.js"></script>
+  <script src="/vendor/addon-fit.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
