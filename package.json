@@ -1,6 +1,6 @@
 {
   "name": "roswarm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "RoSwarm — plusieurs agents IA sur un même projet Roblox Studio. Gratuit et open source.",
   "type": "module",
   "main": "server/index.js",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js --no-open",
-    "test": "node --test test/*.test.js"
+    "test": "node --test"
   },
   "engines": { "node": ">=20.11" },
   "license": "MIT",

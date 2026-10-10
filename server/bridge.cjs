@@ -84,7 +84,7 @@ async function handle(msg) {
       result = {
         protocolVersion: (params && params.protocolVersion) || '2025-06-18',
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'roswarm', version: '0.1.0' },
+        serverInfo: { name: 'roswarm', version: '0.2.0' },
         instructions,
       };
     } else if (method === 'ping') {

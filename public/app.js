@@ -7,6 +7,7 @@ const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
 const STATUS = { starting: 'Démarrage…', working: 'Travaille…', idle: 'Prêt', waiting: 'Attend ta réponse', exited: 'Arrêté' };
 const AGENT_ORDER = ['claude', 'codex', 'gemini', 'opencode', 'shell', 'custom'];
+const TASK_LABELS = { todo: 'À faire', doing: 'En cours', review: 'À valider', blocked: 'Bloquée', done: 'Fait' };
 
 const S = {
   projects: [],
@@ -24,6 +25,9 @@ const S = {
   tab: {}, // projectId -> tabId
   maximized: null,
   ptab: 'tasks',
+  pairing: [],
+  pluginTokens: [],
+  sync: null,
   explorerSel: null,
 };
 
@@ -148,6 +152,18 @@ function onMessage(m) {
       if (m.projectId === S.activeProjectId) {
         S.board = m.board;
         if (S.ptab === 'tasks') renderTasks();
+      }
+      break;
+    case 'pairing':
+      S.pairing = m.pairing;
+      S.pluginTokens = m.pluginTokens;
+      renderPanelHead();
+      if (S.view === 'home') renderHome();
+      break;
+    case 'sync':
+      if (m.projectId === S.activeProjectId) {
+        S.sync = m.sync;
+        renderSyncLine();
       }
       break;
     case 'activity':
@@ -360,6 +376,17 @@ function renderHome() {
       <div class="card">
         <h2>🧩 Configuration</h2>
         <div class="setup-list">${pluginRow}</div>
+        ${
+          S.pluginTokens?.length
+            ? `<div class="tf-label" style="margin-top:12px">Studios autorisés</div>${S.pluginTokens
+                .map(
+                  (t) => `<div class="token-row"><span>🔑 ${esc(t.label)} <span class="muted small">· autorisé le ${new Date(t.createdAt).toLocaleDateString('fr-FR')}${
+                    t.lastUsedAt ? ' · vu ' + time(t.lastUsedAt) : ''
+                  }</span></span><button class="btn sm ghost danger" data-revoke="${t.id}">Révoquer</button></div>`,
+                )
+                .join('')}`
+            : ''
+        }
       </div>
       <div class="card span2">
         <h2>🤖 Agents IA <span class="muted small" style="font-weight:400">— utilise tes propres abonnements, rien ne passe par nous</span></h2>
@@ -415,6 +442,7 @@ function gridColumns(n) {
 function renderWorkspace() {
   const p = project();
   if (!p) return;
+  renderSyncLine();
   $('#ws-name').textContent = p.name;
   $('#ws-dir').textContent = p.dir;
   $('#ws-sync').checked = !!p.sync;
@@ -515,6 +543,26 @@ function renderPanel() {
   if (S.ptab === 'activity') renderActivity();
 }
 
+function renderSyncLine() {
+  const el = $('#sync-line');
+  const st = S.sync;
+  const p = project();
+  if (!st || !p || !p.sync) {
+    el.innerHTML = '';
+    return;
+  }
+  const c = st.counts;
+  const waiting = c.pending + c.in_progress + c.unknown;
+  const parts = [`<span title="Scripts identiques dans src/ et Studio">✓ ${c.applied} à jour</span>`];
+  if (waiting) parts.push(`<span class="warn" title="En attente de confirmation par Studio">⏳ ${waiting} en attente</span>`);
+  if (c.failed) parts.push(`<span class="err" title="${esc(st.problems.map((x) => x.rel + ' : ' + x.error).join('\n'))}">✗ ${c.failed} en échec</span>`);
+  if (st.conflicts.length) parts.push(`<span class="warn" title="La version Studio a été sauvegardée dans .roswarm/conflicts/">⚠ ${st.conflicts.length} conflit(s)</span>`);
+  const syntax = st.problems.filter((x) => /^syntaxe/.test(x.error));
+  if (syntax.length) parts.push(`<span class="err" title="${esc(syntax.map((x) => x.rel + ' : ' + x.error).join('\n'))}">⚠ ${syntax.length} erreur(s) de syntaxe</span>`);
+  if (!S.studio.connected) parts.push('<span class="muted">hors ligne : envoi à la reconnexion</span>');
+  el.innerHTML = 'Sync : ' + parts.join(' · ');
+}
+
 function renderPanelHead() {
   const p = project();
   $('#panel-place').textContent = p ? p.name : '—';
@@ -522,6 +570,16 @@ function renderPanelHead() {
   $('#panel-status').innerHTML = S.studio.connected
     ? `<span class="dot ok"></span><span>Studio ouvert<div class="hint">${esc(S.studio.placeName)}</div></span>`
     : `<span class="dot warn pulse"></span><span>${esc(sl.text)}<div class="hint">Lance Roblox Studio et ouvre ta place. Le plugin RoSwarm se connecte tout seul.</div></span>`;
+  $('#pairing').innerHTML = (S.pairing || [])
+    .map(
+      (r) => `<div class="pair-card">
+        <div><b>Studio demande l’accès</b> : « ${esc(r.placeName)} »</div>
+        <div class="hint">Vérifie que la sortie (Output) de Studio affiche le code <b class="mono">${esc(r.code)}</b>. N’autorise que si c’est bien ton Studio.</div>
+        <div class="pair-actions"><button class="btn sm primary" data-pair-approve="${esc(r.requestId)}">Autoriser</button>
+        <button class="btn sm" data-pair-reject="${esc(r.requestId)}">Refuser</button></div>
+      </div>`,
+    )
+    .join('');
   const sel = $('#session-select');
   const sessions = S.studio.sessions || [];
   sel.classList.toggle('hidden', sessions.length < 2);
@@ -557,23 +615,28 @@ function renderTasks() {
   const b = S.board || { tasks: [], messages: [] };
   const agents = projectAgents().filter((a) => a.status !== 'exited');
   const focused = document.activeElement && el.contains(document.activeElement) ? document.activeElement.id : null;
-  const draft = { title: $('#tf-title')?.value || '', details: $('#tf-details')?.value || '', msg: $('#msg-text')?.value || '' };
+  const draft = { title: $('#tf-title')?.value || '', details: $('#tf-details')?.value || '', accept: $('#tf-accept')?.value || '', msg: $('#msg-text')?.value || '' };
   const agentOpts = agents.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
   const task = (t) => `<div class="task ${t.status}">
       <div class="t-title">#${t.id} ${esc(t.title)}</div>
       <div class="t-meta">${t.assignee ? '→ ' + esc(t.assignee) : 'Non assignée'} · par ${esc(t.createdBy)}</div>
       ${t.details ? `<div class="t-details">${esc(t.details)}</div>` : ''}
+      ${t.acceptance ? `<div class="t-details">🎯 ${esc(t.acceptance)}</div>` : ''}
+      ${t.dependsOn?.length ? `<div class="t-details">⛓ après ${t.dependsOn.map((d) => '#' + d).join(', ')}</div>` : ''}
       ${t.notes?.length ? `<div class="t-details">📝 ${esc(t.notes.at(-1).by)} : ${esc(t.notes.at(-1).text)}</div>` : ''}
       <div class="t-actions">
         <select data-task-status="${t.id}">
-          ${['todo', 'doing', 'done'].map((s) => `<option value="${s}" ${t.status === s ? 'selected' : ''}>${{ todo: 'À faire', doing: 'En cours', done: 'Fait' }[s]}</option>`).join('')}
+          ${Object.entries(TASK_LABELS).map(([s, l]) => `<option value="${s}" ${t.status === s ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
+        ${t.status === 'review' ? `<button class="btn sm primary" data-task-validate="${t.id}" title="Vérifié : la tâche est terminée">✓ Valider</button>` : ''}
         ${t.status !== 'done' && agents.length ? `<select data-task-give="${t.id}"><option value="">Donner à…</option>${agentOpts}</select>` : ''}
         <button class="icon-btn" data-task-del="${t.id}" title="Supprimer">🗑</button>
       </div>
     </div>`;
   const groups = [
+    ['review', 'À valider'],
     ['doing', 'En cours'],
+    ['blocked', 'Bloquées'],
     ['todo', 'À faire'],
     ['done', 'Fait'],
   ]
@@ -586,6 +649,7 @@ function renderTasks() {
     <div class="task-form">
       <input type="text" id="tf-title" placeholder="Nouvelle tâche (ex. « Boutique d’œufs »)">
       <textarea id="tf-details" rows="2" placeholder="Détails (facultatif)"></textarea>
+      <input type="text" id="tf-accept" placeholder="Critère de réussite (facultatif) : comment vérifier que c’est fini ?">
       <div class="row">
         <select id="tf-agent"><option value="">Personne pour l’instant</option>${agentOpts}</select>
         <button class="btn sm primary" data-act="add-task">Ajouter</button>
@@ -597,6 +661,7 @@ function renderTasks() {
     <div class="row" style="display:flex;gap:6px;margin-top:8px"><input type="text" id="msg-text" placeholder="Écrire à l’équipe…"><button class="btn sm" data-act="post-msg">Envoyer</button></div>`;
   $('#tf-title').value = draft.title;
   $('#tf-details').value = draft.details;
+  $('#tf-accept').value = draft.accept;
   $('#msg-text').value = draft.msg;
   if (focused) $('#' + focused)?.focus();
 }
@@ -781,7 +846,9 @@ function autoGrow() {
 }
 
 document.addEventListener('click', async (e) => {
-  const el = e.target.closest('[data-act],[data-pid],[data-view],[data-add],[data-tab],[data-close-tab],[data-restart],[data-kill],[data-max],[data-ptab],[data-task-del],[data-node],[data-del]');
+  const el = e.target.closest(
+    '[data-act],[data-pid],[data-view],[data-add],[data-tab],[data-close-tab],[data-restart],[data-kill],[data-max],[data-ptab],[data-task-del],[data-node],[data-del],[data-pair-approve],[data-pair-reject],[data-revoke],[data-task-validate]',
+  );
   if (!el) {
     if (!e.target.closest('.dropdown')) $('#add-agent-menu').classList.add('hidden');
     return;
@@ -805,13 +872,20 @@ document.addEventListener('click', async (e) => {
       await attempt(() => api('POST', `/api/projects/${d.pid}/open`));
       S.activeProjectId = d.pid;
       const st = await api('GET', '/api/state');
-      Object.assign(S, { board: st.board, activity: st.activity });
+      Object.assign(S, { board: st.board, activity: st.activity, sync: st.sync });
     }
     S.view = 'workspace';
     renderAll();
     return;
   }
   if (d.add) return addAgent(d.add);
+  if (d.pairApprove) return attempt(() => api('POST', `/api/pairing/${d.pairApprove}/approve`), 'Studio autorisé ✓');
+  if (d.pairReject) return attempt(() => api('POST', `/api/pairing/${d.pairReject}/reject`));
+  if (d.revoke) {
+    if (!confirm('Révoquer cet accès ? Ce Studio devra être autorisé à nouveau.')) return;
+    return attempt(() => api('DELETE', '/api/plugin-tokens/' + d.revoke), 'Accès révoqué');
+  }
+  if (d.taskValidate) return attempt(() => api('PATCH', `/api/projects/${p.id}/tasks/${d.taskValidate}`, { status: 'done' }), 'Tâche validée');
   if (d.ptab) {
     S.ptab = d.ptab;
     renderPanel();
@@ -877,7 +951,7 @@ document.addEventListener('click', async (e) => {
         S.activeProjectId = r.id;
         S.view = 'workspace';
         const st = await api('GET', '/api/state');
-        Object.assign(S, { projects: st.projects, board: st.board, activity: st.activity });
+        Object.assign(S, { projects: st.projects, board: st.board, activity: st.activity, sync: st.sync });
         renderAll();
       }
       break;
@@ -902,10 +976,13 @@ document.addEventListener('click', async (e) => {
       const title = $('#tf-title').value.trim();
       if (!title) return toast('Écris un titre de tâche.', true);
       const agentId = $('#tf-agent').value;
-      const t = await attempt(() => api('POST', `/api/projects/${p.id}/tasks`, { title, details: $('#tf-details').value.trim() }));
+      const t = await attempt(() =>
+        api('POST', `/api/projects/${p.id}/tasks`, { title, details: $('#tf-details').value.trim(), acceptance: $('#tf-accept').value.trim() }),
+      );
       if (!t) return;
       $('#tf-title').value = '';
       $('#tf-details').value = '';
+      $('#tf-accept').value = '';
       if (agentId) await attempt(() => api('POST', `/api/agents/${agentId}/task`, { taskId: t.id }), 'Tâche envoyée à l’agent');
       break;
     }

@@ -5,7 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 export const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PORT = Number(process.env.ROSWARM_PORT) || 34900;
 export const DATA_DIR = process.env.ROSWARM_HOME || path.join(os.homedir(), '.roswarm');

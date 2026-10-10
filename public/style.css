@@ -296,3 +296,15 @@ select { width: auto; }
 .team-row { display: grid; grid-template-columns: 34px 1fr 150px; gap: 8px; align-items: center; }
 .team-row select, #team-mode { width: 100%; }
 .tr-num { font-weight: 700; color: #d97757; }
+
+/* ---------- appairage, synchronisation ---------- */
+.pair-card { border: 1px solid rgba(245,158,11,.5); background: rgba(245,158,11,.08); border-radius: 10px; padding: 10px 12px; font-size: 13px; display: grid; gap: 6px; }
+.pair-card .hint { color: var(--muted); font-size: 12px; }
+.pair-actions { display: flex; gap: 6px; }
+.token-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.sync-line { color: var(--muted); margin-top: 2px; }
+.sync-line .warn { color: var(--warn); }
+.sync-line .err { color: #f87171; }
+.act.warning { color: var(--warn); }
+.task.review { border-color: rgba(245,158,11,.5); }
+.task.blocked { border-color: rgba(239,68,68,.4); }

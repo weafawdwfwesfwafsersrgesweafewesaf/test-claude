@@ -15,39 +15,125 @@ if not okSES then
 	ScriptEditorService = nil
 end
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 local PORT = tonumber(plugin:GetSetting("RoSwarmPort")) or 34900
 local BASE = "http://127.0.0.1:" .. PORT
 local SYNC_ATTR = "RoSwarm"
+local SEQ_ATTR = "RoSwarmSeq"
+local MAX_SOURCE = 2 * 1024 * 1024
 
-local function post(route, body)
-	local okEnc, encoded = pcall(function()
-		return HttpService:JSONEncode(body)
-	end)
+local alive = true
+plugin.Unloading:Connect(function()
+	alive = false
+end)
+
+local isPlay = RunService:IsRunning()
+
+---------------------------------------------------------------------------
+-- Connexion : jeton (obtenu par appairage), session (donnée par le serveur)
+---------------------------------------------------------------------------
+local conn = { token = plugin:GetSetting("RoSwarmToken"), sessionId = nil, lastPollId = 0 }
+if type(conn.token) ~= "string" or #conn.token ~= 64 then
+	conn.token = nil
+end
+local instanceId = HttpService:GenerateGUID(false)
+
+local function forgetToken(reason)
+	conn.token = nil
+	conn.sessionId = nil
+	plugin:SetSetting("RoSwarmToken", "")
+	print("[RoSwarm] " .. reason .. " Une nouvelle autorisation va être demandée.")
+end
+
+-- Renvoie data, ou nil + message d'erreur + code HTTP + code d'erreur RoSwarm.
+local function request(route, body, auth)
+	local okEnc, encoded = pcall(HttpService.JSONEncode, HttpService, body)
 	if not okEnc then
-		encoded = HttpService:JSONEncode({ id = body.id, ok = false, error = "Résultat non sérialisable : " .. tostring(encoded) })
+		return nil, "JSON : " .. tostring(encoded), 0
+	end
+	local headers = { ["Content-Type"] = "application/json" }
+	if auth then
+		if not conn.token then
+			return nil, "plugin non autorisé", 401, "BAD_TOKEN"
+		end
+		headers["X-RoSwarm-Plugin"] = conn.token
 	end
 	local ok, res = pcall(function()
-		return HttpService:RequestAsync({
-			Url = BASE .. route,
-			Method = "POST",
-			Headers = { ["Content-Type"] = "application/json" },
-			Body = encoded,
-		})
+		return HttpService:RequestAsync({ Url = BASE .. route, Method = "POST", Headers = headers, Body = encoded })
 	end)
 	if not ok then
-		return nil, tostring(res)
+		return nil, tostring(res), 0
 	end
+	local okDec, data = pcall(HttpService.JSONDecode, HttpService, res.Body)
 	if not res.Success then
-		return nil, tostring(res.StatusCode) .. " " .. tostring(res.StatusMessage)
+		local isTable = okDec and type(data) == "table"
+		return nil, (isTable and data.error) or tostring(res.StatusCode), res.StatusCode, isTable and data.code or nil
 	end
-	local okDec, data = pcall(function()
-		return HttpService:JSONDecode(res.Body)
-	end)
-	if not okDec then
-		return nil, "JSON invalide"
+	if not okDec or type(data) ~= "table" then
+		return nil, "réponse invalide", res.StatusCode
 	end
 	return data
+end
+
+-- Appairage : le plugin demande l'accès, l'utilisateur clique « Autoriser » dans RoSwarm.
+local pairing = nil
+local function pairStep()
+	if not pairing then
+		local code = tostring(Random.new():NextInteger(1000, 9999))
+		local p = { requestId = HttpService:GenerateGUID(false), code = code }
+		local data, err = request("/plugin/pair", { requestId = p.requestId, code = code, placeName = game.Name }, false)
+		if not data then
+			return false, err
+		end
+		pairing = p
+		print(
+			"[RoSwarm] Autorisation nécessaire : dans l'application RoSwarm, clique « Autoriser » pour « "
+				.. game.Name
+				.. " » (vérifie que le code affiché est "
+				.. code
+				.. ")."
+		)
+	end
+	local data, err = request("/plugin/pair-status", { requestId = pairing.requestId }, false)
+	if not data then
+		return false, err
+	end
+	if data.status == "approved" and type(data.token) == "string" then
+		conn.token = data.token
+		plugin:SetSetting("RoSwarmToken", data.token)
+		pairing = nil
+		print("[RoSwarm] Plugin autorisé. Connexion à RoSwarm…")
+		return true
+	elseif data.status == "rejected" then
+		pairing = nil
+		print("[RoSwarm] Autorisation refusée dans RoSwarm. Nouvel essai dans une minute.")
+		task.wait(60)
+	elseif data.status == "unknown" then
+		pairing = nil -- demande expirée : on en refait une
+	end
+	return false
+end
+
+local function hello()
+	local data, err, _status, code = request("/plugin/hello", {
+		instanceId = instanceId,
+		placeName = game.Name,
+		placeId = game.PlaceId,
+		gameId = game.GameId,
+		version = VERSION,
+		logOnly = isPlay,
+	}, true)
+	if data and type(data.sessionId) == "string" then
+		if not data.resumed then
+			conn.lastPollId = 0
+		end
+		conn.sessionId = data.sessionId
+		return true
+	end
+	if code == "BAD_TOKEN" then
+		forgetToken("Autorisation révoquée ou inconnue.")
+	end
+	return false, err
 end
 
 ---------------------------------------------------------------------------
@@ -61,25 +147,35 @@ local LEVELS = {
 	[Enum.MessageType.MessageError] = "error",
 }
 LogService.MessageOut:Connect(function(message, messageType)
-	if #logQueue < 500 then
-		table.insert(logQueue, { text = message, level = LEVELS[messageType] or "info" })
+	if #logQueue >= 500 then
+		table.remove(logQueue, 1)
 	end
+	table.insert(logQueue, { text = message, level = LEVELS[messageType] or "info" })
 end)
-
-local alive = true
-plugin.Unloading:Connect(function()
-	alive = false
-end)
-
-local isPlay = RunService:IsRunning()
 
 task.spawn(function()
 	while alive do
 		task.wait(1)
-		if #logQueue > 0 then
-			local batch = logQueue
-			logQueue = {}
-			post("/plugin/log", { messages = batch, play = isPlay })
+		if #logQueue > 0 and conn.token then
+			if not conn.sessionId and isPlay then
+				hello()
+			end
+			if conn.sessionId then
+				local batch = logQueue
+				logQueue = {}
+				local data, _, _, code = request("/plugin/log", { sessionId = conn.sessionId, messages = batch, play = isPlay }, true)
+				if not data then
+					-- on garde les messages pour le prochain essai
+					for i = #batch, 1, -1 do
+						if #logQueue < 500 then
+							table.insert(logQueue, 1, batch[i])
+						end
+					end
+					if code == "BAD_SESSION" and isPlay then
+						conn.sessionId = nil
+					end
+				end
+			end
 		end
 	end
 end)
@@ -332,8 +428,29 @@ local COMMON_PROPS = {
 ---------------------------------------------------------------------------
 local SCRIPT_CLASSES = { Script = true, LocalScript = true, ModuleScript = true }
 
+-- Empreinte FNV-1a 32 bits (identique à fnv1a() dans server/syncCore.js), fins de ligne normalisées en LF.
+-- roswarm:fnv1a:begin
+local function fnv1a(s)
+	s = string.gsub(s, "\r\n", "\n")
+	local h = 2166136261
+	local n = #s
+	local i = 1
+	while i <= n do
+		local j = math.min(i + 3999, n)
+		local bytes = { string.byte(s, i, j) }
+		for k = 1, #bytes do
+			h = bit32.bxor(h, bytes[k])
+			-- h * 16777619 mod 2^32, avec 16777619 = 2^24 + 403 (évite de dépasser la précision des nombres)
+			h = (bit32.lshift(h, 24) + h * 403) % 4294967296
+		end
+		i = j + 1
+	end
+	return string.format("%08x", h)
+end
+-- roswarm:fnv1a:end
+
 local function setSource(scr, source)
-	if ScriptEditorService then
+	if ScriptEditorService and scr.Parent then
 		local ok = pcall(function()
 			ScriptEditorService:UpdateSourceAsync(scr, function()
 				return source
@@ -346,9 +463,11 @@ local function setSource(scr, source)
 	scr.Source = source
 end
 
--- Studio -> fichiers : quand un script synchronisé est modifié dans Studio
+-- Studio -> fichiers : quand un script synchronisé est modifié dans Studio.
+-- Chaque script modifié reçoit un numéro de version ; il ne quitte la file qu'une fois confirmé par le serveur.
 local watched = setmetatable({}, { __mode = "k" })
-local changedQueue = {}
+local changedQueue = {} -- script -> version
+local changeCounter = 0
 local suppress = setmetatable({}, { __mode = "k" })
 
 local function watchScript(scr)
@@ -359,29 +478,72 @@ local function watchScript(scr)
 		if suppress[scr] then
 			return
 		end
-		changedQueue[scr] = true
+		changeCounter += 1
+		changedQueue[scr] = changeCounter
 	end)
 end
 
 task.spawn(function()
 	while alive do
 		task.wait(1.5)
-		local items = {}
-		for scr in pairs(changedQueue) do
-			if scr.Parent and scr:GetAttribute(SYNC_ATTR) then
-				table.insert(items, { path = pathArray(scr), className = scr.ClassName, source = scr.Source })
+		if conn.sessionId and next(changedQueue) then
+			local items, sent = {}, {}
+			for scr, version in pairs(changedQueue) do
+				if scr.Parent and scr:GetAttribute(SYNC_ATTR) then
+					local ok, src = pcall(function()
+						return scr.Source
+					end)
+					if ok and #src <= MAX_SOURCE then
+						table.insert(items, { path = pathArray(scr), className = scr.ClassName, source = src })
+						table.insert(sent, { scr = scr, version = version })
+					else
+						changedQueue[scr] = nil
+					end
+				else
+					changedQueue[scr] = nil
+				end
+				if #items >= 50 then
+					break
+				end
 			end
-		end
-		changedQueue = {}
-		if #items > 0 then
-			post("/plugin/changes", { items = items })
+			if #items > 0 then
+				local data = request("/plugin/changes", { sessionId = conn.sessionId, items = items }, true)
+				if data then
+					for _, s in ipairs(sent) do
+						if changedQueue[s.scr] == s.version then
+							changedQueue[s.scr] = nil -- pas remodifié entre-temps
+						end
+					end
+				end
+			end
 		end
 	end
 end)
 
-local function upsertScript(parts, className, source)
+local function validParts(parts)
+	if type(parts) ~= "table" or #parts < 2 or #parts > 30 then
+		return false
+	end
+	for _, p in ipairs(parts) do
+		if type(p) ~= "string" or p == "" or #p > 100 then
+			return false
+		end
+	end
+	return true
+end
+
+-- Crée ou met à jour un script. item = { path, className, source, seq? }. Renvoie { status, syntaxError?, replacedUntagged? }.
+local function upsertScript(item)
+	local parts, className, source = item.path, item.className, item.source
+	local seq = tonumber(item.seq)
+	if not validParts(parts) then
+		error("chemin invalide", 0)
+	end
 	if not SCRIPT_CLASSES[className] then
-		className = "ModuleScript"
+		error("classe invalide : " .. tostring(className), 0)
+	end
+	if type(source) ~= "string" or #source > MAX_SOURCE then
+		error("source invalide ou trop grosse", 0)
 	end
 	local parent = game
 	for i = 1, #parts - 1 do
@@ -399,6 +561,19 @@ local function upsertScript(parts, className, source)
 	end
 	local name = parts[#parts]
 	local existing = parent:FindFirstChild(name)
+	local result = { status = "applied" }
+	if existing and existing:IsA("LuaSourceContainer") then
+		local cur = existing:GetAttribute(SEQ_ATTR)
+		if seq and type(cur) == "number" and cur > seq then
+			return { status = "stale" } -- une version plus récente est déjà appliquée
+		end
+		local okS, old = pcall(function()
+			return existing.Source
+		end)
+		if okS and not existing:GetAttribute(SYNC_ATTR) and fnv1a(old) ~= fnv1a(source) then
+			result.replacedUntagged = old -- script écrit à la main dans Studio : le serveur en garde une copie
+		end
+	end
 	local scr
 	if existing and existing.ClassName == className then
 		scr = existing
@@ -413,16 +588,29 @@ local function upsertScript(parts, className, source)
 		end
 	end
 	suppress[scr] = true
-	setSource(scr, source)
-	scr:SetAttribute(SYNC_ATTR, true)
 	if scr.Parent ~= parent then
 		scr.Parent = parent
+	end
+	local okCur, current = pcall(function()
+		return scr.Source
+	end)
+	if not (okCur and current == source) then
+		setSource(scr, source)
+	end
+	scr:SetAttribute(SYNC_ATTR, true)
+	if seq then
+		scr:SetAttribute(SEQ_ATTR, seq)
 	end
 	task.defer(function()
 		suppress[scr] = nil
 	end)
 	watchScript(scr)
-	return scr
+	-- Vérification de la syntaxe par le compilateur Luau de Studio (rien n'est exécuté).
+	local f, err = loadstring(source)
+	if not f then
+		result.syntaxError = tostring(err)
+	end
+	return result, scr
 end
 
 ---------------------------------------------------------------------------
@@ -662,8 +850,8 @@ TOOLS.set_script_source = function(a)
 		local okE, existing = pcall(resolve, parts)
 		className = (okE and existing.ClassName) or "Script"
 	end
-	local scr = recorded("set_script_source", function()
-		return upsertScript(parts, className, a.source or "")
+	local _, scr = recorded("set_script_source", function()
+		return upsertScript({ path = parts, className = className, source = a.source or "" })
 	end)
 	return "Script écrit : " .. pathOf(scr) .. " [" .. scr.ClassName .. "]"
 end
@@ -699,33 +887,119 @@ TOOLS.asset_insert = function(a)
 	end)
 end
 
+
 TOOLS.sync_upsert = function(a)
-	local done, errors = 0, {}
+	if type(a.items) ~= "table" then
+		error("items manquant", 0)
+	end
+	local out = {}
 	recorded("synchronisation", function()
-		for _, item in ipairs(a.items or {}) do
-			local ok, err = pcall(upsertScript, item.path, item.className, item.source)
-			if ok then
-				done += 1
-			else
-				table.insert(errors, table.concat(item.path, "/") .. " : " .. tostring(err))
-			end
+		for i, item in ipairs(a.items) do
+			local ok, res = pcall(upsertScript, item)
+			out[i] = ok and res or { status = "error", error = tostring(res) }
 		end
 	end)
-	if #errors > 0 and done == 0 then
-		error(table.concat(errors, "\n"), 0)
-	end
-	return { updated = done, errors = errors }
+	return { items = out }
 end
 
+-- Suppression d'un script synchronisé. Ses enfants ne sont jamais détruits : ils passent dans un Folder du même nom.
 TOOLS.sync_delete = function(a)
 	local ok, inst = pcall(resolve, a.path)
-	if ok and inst:GetAttribute(SYNC_ATTR) then
-		recorded("synchronisation", function()
-			inst:Destroy()
-		end)
-		return "supprimé"
+	if not ok then
+		return { status = "missing" }
 	end
-	return "ignoré"
+	if not inst:IsA("LuaSourceContainer") or not inst:GetAttribute(SYNC_ATTR) then
+		return { status = "kept", reason = "ce n'est pas un script synchronisé par RoSwarm" }
+	end
+	recorded("synchronisation", function()
+		local kids = inst:GetChildren()
+		if #kids > 0 then
+			local folder = Instance.new("Folder")
+			folder.Name = inst.Name
+			folder.Parent = inst.Parent
+			for _, c in ipairs(kids) do
+				c.Parent = folder
+			end
+		end
+		inst:Destroy()
+	end)
+	return { status = "deleted" }
+end
+
+local function syncedScripts()
+	local list = {}
+	for _, name in ipairs(SYNC_ROOTS) do
+		local svc = game:FindFirstChild(name)
+		if svc then
+			for _, d in ipairs(svc:GetDescendants()) do
+				if SCRIPT_CLASSES[d.ClassName] and d:GetAttribute(SYNC_ATTR) then
+					table.insert(list, d)
+				end
+			end
+		end
+	end
+	return list
+end
+
+-- Empreintes des scripts synchronisés : sert à la réconciliation après une (re)connexion.
+TOOLS.sync_manifest = function()
+	local out = {}
+	for i, scr in ipairs(syncedScripts()) do
+		local ok, src = pcall(function()
+			return scr.Source
+		end)
+		if ok and scr.Parent then
+			table.insert(out, { path = pathArray(scr), className = scr.ClassName, hash = fnv1a(src) })
+		end
+		if i % 50 == 0 then
+			task.wait()
+		end
+	end
+	return { scripts = out }
+end
+
+TOOLS.get_sources = function(a)
+	local out = {}
+	for i, p in ipairs(a.paths or {}) do
+		local ok, inst = pcall(resolve, p)
+		if ok and inst:IsA("LuaSourceContainer") then
+			out[i] = { source = inst.Source }
+		else
+			out[i] = { missing = true }
+		end
+	end
+	return { sources = out }
+end
+
+-- Vérifie la syntaxe (compilation Luau, sans exécution) des scripts donnés ou de tous les scripts synchronisés.
+TOOLS.check_scripts = function(a)
+	local targets = {}
+	if type(a.paths) == "table" and #a.paths > 0 then
+		for _, p in ipairs(a.paths) do
+			local ok, inst = pcall(resolve, p)
+			if ok and inst:IsA("LuaSourceContainer") then
+				table.insert(targets, inst)
+			end
+		end
+	else
+		targets = syncedScripts()
+	end
+	local errors = {}
+	for i, scr in ipairs(targets) do
+		local ok, src = pcall(function()
+			return scr.Source
+		end)
+		if ok then
+			local f, err = loadstring(src)
+			if not f then
+				table.insert(errors, { path = pathOf(scr), error = tostring(err) })
+			end
+		end
+		if i % 50 == 0 then
+			task.wait()
+		end
+	end
+	return { checked = #targets, errors = errors }
 end
 
 TOOLS.pull_scripts = function(a)
@@ -763,9 +1037,8 @@ TOOLS.pull_scripts = function(a)
 end
 
 ---------------------------------------------------------------------------
--- Connexion (long-polling)
+-- Exécution des commandes (au moins une fois, sans double exécution)
 ---------------------------------------------------------------------------
-local sessionId = HttpService:GenerateGUID(false)
 local enabled = plugin:GetSetting("RoSwarmEnabled") ~= false
 local connected = false
 
@@ -783,7 +1056,43 @@ local function setConnected(v)
 	button:SetActive(enabled and connected)
 end
 
+-- Commandes déjà reçues : si le serveur renvoie une commande (réponse perdue), on renvoie le même résultat
+-- au lieu de l'exécuter une deuxième fois.
+local executed = {}
+local executedOrder = {}
+
+local function remember(id, entry)
+	executed[id] = entry
+	table.insert(executedOrder, id)
+	if #executedOrder > 300 then
+		executed[table.remove(executedOrder, 1)] = nil
+	end
+end
+
+local function sendResult(payload)
+	for attempt = 1, 4 do
+		payload.sessionId = conn.sessionId
+		local data, _, status, code = request("/plugin/result", payload, true)
+		if data or code == "BAD_SESSION" or code == "BAD_TOKEN" or status == 403 or status == 409 then
+			return
+		end
+		task.wait(attempt)
+	end
+end
+
 local function handle(cmd)
+	if type(cmd) ~= "table" or type(cmd.id) ~= "string" then
+		return
+	end
+	local prev = executed[cmd.id]
+	if prev then
+		if prev.payload then
+			sendResult(prev.payload)
+		end
+		return
+	end
+	local entry = {}
+	remember(cmd.id, entry)
 	local fn = TOOLS[cmd.tool]
 	local ok, res
 	if not fn then
@@ -791,13 +1100,14 @@ local function handle(cmd)
 	else
 		ok, res = xpcall(fn, function(e)
 			return tostring(e)
-		end, cmd.args or {})
+		end, type(cmd.args) == "table" and cmd.args or {})
 	end
-	if ok then
-		post("/plugin/result", { id = cmd.id, ok = true, result = res })
-	else
-		post("/plugin/result", { id = cmd.id, ok = false, error = res })
+	local payload = ok and { id = cmd.id, ok = true, result = res } or { id = cmd.id, ok = false, error = tostring(res) }
+	if not pcall(HttpService.JSONEncode, HttpService, payload) then
+		payload = { id = cmd.id, ok = false, error = "Résultat non sérialisable en JSON" }
 	end
+	entry.payload = payload
+	sendResult(payload)
 end
 
 button.Click:Connect(function()
@@ -807,6 +1117,7 @@ button.Click:Connect(function()
 		print("[RoSwarm] Connexion activée.")
 	else
 		print("[RoSwarm] Connexion désactivée : les agents ne peuvent plus toucher à cette place.")
+		conn.sessionId = nil
 	end
 	setConnected(false)
 end)
@@ -816,20 +1127,20 @@ task.spawn(function()
 	while alive do
 		if not enabled then
 			task.wait(1)
-		else
-			local data, err = post("/plugin/poll", {
-				sessionId = sessionId,
-				placeName = game.Name,
-				placeId = game.PlaceId,
-				gameId = game.GameId,
-				version = VERSION,
-			})
-			if data then
-				warned = false
-				setConnected(true)
-				for _, cmd in ipairs(data.commands or {}) do
-					task.spawn(handle, cmd)
+		elseif not conn.token then
+			setConnected(false)
+			local ok, err = pairStep()
+			if not ok then
+				if err and not warned then
+					warned = true
+					print("[RoSwarm] En attente de l'application RoSwarm sur " .. BASE .. " (" .. tostring(err) .. ")")
 				end
+				task.wait(2)
+			end
+		elseif not conn.sessionId then
+			local ok, err = hello()
+			if ok then
+				warned = false
 			else
 				setConnected(false)
 				if not warned then
@@ -837,6 +1148,29 @@ task.spawn(function()
 					print("[RoSwarm] En attente de l'application RoSwarm sur " .. BASE .. " (" .. tostring(err) .. ")")
 				end
 				task.wait(3)
+			end
+		else
+			local data, err, status, code = request("/plugin/poll", { sessionId = conn.sessionId, lastPollId = conn.lastPollId }, true)
+			if data then
+				warned = false
+				setConnected(true)
+				if type(data.pollId) == "number" then
+					conn.lastPollId = data.pollId
+				end
+				for _, cmd in ipairs(data.commands or {}) do
+					task.spawn(handle, cmd)
+				end
+			elseif code == "BAD_SESSION" then
+				conn.sessionId = nil -- RoSwarm a redémarré ou la session a expiré : on en rouvre une
+			elseif code == "BAD_TOKEN" then
+				forgetToken("Autorisation révoquée.")
+			else
+				setConnected(false)
+				if not warned then
+					warned = true
+					print("[RoSwarm] Connexion perdue avec RoSwarm (" .. tostring(err) .. "), nouvel essai…")
+				end
+				task.wait(status == 429 and 10 or 2)
 			end
 		end
 	end

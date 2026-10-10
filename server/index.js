@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // RoSwarm — serveur local : interface web, API, pont MCP des agents et pont du plugin Roblox Studio.
 import http from 'node:http';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { exec, execFile } from 'node:child_process';
@@ -13,6 +14,9 @@ import * as studio from './studio.js';
 import * as coord from './coord.js';
 import * as sync from './sync.js';
 import * as setup from './setup.js';
+import * as pluginAuth from './pluginAuth.js';
+import { AuthError } from './pluginAuth.js';
+import { TaskError } from './coord.js';
 import { callTool, instructionsFor } from './tools.js';
 import { ROLES, TEAM_ORDER } from './roles.js';
 
@@ -38,28 +42,55 @@ function json(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-function readBody(req, limit = 20 * 1024 * 1024) {
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const API_BODY_LIMIT = 10 * 1024 * 1024;
+const PLUGIN_BODY_LIMIT = 8 * 1024 * 1024;
+
+function readBody(req, limit = API_BODY_LIMIT) {
   return new Promise((resolve, reject) => {
+    const declared = Number(req.headers['content-length'] || 0);
+    if (declared > limit) {
+      req.resume();
+      return reject(new HttpError(413, 'Requête trop grosse'));
+    }
     const chunks = [];
     let size = 0;
+    let failed = false;
+    req.setTimeout(30000, () => req.destroy(new HttpError(408, 'Requête trop lente')));
     req.on('data', (c) => {
+      if (failed) return;
       size += c.length;
       if (size > limit) {
-        reject(new Error('Requête trop grosse'));
-        req.destroy();
+        failed = true;
+        reject(new HttpError(413, 'Requête trop grosse'));
+        req.resume();
       } else chunks.push(c);
     });
     req.on('end', () => {
+      if (failed) return;
       const text = Buffer.concat(chunks).toString('utf8');
       if (!text) return resolve({});
       try {
-        resolve(JSON.parse(text));
+        const v = JSON.parse(text);
+        if (!v || typeof v !== 'object' || Array.isArray(v)) return reject(new HttpError(400, 'Le corps doit être un objet JSON'));
+        resolve(v);
       } catch {
-        reject(new Error('JSON invalide'));
+        reject(new HttpError(400, 'JSON invalide'));
       }
     });
-    req.on('error', reject);
+    req.on('error', (e) => reject(e instanceof HttpError ? e : new HttpError(400, 'Requête interrompue')));
   });
+}
+
+function tokenEquals(a) {
+  if (typeof a !== 'string' || a.length !== TOKEN.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(TOKEN));
 }
 
 function hostOk(req) {
@@ -96,6 +127,9 @@ function snapshot() {
     locks: coord.listLocks(),
     board: pid ? coord.board(pid) : null,
     activity: pid ? coord.getActivity(pid).slice(-150) : [],
+    pairing: pluginAuth.listPending(),
+    pluginTokens: pluginAuth.listTokens(),
+    sync: pid ? sync.forProject(pid)?.stats() || null : null,
     logs: studio.getLogs(200),
     roles: { list: ROLES, order: TEAM_ORDER },
     types: Object.fromEntries(Object.entries(setup.AGENT_TYPES).map(([k, t]) => [k, { label: t.label, color: t.color, hint: t.hint }])),
@@ -125,11 +159,20 @@ route('POST', /^\/api\/setup\/open-plugins$/, () => {
   return { ok: true };
 });
 
-route('POST', /^\/api\/projects$/, (b) => projects.create(b));
+/** Le projet actif change : Studio (s'il est connecté) est relié au nouveau projet et réaligné avec ses fichiers. */
+function activateProject(id) {
+  sync.forProject(id);
+  studio.bindProject(id);
+  if (studio.status().connected) sync.onStudioConnected();
+}
+route('POST', /^\/api\/projects$/, (b) => {
+  const p = projects.create({ name: b.name, dir: b.dir });
+  activateProject(p.id);
+  return p;
+});
 route('POST', /^\/api\/projects\/(\w+)\/open$/, (b, m) => {
   projects.setActive(m[1]);
-  sync.forProject(m[1]);
-  if (studio.status().connected) sync.onStudioConnected();
+  activateProject(m[1]);
   return { ok: true };
 });
 route('PATCH', /^\/api\/projects\/(\w+)$/, (b, m) => {
@@ -162,8 +205,20 @@ route('POST', /^\/api\/projects\/(\w+)\/push$/, async (b, m) => {
   return { count: await s.pushAll() };
 });
 
-route('POST', /^\/api\/projects\/(\w+)\/tasks$/, (b, m) => coord.createTask(m[1], { ...b, createdBy: 'Toi' }));
-route('PATCH', /^\/api\/projects\/(\w+)\/tasks\/(\d+)$/, (b, m) => coord.updateTask(m[1], m[2], b, 'Toi'));
+route('POST', /^\/api\/projects\/(\w+)\/tasks$/, (b, m) =>
+  coord.createTask(m[1], { title: b.title, details: b.details, acceptance: b.acceptance, dependsOn: b.dependsOn, createdBy: 'Toi' }),
+);
+route('PATCH', /^\/api\/projects\/(\w+)\/tasks\/(\d+)$/, (b, m) => {
+  const before = coord.board(m[1]).tasks.find((x) => x.id === Number(m[2]));
+  const prev = before?.status;
+  const r = coord.updateTask(m[1], m[2], { status: b.status, note: b.note, title: b.title, details: b.details, acceptance: b.acceptance }, 'Toi', { asUser: true });
+  if (!r.task) throw new HttpError(404, r.message);
+  if (r.task.status === 'done' && prev !== 'done') {
+    const worker = agents.all().find((x) => x.projectId === m[1] && x.name === r.task.assignee && x.pty);
+    if (worker) agents.notify(worker.id, `[RoSwarm] L'utilisateur a validé ta tâche #${r.task.id} « ${r.task.title} ».`);
+  }
+  return r.task;
+});
 route('DELETE', /^\/api\/projects\/(\w+)\/tasks\/(\d+)$/, (b, m) => {
   coord.deleteTask(m[1], m[2]);
   return { ok: true };
@@ -203,8 +258,8 @@ route('POST', /^\/api\/agents\/(\w+)\/send$/, (b, m) => {
 route('POST', /^\/api\/agents\/(\w+)\/task$/, (b, m) => {
   const a = agents.get(m[1]);
   if (!a) throw new Error('Agent introuvable');
-  const t = coord.updateTask(a.projectId, b.taskId, { assignee: a.name, status: 'doing' }, 'Toi');
-  if (!t) throw new Error('Tâche introuvable');
+  const { task: t } = coord.updateTask(a.projectId, b.taskId, { assignee: a.name, status: 'doing' }, 'Toi', { asUser: true });
+  if (!t) throw new HttpError(404, 'Tâche introuvable');
   agents.notify(
     a.id,
     `[RoSwarm] Nouvelle tâche #${t.id} pour toi (de l'utilisateur) : ${t.title}` +
@@ -220,9 +275,24 @@ route('POST', /^\/api\/studio\/call$/, async (b) => {
   if (r.isError) throw new Error(r.text);
   return { text: r.text };
 });
-route('POST', /^\/api\/studio\/raw$/, async (b) => ({ result: await studio.call(b.tool, b.args || {}) }));
+const UI_READ_TOOLS = new Set(['list_children', 'get_instance', 'get_tree', 'search']);
+route('POST', /^\/api\/studio\/raw$/, async (b) => {
+  if (!UI_READ_TOOLS.has(b.tool)) throw new HttpError(400, 'Outil non autorisé ici');
+  return { result: await studio.call(b.tool, b.args && typeof b.args === 'object' ? b.args : {}) };
+});
+// Appairage du plugin et révocation (réservé à l'interface : jeton de l'application)
+route('POST', /^\/api\/pairing\/([\w-]+)\/approve$/, (b, m) => pluginAuth.approve(m[1]));
+route('POST', /^\/api\/pairing\/([\w-]+)\/reject$/, (b, m) => {
+  pluginAuth.reject(m[1]);
+  return { ok: true };
+});
+route('DELETE', /^\/api\/plugin-tokens\/(\w+)$/, (b, m) => {
+  pluginAuth.revoke(m[1]);
+  return { ok: true };
+});
+route('GET', /^\/api\/projects\/(\w+)\/sync$/, (b, m) => sync.forProject(m[1])?.stats() || null);
 route('POST', /^\/api\/studio\/active$/, (b) => {
-  studio.setActive(b.sessionId);
+  studio.setActive(String(b.sessionId || ''));
   sync.onStudioConnected();
   return studio.status();
 });
@@ -271,6 +341,14 @@ route('POST', /^\/api\/hook$/, (b) => {
       const rel = path.relative(project.dir, path.resolve(project.dir, file)).replace(/\\/g, '/');
       agents.setLastAction(a.id, 'modifie ' + rel);
       coord.log(a.projectId, a.name, 'a modifié ' + rel, 'edit');
+      const prev = coord.noteWrite(a.projectId, rel, a);
+      if (prev) {
+        // Un autre agent avait écrit ce fichier récemment : pas un blocage (le verrou était libre), mais on prévient.
+        coord.log(a.projectId, a.name, `⚠ a modifié ${rel}, écrit par ${prev.agentName} il y a ${Math.round((Date.now() - prev.at) / 60000)} min`, 'lock');
+        const other = agents.get(prev.agentId);
+        if (other?.pty) agents.notify(other.id, `[RoSwarm] ${a.name} vient de modifier ${rel}, que tu avais écrit. Relis-le (board_read / post_message) avant d'y retoucher.`);
+      }
+      if (rel.startsWith('src/')) sync.forProject(a.projectId)?.noteWriter(rel.slice(4), a.id);
     } else if (tool === 'Bash' && p.tool_input?.command) {
       agents.setLastAction(a.id, '$ ' + String(p.tool_input.command).slice(0, 100));
     }
@@ -279,30 +357,67 @@ route('POST', /^\/api\/hook$/, (b) => {
 });
 
 // ---------- plugin Roblox Studio ----------
-// Pas de jeton (le plugin ne le connaît pas) : on refuse tout ce qui vient d'un navigateur
-// (en-tête Origin) et on exige du JSON, ce qu'un site web ne peut pas envoyer sans pré-vol CORS.
+// Toutes les routes exigent le jeton du plugin (en-tête X-RoSwarm-Plugin), sauf les deux routes d'appairage,
+// qui ne donnent accès à rien : une demande doit être approuvée à la main dans l'interface.
+// Les en-têtes Origin / Content-Type ne sont qu'une protection supplémentaire contre les navigateurs, pas une authentification.
+const pluginRate = new Map(); // jeton -> { windowStart, count }
+
+function rateLimited(key, max) {
+  const now = Date.now();
+  let r = pluginRate.get(key);
+  if (!r || now - r.windowStart > 60000) {
+    r = { windowStart: now, count: 0 };
+    pluginRate.set(key, r);
+  }
+  return ++r.count > max;
+}
+
 async function handlePlugin(req, res, pathname) {
-  if (req.method !== 'POST' || req.headers.origin || !/application\/json/.test(req.headers['content-type'] || '')) {
+  if (req.method !== 'POST' || req.headers.origin || !/^application\/json/.test(req.headers['content-type'] || '')) {
     return json(res, 403, { error: 'Interdit' });
   }
-  const body = await readBody(req);
-  if (pathname === '/plugin/poll') return studio.handlePoll(body, res);
-  if (pathname === '/plugin/result') studio.handleResult(body);
-  else if (pathname === '/plugin/log') studio.handleLog(body);
-  else if (pathname === '/plugin/changes') {
-    const s = sync.forActive();
-    for (const item of Array.isArray(body.items) ? body.items : []) s?.applyStudioChange(item);
-  } else return json(res, 404, { error: 'Introuvable' });
-  json(res, 200, { ok: true });
+  if (rateLimited('ip:' + (req.socket.remoteAddress || ''), 3000)) return json(res, 429, { error: 'Trop de requêtes' });
+  const body = await readBody(req, PLUGIN_BODY_LIMIT);
+
+  if (pathname === '/plugin/pair') return json(res, 200, pluginAuth.requestPairing(body));
+  if (pathname === '/plugin/pair-status') return json(res, 200, pluginAuth.pairingStatus(body.requestId));
+
+  const auth = pluginAuth.verify(req.headers['x-roswarm-plugin']);
+  if (rateLimited(auth.id, 2000)) return json(res, 429, { error: 'Trop de requêtes' });
+
+  if (pathname === '/plugin/hello') return json(res, 200, studio.handleHello(auth, body, projects.activeId()));
+  if (pathname === '/plugin/poll') return studio.handlePoll(auth, body, res);
+  if (pathname === '/plugin/result') {
+    const r = studio.handleResult(auth, body);
+    return json(res, r.status, r.body);
+  }
+  // Les routes suivantes exigent aussi une session ouverte avec ce jeton.
+  const session = studio.sessionOf(auth, body);
+  if (!session) return json(res, 401, { error: 'Session inconnue ou expirée', code: 'BAD_SESSION' });
+  if (pathname === '/plugin/log') return json(res, 200, { ok: true, accepted: studio.handleLog(body) });
+  if (pathname === '/plugin/changes') {
+    const s = session.projectId === projects.activeId() ? sync.forActive() : null;
+    const items = Array.isArray(body.items) ? body.items.slice(0, 200) : [];
+    const results = items.map((item) => (s ? s.applyStudioChange(item) : 'ignored'));
+    return json(res, 200, { ok: true, results });
+  }
+  return json(res, 404, { error: 'Introuvable' });
 }
 
 // ---------- serveur ----------
 
+function errorStatus(e) {
+  if (e instanceof HttpError || e instanceof AuthError) return e.status;
+  if (e instanceof TaskError) return 409;
+  return 400;
+}
+
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, URL_BASE);
-  const pathname = url.pathname;
-  if (!hostOk(req)) return json(res, 403, { error: 'Hôte refusé' });
+  let pathname = '';
   try {
+    const url = new URL(req.url, URL_BASE);
+    pathname = url.pathname;
+    if (!hostOk(req)) return json(res, 403, { error: 'Hôte refusé' });
     if (pathname.startsWith('/plugin/')) return await handlePlugin(req, res, pathname);
 
     if (pathname === '/' || pathname === '/index.html') {
@@ -310,13 +425,14 @@ const server = http.createServer(async (req, res) => {
     }
     if (STATIC[pathname]) return serveFile(res, path.join(APP_ROOT, STATIC[pathname]));
     if (pathname.startsWith('/static/')) {
-      const file = path.normalize(path.join(APP_ROOT, 'public', pathname.slice('/static/'.length)));
-      if (!file.startsWith(path.join(APP_ROOT, 'public'))) return json(res, 403, { error: 'Interdit' });
+      const publicDir = path.join(APP_ROOT, 'public');
+      const file = path.normalize(path.join(publicDir, decodeURIComponent(pathname.slice('/static/'.length))));
+      if (!file.startsWith(publicDir + path.sep)) return json(res, 403, { error: 'Interdit' });
       return serveFile(res, file);
     }
 
     if (pathname.startsWith('/api/')) {
-      if (pathname !== '/api/ping' && req.headers['x-roswarm-token'] !== TOKEN) return json(res, 401, { error: 'Jeton invalide' });
+      if (pathname !== '/api/ping' && !tokenEquals(req.headers['x-roswarm-token'])) return json(res, 401, { error: 'Jeton invalide' });
       for (const r of routes) {
         if (r.method !== req.method) continue;
         const m = pathname.match(r.pattern);
@@ -328,9 +444,14 @@ const server = http.createServer(async (req, res) => {
     }
     json(res, 404, { error: 'Introuvable' });
   } catch (e) {
-    json(res, 400, { error: e.message });
+    const status = errorStatus(e);
+    // Erreurs inattendues : journal local avec la route concernée (jamais le corps de la requête ni un jeton).
+    if (!(e instanceof HttpError || e instanceof AuthError || e instanceof TaskError || e?.code)) console.error(`[RoSwarm] ${req.method} ${pathname} : ${e?.message}`);
+    json(res, status, { error: e?.message || 'Erreur', ...(e?.code ? { code: e.code } : {}) });
   }
 });
+server.requestTimeout = 60000;
+server.headersTimeout = 20000;
 
 // ---------- WebSocket de l'interface ----------
 
@@ -387,6 +508,10 @@ bus.on('studio-log', (entries) => broadcast({ type: 'logs', entries }));
 bus.on('locks', () => broadcast({ type: 'locks', locks: coord.listLocks() }));
 bus.on('board', (projectId) => broadcast({ type: 'board', projectId, board: coord.board(projectId) }));
 bus.on('activity', (projectId, entry) => broadcast({ type: 'activity', projectId, entry }));
+bus.on('pairing', () => broadcast({ type: 'pairing', pairing: pluginAuth.listPending(), pluginTokens: pluginAuth.listTokens() }));
+bus.on('sync', (projectId) => {
+  if (projectId === projects.activeId()) broadcast({ type: 'sync', projectId, sync: sync.forProject(projectId)?.stats() });
+});
 
 // ---------- démarrage ----------
 
@@ -432,10 +557,22 @@ server.listen(PORT, '127.0.0.1', () => {
   openApp(URL_BASE);
 });
 
+let shuttingDown = false;
 function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
   agents.killAll();
-  sync.stopAll();
-  process.exit(0);
+  sync.stopAll(); // sauvegarde l'état de synchronisation
+  studio.shutdown();
+  for (const ws of wss.clients) ws.terminate();
+  server.close();
+  setTimeout(() => process.exit(0), 300).unref();
 }
+process.on('unhandledRejection', (e) => {
+  console.error('[RoSwarm] Promesse rejetée non gérée :', e?.message || e);
+});
+process.on('uncaughtException', (e) => {
+  console.error('[RoSwarm] Erreur inattendue :', e?.stack || e);
+});
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

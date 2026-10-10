@@ -74,8 +74,14 @@ Laisse la fenêtre noire ouverte pendant que tu travailles.
 3. **Nouveau projet** : donne un nom à ton jeu.
 
 ### 5. Dans Roblox Studio
-Ouvre ta place. Le plugin se connecte tout seul, et Studio te demande une fois d'autoriser l'accès
-à `127.0.0.1` : **accepte**. En haut à droite de RoSwarm, tu dois voir « Studio ouvert ».
+Ouvre ta place. Studio te demande une fois d'autoriser l'accès à `127.0.0.1` : **accepte**.
+La première fois, le plugin doit aussi être **autorisé dans RoSwarm** :
+1. la sortie (Output) de Studio affiche un code à 4 chiffres ;
+2. RoSwarm affiche en haut à droite « Studio demande l'accès » avec le même code ;
+3. si les deux codes sont identiques, clique **Autoriser**.
+
+Ensuite, c'est automatique : tu dois voir « Studio ouvert » en haut à droite.
+Tu peux retirer un accès à tout moment depuis Accueil → Configuration → Studios autorisés → **Révoquer**.
 
 > Le bouton **RoSwarm** de l'onglet *Plugins* de Studio active ou coupe la connexion.
 
@@ -102,9 +108,15 @@ nom-du-jeu/
     └── ReplicatedStorage/Config.luau                     → ModuleScript
 ```
 
-- **Les fichiers de `src/` font foi.** Quand Studio se connecte, `src/` est envoyé dans Studio. Si `src/` est
-  vide, les scripts existants de la place sont d'abord **importés** : tu peux donc partir d'un jeu existant.
+- À chaque connexion de Studio, RoSwarm **compare** les fichiers, Studio et le dernier état commun :
+  ce qui a changé dans les fichiers est envoyé, ce qui a changé dans Studio est rapatrié. Si `src/` est vide,
+  les scripts de la place sont **importés** : tu peux donc partir d'un jeu existant.
 - Une modification faite à la main dans Studio sur un script synchronisé est recopiée dans le fichier.
+- **Rien n'est perdu en cas de conflit.** Si un script a changé des deux côtés, le fichier gagne et la version
+  Studio est copiée dans `.roswarm/conflicts/`. Un script écrit à la main dans Studio est aussi copié là
+  avant d'être remplacé.
+- La ligne « Sync » sous le nom du projet affiche les scripts à jour, en attente, en échec, en conflit et les
+  erreurs de syntaxe signalées par Studio. Un script n'est « à jour » que lorsque **Studio a confirmé** l'avoir reçu.
 - Le **monde** (parts, maps, interfaces, éclairage) n'est pas en fichiers : les agents le construisent
   directement dans Studio. Chaque action d'un agent peut être annulée avec Ctrl+Z dans Studio.
 
@@ -115,9 +127,14 @@ nom-du-jeu/
 | `studio_status`, `get_tree`, `get_instance`, `search` | `agents_status` : qui fait quoi |
 | `run_luau` : exécuter du Luau dans Studio | `claim` / `release` : réserver des fichiers ou instances |
 | `create_instance`, `set_properties`, `delete_instance` | `board_read` : tâches et messages |
-| `set_script_source`, `sync_files`, `pull_scripts` | `task_create`, `task_update` |
+| `set_script_source`, `sync_files`, `pull_scripts`, `sync_status` | `task_create` (critères, dépendances), `task_update` |
 | `get_console` : sortie de Studio (même en Play) | `post_message` |
+| `check_scripts` : syntaxe vérifiée par le compilateur de Studio | `validation_report` : écrit / synchronisé / syntaxe OK / erreurs |
 | `asset_search`, `asset_insert` : Creator Store | |
+
+**Validation des tâches** : un agent qui termine une tâche créée par quelqu'un d'autre la fait passer
+« À valider ». Le créateur (souvent le Chef) ou toi la validez avec **✓ Valider**. `validation_report`
+ne déclare jamais un test en jeu (Play) comme fait : cette étape reste à faire dans Studio.
 
 La configuration MCP est faite **automatiquement** pour chaque agent lancé depuis RoSwarm. Tu n'as rien à régler.
 
@@ -139,8 +156,11 @@ La configuration MCP est faite **automatiquement** pour chaque agent lancé depu
 
 ## Problèmes fréquents
 
-- **« En attente de Studio »** : vérifie que le plugin est installé (Accueil → Plugin), que Studio a été
-  redémarré, que tu as accepté l'accès HTTP à `127.0.0.1`, et que le bouton RoSwarm du plugin est activé.
+- **« En attente de Studio »** : vérifie que le plugin est installé et à jour (Accueil → Plugin), que Studio a été
+  redémarré, que tu as accepté l'accès HTTP à `127.0.0.1`, que tu as cliqué **Autoriser** dans RoSwarm,
+  et que le bouton RoSwarm du plugin est activé.
+- **« Sync : x en échec »** : survole le message pour voir la cause. Une erreur venant de Studio est réessayée dès
+  que tu modifies le fichier. Une absence de réponse est réessayée toute seule.
 - **Un agent est grisé dans « ＋ Agent »** : il n'est pas installé. Va dans Accueil → Installer.
 - **Installation d'un agent refusée sur Mac** (`EACCES`) : ton npm global a besoin des droits admin.
   Lance dans un Terminal `sudo npm install -g <paquet>`, ou installe Node avec nvm.
@@ -151,30 +171,53 @@ La configuration MCP est faite **automatiquement** pour chaque agent lancé depu
 
 ## Sécurité
 
-- Le serveur n'écoute que sur `127.0.0.1` : rien n'est accessible depuis le réseau.
-- L'API et le serveur MCP exigent un jeton secret (`~/.roswarm/token`).
-- Les routes du plugin refusent les requêtes venant d'un navigateur, pour qu'un site web ne puisse pas piloter Studio.
-- Les agents tournent avec **tes** droits dans le dossier du projet. Garde un œil sur ce qu'ils font,
-  comme avec n'importe quel agent de code.
+- Le serveur n'écoute que sur `127.0.0.1`. Il n'existe pas d'option pour l'exposer sur le réseau.
+- L'interface, l'API et le serveur MCP exigent le jeton secret de l'application (`~/.roswarm/token`).
+- Le plugin Studio doit être **autorisé explicitement** (appairage avec un code). Il reçoit alors son propre jeton,
+  dont seule une empreinte est stockée. Ce jeton est révocable, et il n'est valable que pour les routes du plugin.
+- Chaque session Studio est générée par le serveur, liée à son jeton et expire après 35 s d'inactivité.
+  Un résultat envoyé pour la commande d'une autre session est refusé.
+- Toutes les données reçues sont validées (types, tailles, chemins). Les chemins sont confinés au dossier `src/`
+  du projet, et les liens symboliques ne sont pas suivis.
+- **Limites** : un programme malveillant qui tourne déjà sous ton compte peut lire `~/.roswarm/`, comme le reste
+  de tes fichiers. Les agents tournent avec **tes** droits dans le dossier du projet : garde un œil sur ce qu'ils
+  font, comme avec n'importe quel agent de code.
+
+Détails techniques (sessions, livraison des commandes, synchronisation, verrous, tâches) : [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+## Mise à jour depuis la version 0.1
+
+1. Remplace le dossier RoSwarm par la nouvelle version, puis lance-la.
+2. Accueil → Plugin Roblox Studio → **Mettre à jour**, puis redémarre Studio.
+3. À la première connexion, **autorise** le plugin (voir l'étape 5 de l'installation). L'ancien plugin n'est plus
+   accepté, car il ne s'authentifiait pas.
+
+Tes projets, tâches et fichiers sont conservés. La première connexion fait une réconciliation complète.
 
 ## Développement
 
 ```bash
 npm install
 npm run dev    # serveur sans ouvrir de fenêtre
-npm test       # tests de bout en bout (serveur, pont MCP, faux plugin Studio, terminaux)
+npm test       # tous les tests : unitaires, sécurité, synchronisation, coordination, bout en bout
+LUAU_BIN=/chemin/vers/luau npm test   # ajoute la vérification du code Luau du plugin avec l'interpréteur Luau
 ```
+
+Les tests utilisent un **plugin Studio simulé** (`test/helpers.js`) qui suit le protocole de `plugin/RoSwarm.lua`.
+Ce qui ne peut être vérifié que dans un vrai Roblox Studio est décrit dans [docs/TESTS-STUDIO.md](docs/TESTS-STUDIO.md).
 
 Organisation du code :
 
 ```
 server/index.js      serveur HTTP + WebSocket (interface, API, routes du plugin)
 server/agents.js     terminaux (node-pty) et configuration MCP/hooks de chaque agent
-server/studio.js     pont avec le plugin (long-polling)
+server/studio.js     pont avec le plugin : sessions, livraison des commandes (long-polling)
+server/pluginAuth.js appairage et jetons du plugin
 server/tools.js      outils MCP (Studio + équipe)
 server/coord.js      réservations, tâches, messages, activité
 server/roles.js      rôles de l'équipe (Chef, Gameplay, Map…)
-server/sync.js       synchronisation src/ <-> Studio
+server/sync.js       synchronisation src/ <-> Studio (états, nouvelles tentatives, réconciliation)
+server/syncCore.js   logique pure : chemins, empreintes, plan de réconciliation
 server/bridge.cjs    serveur MCP (stdio) lancé par chaque agent
 server/hook.cjs      hook Claude Code (réservations automatiques et statut)
 plugin/RoSwarm.lua   plugin Roblox Studio

@@ -126,6 +126,22 @@ const TOOLS = [
     inputSchema: obj({}),
   },
   {
+    name: 'sync_status',
+    description: 'State of the src/ <-> Studio synchronisation: files up to date, pending, failed, conflicts, syntax errors.',
+    inputSchema: obj({}),
+  },
+  {
+    name: 'check_scripts',
+    description: 'Compile synced scripts with the Luau compiler inside Studio (syntax only, nothing is executed). Empty = all synced scripts.',
+    inputSchema: obj({ paths: { type: 'array', items: { type: 'string' }, description: 'Instance paths like "ServerScriptService/Shop".' } }),
+  },
+  {
+    name: 'validation_report',
+    description:
+      'Before saying a task is finished: report, per file, whether it is (1) written, (2) synced to Studio, (3) accepted by the Studio compiler, (4) free of recent errors in the Output. Play testing is never assumed.',
+    inputSchema: obj({ files: { type: 'array', items: { type: 'string' }, description: 'Files like "src/ServerScriptService/Shop.server.luau". Empty = all tracked files.' } }),
+  },
+  {
     name: 'pull_scripts',
     description: 'Import every script of the open place into src/ (overwrites matching files).',
     inputSchema: obj({}),
@@ -173,18 +189,21 @@ const TOOLS = [
       {
         title: str('Short title.'),
         details: str('What exactly has to be done.'),
-        assignee: str('Optional agent number like "#2".'),
+        assignee: str('Optional agent number like "#2". The agent is notified automatically.'),
+        acceptance: str('Acceptance criteria: how the creator will check it is done.'),
+        depends_on: { type: 'array', items: { type: 'number' }, description: 'Ids of tasks that must be done first.' },
       },
       ['title'],
     ),
   },
   {
     name: 'task_update',
-    description: 'Update a task: take it, mark it done, add a note.',
+    description:
+      'Update a task: take it (doing), mark it blocked, finish it (done -> goes to "review" when someone else created it; the creator validates with done), reassign it, add a note.',
     inputSchema: obj(
       {
         id: num('Task id.'),
-        status: { type: 'string', enum: ['todo', 'doing', 'done'] },
+        status: { type: 'string', enum: ['todo', 'doing', 'review', 'blocked', 'done'] },
         assignee: str('Agent number like "#2", "me", or "" to unassign.'),
         note: str('Optional note.'),
       },

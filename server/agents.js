@@ -200,7 +200,7 @@ function start(a) {
     const msg = `\r\n\x1b[90m[RoSwarm] Processus terminé (code ${exitCode}). Clique sur ⟳ pour relancer.\x1b[0m\r\n`;
     a.buffer += msg;
     bus.emit('term', a.id, msg);
-    coord.release(a.projectId, a.id);
+    agentGone(a, `s'est arrêté (code ${exitCode})`);
     refreshStatus(a, true);
   });
   refreshStatus(a, true);
@@ -254,6 +254,17 @@ export function spawn({ projectId = null, tabId = 't1', type, command, setup = f
   return a;
 }
 
+/** Un agent n'est plus là : on libère ses réservations et on remet ses tâches en cours dans le tableau. */
+function agentGone(a, reason) {
+  coord.release(a.projectId, a.id);
+  if (a.setup || !a.projectId) return;
+  for (const t of coord.releaseTasksOf(a.projectId, a.name, reason)) {
+    coord.log(a.projectId, a.name, `${reason} : tâche #${t.id} remise à faire`, 'warning');
+    const creator = all().find((x) => x.projectId === a.projectId && x.name === t.createdBy && x.id !== a.id && x.pty);
+    if (creator) notify(creator.id, `[RoSwarm] ${a.name} ${reason} : la tâche #${t.id} « ${t.title} » est remise à faire. Réassigne-la (task_update avec assignee).`);
+  }
+}
+
 export function restart(id) {
   const a = get(id);
   if (!a) throw new Error('Agent introuvable');
@@ -280,7 +291,7 @@ export function kill(id) {
       p.kill();
     } catch {}
   }
-  coord.release(a.projectId, a.id);
+  agentGone(a, 'a été fermé');
   fs.rm(path.join(DATA_DIR, 'run', id), { recursive: true, force: true }, () => {});
   if (!a.setup) coord.log(a.projectId, a.name, 'a quitté le projet', 'leave');
   bus.emit('agents');

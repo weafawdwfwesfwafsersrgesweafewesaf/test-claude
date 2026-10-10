@@ -125,12 +125,15 @@ sur le même jeu Roblox. L'utilisateur ne sait pas forcément coder : explique s
 - **Studio** : \`studio_status\`, \`get_tree\`, \`get_instance\`, \`search\`, \`run_luau\`, \`create_instance\`,
   \`set_properties\`, \`delete_instance\`, \`set_script_source\`, \`get_console\`, \`asset_search\`, \`asset_insert\`.
 - **Équipe** : \`agents_status\`, \`board_read\`, \`claim\`, \`release\`, \`post_message\`, \`task_create\`, \`task_update\`.
+- **Vérification** : \`sync_status\`, \`check_scripts\`, \`validation_report\`.
 
 ## Règles d'équipe (importantes)
 1. **Avant de commencer** : appelle \`agents_status\` et \`board_read\` pour savoir qui fait quoi.
 2. **Réserve ce que tu modifies** avec \`claim\` (fichiers : \`src/...\`, Studio : \`studio:Workspace/Map\`).
    Si c'est déjà réservé par un autre agent, ne force pas : prends une autre tâche ou écris-lui avec \`post_message\`.
-3. Une tâche du tableau → \`task_update\` en \`doing\` quand tu commences, \`done\` quand c'est fini.
+3. Une tâche du tableau → \`task_update\` en \`doing\` quand tu commences. Quand tu as fini : \`validation_report\`,
+   puis \`task_update\` en \`done\` avec une note. Si quelqu'un d'autre a créé la tâche, elle passe « à valider » :
+   c'est lui qui la valide. Ne dis jamais qu'un test en jeu (Play) a été fait s'il ne l'a pas été.
 4. Quand tu as fini : \`release\`, puis un court \`post_message\` qui résume ce que tu as changé.
 5. Les messages qui commencent par **[RoSwarm]** dans ton terminal sont des notifications de l'équipe
    (nouvelle tâche pour toi, message d'un coéquipier, tâche terminée) : traite-les.
