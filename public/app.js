@@ -1046,6 +1046,70 @@ $('#ws-push').addEventListener('click', () =>
   attempt(() => api('POST', `/api/projects/${S.activeProjectId}/push`), (r) => `${r.count} script(s) envoyés à Studio`),
 );
 $('#composer-send').addEventListener('click', sendComposer);
+
+// ---------------------------------------------------------------- dictée au micro (reconnaissance vocale du navigateur)
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null;
+let dictating = false;
+
+function setMic(on) {
+  dictating = on;
+  $('#composer-mic').classList.toggle('on', on);
+  $('#composer-mic').title = on ? 'J’écoute… clique pour arrêter' : 'Dicter au micro (cliquer pour commencer / arrêter)';
+}
+
+function startDictation() {
+  if (!Speech) return toast('La dictée n’est pas disponible dans ce navigateur. Ouvre RoSwarm avec Microsoft Edge ou Google Chrome.', true);
+  const ta = $('#composer-text');
+  const base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
+  let finalText = '';
+  recog = new Speech();
+  recog.lang = 'fr-FR';
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.onresult = (ev) => {
+    let interim = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const r = ev.results[i];
+      if (r.isFinal) finalText += r[0].transcript.trim() + ' ';
+      else interim += r[0].transcript;
+    }
+    ta.value = base + finalText + interim;
+    autoGrow();
+  };
+  recog.onerror = (ev) => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('Accès au micro refusé : autorise le micro pour RoSwarm (icône à gauche de l’adresse).', true);
+    else if (ev.error === 'no-speech') toast('Je n’ai rien entendu. Reclique sur 🎤 et parle.', true);
+    else if (ev.error !== 'aborted') toast('Erreur du micro : ' + ev.error, true);
+  };
+  recog.onend = () => {
+    // la reconnaissance s'arrête parfois seule après un silence : on relance tant que le micro est activé
+    if (dictating) {
+      try {
+        recog.start();
+      } catch {
+        setMic(false);
+      }
+    }
+  };
+  try {
+    recog.start();
+    setMic(true);
+    toast('🎤 Je t’écoute… Reclique sur le micro quand tu as fini, puis sur Envoyer.');
+  } catch (e) {
+    toast('Impossible de démarrer le micro : ' + e.message, true);
+  }
+}
+
+function stopDictation() {
+  setMic(false);
+  try {
+    recog?.stop();
+  } catch {}
+}
+
+$('#composer-mic').addEventListener('click', () => (dictating ? stopDictation() : startDictation()));
+$('#composer-send').addEventListener('click', () => dictating && stopDictation(), true);
 $('#composer-text').addEventListener('input', autoGrow);
 $('#composer-text').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {

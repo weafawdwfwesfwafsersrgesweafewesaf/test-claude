@@ -308,3 +308,7 @@ select { width: auto; }
 .act.warning { color: var(--warn); }
 .task.review { border-color: rgba(245,158,11,.5); }
 .task.blocked { border-color: rgba(239,68,68,.4); }
+
+/* ---------- micro ---------- */
+.btn.mic { height: 38px; font-size: 16px; }
+.btn.mic.on { background: #dc2626; border-color: #dc2626; color: #fff; animation: pulse 1.2s ease-in-out infinite; }

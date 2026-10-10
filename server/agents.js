@@ -328,8 +328,17 @@ export function resize(id, cols, rows) {
 export function sendText(id, text) {
   const a = get(id);
   if (!a?.pty) throw new Error(`${a ? a.name : 'Agent'} n'est pas lancé.`);
-  a.pty.write('\x1b[200~' + String(text) + '\x1b[201~');
-  setTimeout(() => a.pty && a.pty.write('\r'), 300);
+  // Une seule ligne : un texte de plusieurs lignes collé dans un terminal peut être coupé ou envoyé trop tôt
+  // (surtout sous Windows). Les retours à la ligne deviennent « / ».
+  const line = String(text)
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .join(' / ');
+  a.pty.write('\x1b[200~' + line + '\x1b[201~');
+  // Entrée un peu après, le temps que l'agent ait affiché tout le texte (plus long pour un long texte).
+  setTimeout(() => a.pty && a.pty.write('\r'), Math.min(2000, 400 + line.length / 4));
 }
 
 // ---------- État (travaille / attend / prêt) ----------
