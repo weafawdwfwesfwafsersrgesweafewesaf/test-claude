@@ -742,7 +742,8 @@ function openTerminalModal(agent) {
   });
 }
 
-const MODEL_LABELS = { '': 'Par défaut', sonnet: 'Sonnet', opus: 'Opus', haiku: 'Haiku (léger)' };
+// Raccourcis de Claude Code : toujours la version la plus récente de chaque famille (oct. 2026 : 5.5).
+const MODEL_LABELS = { '': 'Par défaut', opus: 'Opus 5.5', sonnet: 'Sonnet 5.5', haiku: 'Haiku 5.5 (léger)' };
 let teamSize = 3;
 
 function openTeamModal() {
