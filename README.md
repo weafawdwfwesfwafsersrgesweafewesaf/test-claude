@@ -42,6 +42,18 @@ Les Claude se réservent les fichiers : deux Claude ne peuvent pas écrire le m�
 
 ---
 
+## 💬 Zone de message (comme dans l'app Claude)
+
+- **Modèle, effort, mode** : menus juste sous la zone de texte, pour le Claude choisi dans « À » (ou toute l'équipe).
+  Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5 ; effort de « Faible » à « Maximum » ; mode Autonome / Demande pour
+  les commandes / Demande tout / Plan. Le Claude redémarre **en gardant sa conversation** ; s'il travaille,
+  le changement attend qu'il ait fini. Plus besoin de commandes `/model` ou `/effort`.
+- **Pièces jointes** : bouton 📎, glisser-déposer ou Ctrl+V. Photos, PDF et **vidéos** : une vidéo est découpée
+  en images (4 à 16 selon sa durée), car Claude lit les images, pas les vidéos.
+- **Dictée 🎤** : Whisper tourne **sur ton PC**, dans la fenêtre RoSwarm. Il est bien plus précis que la dictée du
+  navigateur. Le modèle est téléchargé une fois (~250 Mo pour « Dictée précise »), puis il est gratuit et illimité.
+  Clique sur 🎤, parle, reclique : le texte s'écrit tout seul. « Dictée du navigateur » reste disponible en secours.
+
 ## 🧠 Skills intégrés
 
 Chaque projet reçoit automatiquement 12 **skills** (dans `.claude/skills/`, que Claude Code charge tout seul).

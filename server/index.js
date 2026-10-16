@@ -113,6 +113,48 @@ const STATIC = {
   '/vendor/addon-fit.js': 'node_modules/@xterm/addon-fit/lib/addon-fit.js',
 };
 
+// ---------- pièces jointes ----------
+// Les fichiers envoyés depuis l'interface sont rangés dans <projet>/.roswarm/uploads/ (hors de src/, jamais synchronisés).
+// Les vidéos arrivent déjà découpées en images par le navigateur (Claude lit les images, pas les vidéos).
+const UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+const UPLOAD_TYPES = /^(image\/(png|jpeg|gif|webp)|application\/pdf|text\/[\w.+-]+|application\/json)$/;
+
+function saveUpload(projectId, b) {
+  const p = projects.get(projectId);
+  if (!p) throw new HttpError(404, 'Projet introuvable');
+  if (typeof b.data !== 'string' || typeof b.mime !== 'string') throw new HttpError(400, 'Fichier manquant');
+  if (!UPLOAD_TYPES.test(b.mime)) throw new HttpError(400, 'Type de fichier non pris en charge : ' + b.mime);
+  const buf = Buffer.from(b.data, 'base64');
+  if (!buf.length || buf.length > UPLOAD_MAX_BYTES) throw new HttpError(413, 'Fichier vide ou trop gros (max 20 Mo)');
+  const ext = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'application/pdf': '.pdf', 'application/json': '.json' }[b.mime] || '.txt';
+  const base = String(b.name || 'fichier')
+    .replace(/\.[^.]*$/, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w-]+/g, '_')
+    .slice(0, 50) || 'fichier';
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const dir = path.join(p.dir, '.roswarm', 'uploads');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${stamp}_${crypto.randomBytes(3).toString('hex')}_${base}${ext}`);
+  fs.writeFileSync(file, buf);
+  return { path: file, size: buf.length };
+}
+
+/** Ajoute au message la liste des pièces jointes, à lire avec l'outil Read de Claude. */
+function withAttachments(projectId, text, attachments) {
+  text = String(text || '');
+  if (!Array.isArray(attachments) || !attachments.length) return text;
+  const p = projects.get(projectId);
+  const uploads = p ? path.join(p.dir, '.roswarm', 'uploads') + path.sep : null;
+  const items = attachments
+    .filter((x) => x && typeof x.path === 'string' && uploads && path.resolve(x.path).startsWith(uploads)) // seulement nos fichiers
+    .slice(0, 40)
+    .map((x) => (x.note ? `${x.path} (${String(x.note).slice(0, 200)})` : x.path));
+  if (!items.length) return text;
+  return `${text}\n\nPièces jointes (ouvre chacune avec l'outil Read pour la voir) : ${items.join(' ; ')}`;
+}
+
 // ---------- état complet pour l'interface ----------
 
 function snapshot() {
@@ -133,6 +175,7 @@ function snapshot() {
     logs: studio.getLogs(200),
     roles: { list: ROLES, order: TEAM_ORDER },
     skills: projects.bundledSkills(),
+    agentOptions: { models: agents.MODELS, efforts: agents.EFFORTS, modes: agents.MODES },
     types: Object.fromEntries(Object.entries(setup.AGENT_TYPES).map(([k, t]) => [k, { label: t.label, color: t.color, hint: t.hint }])),
   };
 }
@@ -227,7 +270,8 @@ route('DELETE', /^\/api\/projects\/(\w+)\/tasks\/(\d+)$/, (b, m) => {
 route('POST', /^\/api\/projects\/(\w+)\/messages$/, (b, m) => coord.postMessage(m[1], { from: 'Toi', to: b.to, text: b.text }));
 route('POST', /^\/api\/projects\/(\w+)\/broadcast$/, (b, m) => {
   const targets = agents.all().filter((a) => a.projectId === m[1] && !a.setup && a.status !== 'exited' && (!b.tabId || a.tabId === b.tabId));
-  for (const a of targets) agents.sendText(a.id, b.text);
+  const text = withAttachments(m[1], b.text, b.attachments);
+  for (const a of targets) agents.sendText(a.id, text);
   coord.log(m[1], 'Toi', `message envoyé à ${targets.length} agent(s)`, 'user');
   return { sent: targets.length };
 });
@@ -239,7 +283,7 @@ route('POST', /^\/api\/projects\/(\w+)\/team$/, (b, m) => {
   if (!members.length) throw new Error('Équipe vide');
   return members.map((x) =>
     agents.publicInfo(
-      agents.spawn({ projectId: m[1], tabId: b.tabId, type: 'claude', role: x.role, model: x.model || b.model, permissionMode: b.permissionMode }),
+      agents.spawn({ projectId: m[1], tabId: b.tabId, type: 'claude', role: x.role, model: x.model || b.model, effort: x.effort || b.effort, permissionMode: b.permissionMode }),
     ),
   );
 });
@@ -253,9 +297,12 @@ route('DELETE', /^\/api\/agents\/(\w+)$/, (b, m) => {
   return { ok: true };
 });
 route('POST', /^\/api\/agents\/(\w+)\/send$/, (b, m) => {
-  agents.sendText(m[1], b.text);
+  const a = agents.get(m[1]);
+  agents.sendText(m[1], withAttachments(a?.projectId, b.text, b.attachments));
   return { ok: true };
 });
+route('POST', /^\/api\/agents\/(\w+)\/config$/, (b, m) => ({ result: agents.configure(m[1], { model: b.model, effort: b.effort, mode: b.mode }) }));
+route('POST', /^\/api\/projects\/(\w+)\/uploads$/, (b, m) => saveUpload(m[1], b));
 route('POST', /^\/api\/agents\/(\w+)\/task$/, (b, m) => {
   const a = agents.get(m[1]);
   if (!a) throw new Error('Agent introuvable');
@@ -438,7 +485,7 @@ const server = http.createServer(async (req, res) => {
         if (r.method !== req.method) continue;
         const m = pathname.match(r.pattern);
         if (!m) continue;
-        const body = req.method === 'GET' ? {} : await readBody(req);
+        const body = req.method === 'GET' ? {} : await readBody(req, /\/uploads$/.test(pathname) ? 30 * 1024 * 1024 : API_BODY_LIMIT);
         const out = await r.handler(body, m, url);
         return json(res, 200, out ?? { ok: true });
       }

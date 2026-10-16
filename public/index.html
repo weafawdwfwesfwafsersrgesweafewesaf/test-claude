@@ -58,11 +58,31 @@
           <button class="tab-add" id="tab-add" title="Nouvel onglet">＋</button>
         </div>
         <div id="grid"></div>
-        <footer class="composer">
-          <select id="composer-target"></select>
-          <textarea id="composer-text" rows="1" placeholder="Décris ce que tu veux… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)"></textarea>
-          <button class="btn mic" id="composer-mic" title="Dicter au micro (cliquer pour commencer / arrêter)">🎤</button>
-          <button class="btn primary" id="composer-send">Envoyer</button>
+        <footer class="composer" id="composer">
+          <div id="composer-attachments" class="attach-row hidden"></div>
+          <div class="composer-box">
+            <textarea id="composer-text" rows="1" placeholder="Écris, dicte avec 🎤, ou glisse des photos / vidéos ici… (Entrée pour envoyer)"></textarea>
+            <div class="composer-tools">
+              <button class="tool-btn" id="composer-attach" title="Joindre des photos, vidéos ou PDF (tu peux aussi les glisser ou les coller)">📎</button>
+              <input type="file" id="composer-file" multiple accept="image/*,video/*,application/pdf" hidden>
+              <button class="tool-btn mic" id="composer-mic" title="Dicter (clique pour commencer, reclique pour arrêter)">🎤</button>
+              <select id="voice-engine" class="mini" title="Moteur de dictée">
+                <option value="onnx-community/whisper-small">Dictée précise</option>
+                <option value="onnx-community/whisper-large-v3-turbo">Dictée max (gros téléchargement)</option>
+                <option value="onnx-community/whisper-base">Dictée rapide</option>
+                <option value="browser">Dictée du navigateur</option>
+              </select>
+              <span class="tool-sep"></span>
+              <label class="mini-label">À <select id="composer-target" class="mini"></select></label>
+              <label class="mini-label">Modèle <select id="cfg-model" class="mini"></select></label>
+              <label class="mini-label">Effort <select id="cfg-effort" class="mini"></select></label>
+              <label class="mini-label">Mode <select id="cfg-mode" class="mini"></select></label>
+              <span class="tool-grow"></span>
+              <span id="voice-status" class="small muted"></span>
+              <button class="btn primary send-btn" id="composer-send" title="Envoyer (Entrée)">Envoyer ➤</button>
+            </div>
+          </div>
+          <div id="drop-overlay" class="drop-overlay hidden">Dépose tes photos / vidéos ici 📎</div>
         </footer>
       </section>
     </main>

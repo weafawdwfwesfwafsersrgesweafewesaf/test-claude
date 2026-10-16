@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import pty from '@lydell/node-pty';
 import { bus } from './bus.js';
 import { APP_ROOT, DATA_DIR, IS_WIN, fwd, readJson, writeJson } from './config.js';
@@ -43,7 +44,10 @@ export function publicInfo(a) {
     command: a.commandLine,
     role: a.role || null,
     model: a.model || null,
-    permissionMode: a.autonomous ? 'autonome' : a.permissionMode || null,
+    permissionMode: a.mode || null,
+    mode: a.mode || null,
+    effort: a.effort || null,
+    pendingConfig: a.pendingConfig,
     inbox: a.inbox.length,
   };
 }
@@ -125,6 +129,13 @@ function prepare(a, project) {
     const args = ['--mcp-config', mcpFile, '--settings', settingsFile, '--name', a.name];
     args.push('--append-system-prompt', systemPromptFor(a.name, a.role));
     if (a.model) args.push('--model', a.model);
+    if (a.effort) args.push('--effort', a.effort);
+    // Conversation identifiée : un redémarrage (changement de modèle, d'effort, de mode) la reprend telle quelle.
+    if (a.conversationStarted) args.push('--resume', a.sessionUuid);
+    else {
+      a.sessionUuid = crypto.randomUUID();
+      args.push('--session-id', a.sessionUuid);
+    }
     if (a.permissionMode) args.push('--permission-mode', a.permissionMode);
     return args;
   }
@@ -224,10 +235,20 @@ function start(a) {
   refreshStatus(a, true);
 }
 
-const MODELS = ['sonnet', 'opus', 'haiku'];
-const MODES = ['acceptEdits', 'default', 'plan', 'auto', 'autonome'];
+export const MODELS = ['fable', 'opus', 'sonnet', 'haiku'];
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+// autonome : fichiers + outils RoSwarm sans demander ; acceptEdits : demande pour les commandes ;
+// default : demande pour tout ; plan : propose avant d'agir.
+export const MODES = ['autonome', 'acceptEdits', 'default', 'plan'];
 
-export function spawn({ projectId = null, tabId = 't1', type, command, setup = false, cols = 100, rows = 30, role, model, permissionMode }) {
+function applyMode(a, mode) {
+  if (!MODES.includes(mode)) mode = 'autonome';
+  a.mode = mode;
+  a.autonomous = mode === 'autonome';
+  a.permissionMode = mode === 'autonome' ? 'acceptEdits' : mode === 'default' ? null : mode;
+}
+
+export function spawn({ projectId = null, tabId = 't1', type, command, setup = false, cols = 100, rows = 30, role, model, effort, permissionMode }) {
   const t = AGENT_TYPES[type];
   if (!t) throw new Error('Type d’agent inconnu : ' + type);
   if (!setup && !projects.get(projectId)) throw new Error('Projet introuvable');
@@ -246,16 +267,10 @@ export function spawn({ projectId = null, tabId = 't1', type, command, setup = f
     name: setup ? label : `#${num} ${label}` + (role ? ` · ${ROLES[role].label}` : ''),
     role,
     model: type === 'claude' && MODELS.includes(model) ? model : null,
-    // « autonome » = acceptEdits + outils sûrs autorisés sans demander (voir prepare). C'est le mode par défaut.
-    autonomous: type === 'claude' && (permissionMode === undefined || permissionMode === null || permissionMode === 'autonome'),
-    permissionMode:
-      type === 'claude'
-        ? permissionMode === undefined || permissionMode === null || permissionMode === 'autonome'
-          ? 'acceptEdits'
-          : MODES.includes(permissionMode) && permissionMode !== 'default'
-            ? permissionMode
-            : null
-        : null,
+    effort: type === 'claude' && EFFORTS.includes(effort) ? effort : null,
+    sessionUuid: null,
+    conversationStarted: false,
+    pendingConfig: null,
     inbox: [],
     ready: false,
     startedAt: Date.now(),
@@ -270,6 +285,7 @@ export function spawn({ projectId = null, tabId = 't1', type, command, setup = f
     lastOutputAt: 0,
     lastAction: '',
   };
+  if (type === 'claude') applyMode(a, permissionMode || 'autonome');
   agents.set(id, a);
   try {
     start(a);
@@ -291,6 +307,46 @@ function agentGone(a, reason) {
     const creator = all().find((x) => x.projectId === a.projectId && x.name === t.createdBy && x.id !== a.id && x.pty);
     if (creator) notify(creator.id, `[RoSwarm] ${a.name} ${reason} : la tâche #${t.id} « ${t.title} » est remise à faire. Réassigne-la (task_update avec assignee).`);
   }
+}
+
+/**
+ * Change le modèle, l'effort ou le mode d'un Claude. Il redémarre en reprenant la même conversation (--resume).
+ * S'il est en train de travailler, le changement attend qu'il ait fini. Renvoie 'applied' ou 'queued'.
+ */
+export function configure(id, { model, effort, mode } = {}) {
+  const a = get(id);
+  if (!a) throw new Error('Agent introuvable');
+  if (a.type !== 'claude') throw new Error('Le modèle, l’effort et le mode ne se règlent que pour Claude.');
+  const cfg = { ...(a.pendingConfig || {}) };
+  if (model !== undefined) {
+    if (model && !MODELS.includes(model)) throw new Error('Modèle inconnu : ' + model);
+    cfg.model = model || null;
+  }
+  if (effort !== undefined) {
+    if (effort && !EFFORTS.includes(effort)) throw new Error('Effort inconnu : ' + effort);
+    cfg.effort = effort || null;
+  }
+  if (mode !== undefined) {
+    if (!MODES.includes(mode)) throw new Error('Mode inconnu : ' + mode);
+    cfg.mode = mode;
+  }
+  if (a.pty && a.status === 'working') {
+    a.pendingConfig = cfg;
+    bus.emit('agents');
+    return 'queued';
+  }
+  applyConfig(a, cfg);
+  return 'applied';
+}
+
+function applyConfig(a, cfg) {
+  a.pendingConfig = null;
+  if (cfg.model !== undefined) a.model = cfg.model;
+  if (cfg.effort !== undefined) a.effort = cfg.effort;
+  if (cfg.mode !== undefined) applyMode(a, cfg.mode);
+  const parts = [a.model ? `modèle ${a.model}` : 'modèle par défaut', a.effort ? `effort ${a.effort}` : 'effort par défaut', `mode ${a.mode}`];
+  a.buffer += `\r\n\x1b[35m[RoSwarm] Nouveaux réglages : ${parts.join(', ')}. Reprise de la conversation…\x1b[0m\r\n`;
+  restart(a.id);
 }
 
 export function restart(id) {
@@ -360,6 +416,7 @@ export function sendText(id, text) {
     .map((l) => l.trim())
     .filter(Boolean)
     .join(' / ');
+  a.conversationStarted = true;
   a.pty.write('\x1b[200~' + line + '\x1b[201~');
   // Entrée un peu après, le temps que l'agent ait affiché tout le texte (plus long pour un long texte).
   setTimeout(() => a.pty && a.pty.write('\r'), Math.min(2000, 400 + line.length / 4));
@@ -392,6 +449,7 @@ export function setHookStatus(id, status) {
   if (!a) return;
   a.hookStatus = status;
   a.ready = true;
+  if (status === 'working') a.conversationStarted = true;
   if (status !== 'idle') a.deliverAfter = 0;
   refreshStatus(a);
 }
@@ -411,9 +469,17 @@ export function notify(id, text) {
 function canDeliver(a) {
   if (!a.pty || !a.inbox.length || Date.now() < (a.deliverAfter || 0)) return false;
   // Claude : seulement après son premier hook (pas pendant l'écran de connexion) et jamais pendant une demande d'autorisation.
-  if (a.type === 'claude') return a.ready && a.status === 'idle';
+  // (filet de sécurité si les hooks ne remontent pas : après 45 s de calme, on considère Claude prêt)
+  if (a.type === 'claude') return a.status === 'idle' && (a.ready || (Date.now() - a.startedAt > 45000 && Date.now() - a.lastOutputAt > 5000));
   return a.status === 'idle' && Date.now() - a.startedAt > 15000 && Date.now() - a.lastOutputAt > 5000;
 }
+
+setInterval(() => {
+  // réglages en attente : appliqués dès que l'agent a fini
+  for (const a of agents.values()) {
+    if (a.pendingConfig && a.pty && a.status !== 'working' && a.status !== 'starting') applyConfig(a, a.pendingConfig);
+  }
+}, 1000).unref();
 
 setInterval(() => {
   for (const a of agents.values()) {

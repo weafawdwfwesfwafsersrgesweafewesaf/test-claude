@@ -465,6 +465,7 @@ function renderWorkspace() {
   sel.innerHTML =
     `<option value="all">Tous (${inTab.length})</option>` + inTab.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
   if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  renderComposerCfg();
 
   // grille de terminaux
   const grid = $('#grid');
@@ -518,6 +519,7 @@ function renderWorkspace() {
       <span class="p-color" style="background:${a.color}"></span>
       <span class="p-title">${esc(a.name)}</span>
       <span class="status ${a.status}">${STATUS[a.status] || a.status}</span>
+      ${a.type === 'claude' ? `<span class="p-cfg" title="Modèle · effort · mode">${MODEL_NAMES[a.model || ''] || a.model} · ${EFFORT_NAMES[a.effort || ''] || a.effort}${a.mode && a.mode !== 'autonome' ? ' · ' + (MODE_NAMES[a.mode] || a.mode) : ''}${a.pendingConfig ? ' ⏳' : ''}</span>` : ''}
       <span class="p-action" title="${esc(a.lastAction)}">${esc(a.lastAction)}</span>
       <span class="p-buttons">
         <button class="icon-btn" data-restart="${a.id}" title="Relancer">⟳</button>
@@ -743,7 +745,7 @@ function openTerminalModal(agent) {
 }
 
 // Raccourcis de Claude Code : toujours la version la plus récente de chaque famille (oct. 2026 : 5.5).
-const MODEL_LABELS = { '': 'Par défaut', opus: 'Opus 5.5', sonnet: 'Sonnet 5.5', haiku: 'Haiku 5.5 (léger)' };
+const MODEL_LABELS = { '': 'Par défaut', fable: 'Fable 5.1', opus: 'Opus 5.5', sonnet: 'Sonnet 5.5', haiku: 'Haiku 5.5 (léger)' };
 let teamSize = 3;
 
 function openTeamModal() {
@@ -839,28 +841,6 @@ async function addAgent(type) {
     permissionMode = localStorage.getItem('roswarm-mode') || 'autonome';
   } catch {}
   await attempt(() => api('POST', '/api/agents', { projectId: p.id, tabId: currentTab(), type, command, permissionMode }));
-}
-
-async function sendComposer() {
-  const text = $('#composer-text').value.trim();
-  const p = project();
-  if (!text || !p) return;
-  const target = $('#composer-target').value;
-  const r =
-    target === 'all'
-      ? await attempt(() => api('POST', `/api/projects/${p.id}/broadcast`, { text, tabId: currentTab() }))
-      : await attempt(() => api('POST', `/api/agents/${target}/send`, { text }));
-  if (r) {
-    $('#composer-text').value = '';
-    autoGrow();
-    if (target === 'all' && r.sent === 0) toast('Aucun agent lancé dans cet onglet.', true);
-  }
-}
-
-function autoGrow() {
-  const ta = $('#composer-text');
-  ta.style.height = 'auto';
-  ta.style.height = Math.min(140, ta.scrollHeight) + 'px';
 }
 
 document.addEventListener('click', async (e) => {
@@ -1070,19 +1050,397 @@ $('#ws-push').addEventListener('click', () =>
 );
 $('#composer-send').addEventListener('click', sendComposer);
 
-// ---------------------------------------------------------------- dictée au micro (reconnaissance vocale du navigateur)
-const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recog = null;
-let dictating = false;
+// ---------------------------------------------------------------- réglages de l'agent (modèle, effort, mode)
+const MODEL_NAMES = { '': 'Par défaut', fable: 'Fable 5.1', opus: 'Opus 5.5', sonnet: 'Sonnet 5.5', haiku: 'Haiku 5.5' };
+const EFFORT_NAMES = { '': 'Par défaut', low: 'Faible', medium: 'Moyen', high: 'Élevé', xhigh: 'Très élevé', max: 'Maximum' };
+const MODE_NAMES = { autonome: 'Autonome', acceptEdits: 'Demande pour les commandes', default: 'Demande tout', plan: 'Plan (propose avant d’agir)' };
 
-function setMic(on) {
-  dictating = on;
-  $('#composer-mic').classList.toggle('on', on);
-  $('#composer-mic').title = on ? 'J’écoute… clique pour arrêter' : 'Dicter au micro (cliquer pour commencer / arrêter)';
+function composerTargets() {
+  const target = $('#composer-target').value;
+  const inTab = projectAgents().filter((a) => a.tabId === currentTab() && a.status !== 'exited');
+  return target === 'all' ? inTab : inTab.filter((a) => a.id === target);
 }
 
-function startDictation() {
-  if (!Speech) return toast('La dictée n’est pas disponible dans ce navigateur. Ouvre RoSwarm avec Microsoft Edge ou Google Chrome.', true);
+function fillSelect(sel, names, value, mixed) {
+  sel.innerHTML =
+    (mixed ? '<option value="__mixed">— (plusieurs)</option>' : '') +
+    Object.entries(names)
+      .map(([v, l]) => `<option value="${v}">${l}</option>`)
+      .join('');
+  sel.value = mixed ? '__mixed' : value;
+}
+
+function renderComposerCfg() {
+  const claudes = composerTargets().filter((a) => a.type === 'claude');
+  const one = (key, fallback) => {
+    const vals = [...new Set(claudes.map((a) => (a.pendingConfig && a.pendingConfig[key] !== undefined ? a.pendingConfig[key] : a[key]) || fallback))];
+    return { value: vals[0] ?? fallback, mixed: vals.length > 1 };
+  };
+  const m = one('model', '');
+  const e = one('effort', '');
+  const md = one('mode', 'autonome');
+  fillSelect($('#cfg-model'), MODEL_NAMES, m.value, m.mixed);
+  fillSelect($('#cfg-effort'), EFFORT_NAMES, e.value, e.mixed);
+  fillSelect($('#cfg-mode'), MODE_NAMES, md.value, md.mixed);
+  for (const id of ['#cfg-model', '#cfg-effort', '#cfg-mode']) {
+    $(id).disabled = !claudes.length;
+    $(id).title = claudes.length ? 'S’applique à : ' + claudes.map((a) => a.name).join(', ') : 'Choisis un Claude dans « À »';
+  }
+}
+
+async function changeCfg(key, value) {
+  if (value === '__mixed') return;
+  const claudes = composerTargets().filter((a) => a.type === 'claude');
+  if (!claudes.length) return;
+  if (claudes.length > 1 && !confirm(`Appliquer à ${claudes.length} Claude ?`)) return renderComposerCfg();
+  let queued = 0;
+  for (const a of claudes) {
+    const r = await attempt(() => api('POST', `/api/agents/${a.id}/config`, { [key]: value }));
+    if (r?.result === 'queued') queued++;
+  }
+  const label = { model: MODEL_NAMES, effort: EFFORT_NAMES, mode: MODE_NAMES }[key][value];
+  toast(
+    queued
+      ? `${label} : appliqué dès que ${queued > 1 ? 'les agents auront' : 'l’agent aura'} fini sa tâche (la conversation est gardée).`
+      : `${label} : appliqué, la conversation continue.`,
+  );
+}
+
+$('#cfg-model').addEventListener('change', (e) => changeCfg('model', e.target.value));
+$('#cfg-effort').addEventListener('change', (e) => changeCfg('effort', e.target.value));
+$('#cfg-mode').addEventListener('change', (e) => changeCfg('mode', e.target.value));
+$('#composer-target').addEventListener('change', renderComposerCfg);
+
+// ---------------------------------------------------------------- pièces jointes (photos, vidéos, PDF)
+const attachments = []; // { id, name, kind, status, items: [{ path, note }], thumb, error }
+let attachSeq = 0;
+const MAX_IMAGE_SIDE = 1568; // au-delà, Claude réduit l'image de toute façon : on économise des tokens
+
+function renderAttachments() {
+  const row = $('#composer-attachments');
+  row.classList.toggle('hidden', !attachments.length);
+  row.innerHTML = attachments
+    .map(
+      (x) => `<div class="attach ${x.status}" title="${esc(x.error || x.name)}">
+        ${x.thumb ? `<img src="${x.thumb}" alt="">` : `<span>${x.kind === 'pdf' ? '📄' : '📎'}<br>${esc(x.name.slice(0, 18))}</span>`}
+        <span class="a-label">${x.kind === 'video' ? '🎬 ' + (x.items.length ? x.items.length + ' images' : 'vidéo') : esc(x.name)}</span>
+        <button class="a-del" data-attach-del="${x.id}" title="Retirer">✕</button>
+      </div>`,
+    )
+    .join('');
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(new Error('Lecture du fichier impossible'));
+    r.readAsDataURL(blob);
+  });
+}
+
+function canvasBlob(canvas, type = 'image/jpeg', q = 0.85) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, q));
+}
+
+async function uploadBlob(blob, name) {
+  const p = project();
+  const r = await api('POST', `/api/projects/${p.id}/uploads`, { name, mime: blob.type, data: await blobToBase64(blob) });
+  return r.path;
+}
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image illisible'));
+    img.src = url;
+  });
+}
+
+async function prepareImage(file) {
+  const url = URL.createObjectURL(file);
+  const img = await loadImage(url);
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
+  if (scale === 1 && /^image\/(png|jpeg|gif|webp)$/.test(file.type)) return { blob: file, thumb: url };
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * scale);
+  c.height = Math.round(img.height * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return { blob: await canvasBlob(c), thumb: url };
+}
+
+/** Découpe une vidéo en images (Claude lit les images, pas les vidéos). */
+async function videoFrames(file, onFrame) {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.preload = 'auto';
+  video.src = url;
+  await new Promise((resolve, reject) => {
+    video.onloadedmetadata = resolve;
+    video.onerror = () => reject(new Error('Vidéo illisible par le navigateur (essaie en MP4)'));
+  });
+  // Certaines vidéos (WebM enregistrés) n'annoncent pas leur durée : on la fait calculer en allant à la fin.
+  if (!isFinite(video.duration)) {
+    await new Promise((resolve) => {
+      video.ondurationchange = () => isFinite(video.duration) && resolve();
+      video.onseeked = () => isFinite(video.duration) && resolve();
+      video.currentTime = 1e9;
+      setTimeout(resolve, 4000);
+    });
+    video.ondurationchange = null;
+  }
+  const d = video.duration;
+  if (!isFinite(d) || d <= 0) throw new Error('Durée de la vidéo inconnue');
+  const count = Math.max(4, Math.min(16, Math.ceil(d / 2)));
+  const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(video.videoWidth * scale);
+  c.height = Math.round(video.videoHeight * scale);
+  const ctx = c.getContext('2d');
+  for (let i = 0; i < count; i++) {
+    const t = Math.min(d - 0.05, (d * (i + 0.5)) / count);
+    await new Promise((resolve) => {
+      video.onseeked = resolve;
+      video.currentTime = t;
+    });
+    ctx.drawImage(video, 0, 0, c.width, c.height);
+    await onFrame(await canvasBlob(c, 'image/jpeg', 0.8), t, d, i, count, c);
+  }
+  URL.revokeObjectURL(url);
+  return { duration: d, count };
+}
+
+async function addFiles(files) {
+  const p = project();
+  if (!p) return toast('Ouvre un projet d’abord.', true);
+  for (const file of files) {
+    const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type === 'application/pdf' ? 'pdf' : null;
+    if (!kind) {
+      toast(`« ${file.name} » : seuls les photos, vidéos et PDF sont pris en charge.`, true);
+      continue;
+    }
+    const x = { id: ++attachSeq, name: file.name || kind, kind, status: 'uploading', items: [], thumb: null };
+    attachments.push(x);
+    renderAttachments();
+    try {
+      if (kind === 'image') {
+        const { blob, thumb } = await prepareImage(file);
+        x.thumb = thumb;
+        renderAttachments();
+        x.items.push({ path: await uploadBlob(blob, file.name) });
+      } else if (kind === 'pdf') {
+        if (file.size > 20 * 1024 * 1024) throw new Error('PDF trop gros (max 20 Mo)');
+        x.items.push({ path: await uploadBlob(file, file.name) });
+      } else {
+        const fmt = (s) => (s < 60 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`);
+        await videoFrames(file, async (blob, t, d, i, count, canvas) => {
+          if (i === 0) {
+            x.thumb = canvas.toDataURL('image/jpeg', 0.6);
+            renderAttachments();
+          }
+          const path = await uploadBlob(blob, `${file.name.replace(/\.[^.]+$/, '')}_image${i + 1}.jpg`);
+          x.items.push({ path, note: `vidéo « ${file.name} » (${fmt(d)}), image ${i + 1}/${count} à ${fmt(t)}` });
+          renderAttachments();
+        });
+      }
+      x.status = 'ready';
+    } catch (e) {
+      x.status = 'error';
+      x.error = e.message;
+      toast(`« ${file.name} » : ${e.message}`, true);
+    }
+    renderAttachments();
+  }
+}
+
+$('#composer-attach').addEventListener('click', () => $('#composer-file').click());
+$('#composer-file').addEventListener('change', (e) => {
+  addFiles([...e.target.files]);
+  e.target.value = '';
+});
+$('#composer-text').addEventListener('paste', (e) => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (files.length) {
+    e.preventDefault();
+    addFiles(files);
+  }
+});
+{
+  const view = $('#view-workspace');
+  let depth = 0;
+  view.addEventListener('dragenter', (e) => {
+    if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
+    depth++;
+    $('#drop-overlay').classList.remove('hidden');
+  });
+  view.addEventListener('dragleave', () => {
+    if (--depth <= 0) {
+      depth = 0;
+      $('#drop-overlay').classList.add('hidden');
+    }
+  });
+  view.addEventListener('dragover', (e) => e.preventDefault());
+  view.addEventListener('drop', (e) => {
+    e.preventDefault();
+    depth = 0;
+    $('#drop-overlay').classList.add('hidden');
+    addFiles([...(e.dataTransfer?.files || [])]);
+  });
+}
+document.addEventListener('click', (e) => {
+  const del = e.target.closest('[data-attach-del]');
+  if (!del) return;
+  const i = attachments.findIndex((x) => x.id === Number(del.dataset.attachDel));
+  if (i >= 0) attachments.splice(i, 1);
+  renderAttachments();
+});
+
+async function sendComposer() {
+  const text = $('#composer-text').value.trim();
+  const p = project();
+  if (!p) return;
+  if (attachments.some((x) => x.status === 'uploading')) return toast('Attends la fin de l’envoi des pièces jointes ⏳', true);
+  const files = attachments.filter((x) => x.status === 'ready').flatMap((x) => x.items);
+  if (!text && !files.length) return;
+  if (dictating) stopDictation();
+  const target = $('#composer-target').value;
+  const body = { text: text || 'Regarde ces pièces jointes.', attachments: files };
+  const r =
+    target === 'all'
+      ? await attempt(() => api('POST', `/api/projects/${p.id}/broadcast`, { ...body, tabId: currentTab() }))
+      : await attempt(() => api('POST', `/api/agents/${target}/send`, body));
+  if (r) {
+    $('#composer-text').value = '';
+    attachments.length = 0;
+    renderAttachments();
+    autoGrow();
+    if (target === 'all' && r.sent === 0) toast('Aucun agent lancé dans cet onglet.', true);
+  }
+}
+
+function autoGrow() {
+  const ta = $('#composer-text');
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(200, ta.scrollHeight) + 'px';
+}
+
+// ---------------------------------------------------------------- dictée
+// Par défaut : Whisper exécuté sur le PC (beaucoup plus précis que la dictée du navigateur).
+let dictating = false;
+let recorder = null;
+let recChunks = [];
+let recStream = null;
+let recTimer = null;
+let whisper = null;
+let whisperSeq = 0;
+const whisperWaiters = new Map();
+
+function voiceStatus(text) {
+  $('#voice-status').textContent = text || '';
+}
+
+function getWhisper() {
+  if (whisper) return whisper;
+  whisper = new Worker('/static/whisper-worker.js', { type: 'module' });
+  const progress = {};
+  whisper.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === 'progress') {
+      progress[m.file] = [m.loaded, m.total];
+      const [l, t] = Object.values(progress).reduce((acc, [a, b]) => [acc[0] + a, acc[1] + b], [0, 0]);
+      voiceStatus(`Téléchargement de la dictée (une seule fois) : ${Math.round((100 * l) / t)} % de ${Math.round(t / 1e6)} Mo`);
+    } else if (m.type === 'ready') {
+      voiceStatus(m.device === 'webgpu' ? 'Dictée prête (carte graphique)' : 'Dictée prête (processeur)');
+      setTimeout(() => !dictating && voiceStatus(''), 3000);
+    } else if (whisperWaiters.has(m.id)) {
+      whisperWaiters.get(m.id)(m);
+      whisperWaiters.delete(m.id);
+    }
+  };
+  whisper.onerror = (e) => voiceStatus('Erreur de la dictée : ' + (e.message || 'chargement impossible'));
+  return whisper;
+}
+
+function whisperCall(msg, transfer) {
+  const id = ++whisperSeq;
+  return new Promise((resolve, reject) => {
+    whisperWaiters.set(id, (m) => (m.type === 'error' ? reject(new Error(m.message)) : resolve(m)));
+    getWhisper().postMessage({ ...msg, id }, transfer || []);
+  });
+}
+
+/** Transcrit un enregistrement audio (ArrayBuffer d'un fichier audio) avec Whisper. */
+async function transcribeAudio(arrayBuffer, model) {
+  const ctx = new AudioContext({ sampleRate: 16000 });
+  const decoded = await ctx.decodeAudioData(arrayBuffer);
+  ctx.close();
+  const audio = decoded.getChannelData(0).slice();
+  const r = await whisperCall({ type: 'transcribe', model, audio }, [audio.buffer]);
+  return r.text;
+}
+window.RoSwarmVoice = { transcribeAudio }; // utilisé par les tests
+
+function insertDictation(text) {
+  if (!text) return;
+  const ta = $('#composer-text');
+  ta.value = (ta.value.trim() ? ta.value.replace(/\s*$/, ' ') : '') + text;
+  autoGrow();
+  ta.focus();
+}
+
+function setMic(on, busy = false) {
+  dictating = on;
+  $('#composer-mic').classList.toggle('on', on);
+  $('#composer-mic').classList.toggle('busy', busy);
+}
+
+async function startDictation() {
+  const engine = $('#voice-engine').value;
+  if (engine === 'browser') return startBrowserDictation();
+  if (!navigator.mediaDevices?.getUserMedia) return toast('Micro indisponible dans ce navigateur.', true);
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, noiseSuppression: true, echoCancellation: true, autoGainControl: true } });
+  } catch {
+    return toast('Accès au micro refusé : autorise le micro pour RoSwarm (icône à gauche de l’adresse).', true);
+  }
+  whisperCall({ type: 'load', model: engine }).catch((e) => voiceStatus('Dictée indisponible : ' + e.message)); // préchargement pendant que tu parles
+  recChunks = [];
+  recorder = new MediaRecorder(recStream);
+  recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
+  recorder.onstop = async () => {
+    recStream.getTracks().forEach((t) => t.stop());
+    clearInterval(recTimer);
+    const blob = new Blob(recChunks, { type: recorder.mimeType });
+    setMic(false, true);
+    voiceStatus('Transcription…');
+    try {
+      insertDictation(await transcribeAudio(await blob.arrayBuffer(), engine));
+      voiceStatus('');
+    } catch (e) {
+      voiceStatus('');
+      toast('Transcription impossible : ' + e.message + ' — essaie « Dictée du navigateur ».', true);
+    }
+    setMic(false, false);
+  };
+  recorder.start();
+  setMic(true);
+  const t0 = Date.now();
+  recTimer = setInterval(() => voiceStatus(`🔴 J’écoute… ${Math.round((Date.now() - t0) / 1000)} s (reclique sur 🎤 pour finir)`), 500);
+}
+
+function stopDictation() {
+  if (recorder && recorder.state === 'recording') recorder.stop();
+  else stopBrowserDictation();
+}
+
+// Dictée du navigateur (ancienne méthode, gardée en secours)
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null;
+
+function startBrowserDictation() {
+  if (!Speech) return toast('La dictée du navigateur n’est pas disponible ici.', true);
   const ta = $('#composer-text');
   const base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
   let finalText = '';
@@ -1101,12 +1459,9 @@ function startDictation() {
     autoGrow();
   };
   recog.onerror = (ev) => {
-    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('Accès au micro refusé : autorise le micro pour RoSwarm (icône à gauche de l’adresse).', true);
-    else if (ev.error === 'no-speech') toast('Je n’ai rien entendu. Reclique sur 🎤 et parle.', true);
-    else if (ev.error !== 'aborted') toast('Erreur du micro : ' + ev.error, true);
+    if (ev.error === 'not-allowed') toast('Accès au micro refusé.', true);
   };
   recog.onend = () => {
-    // la reconnaissance s'arrête parfois seule après un silence : on relance tant que le micro est activé
     if (dictating) {
       try {
         recog.start();
@@ -1115,24 +1470,34 @@ function startDictation() {
       }
     }
   };
-  try {
-    recog.start();
-    setMic(true);
-    toast('🎤 Je t’écoute… Reclique sur le micro quand tu as fini, puis sur Envoyer.');
-  } catch (e) {
-    toast('Impossible de démarrer le micro : ' + e.message, true);
-  }
+  recog.start();
+  setMic(true);
+  voiceStatus('🔴 J’écoute (navigateur)…');
 }
 
-function stopDictation() {
+function stopBrowserDictation() {
   setMic(false);
+  voiceStatus('');
   try {
     recog?.stop();
   } catch {}
 }
 
-$('#composer-mic').addEventListener('click', () => (dictating ? stopDictation() : startDictation()));
-$('#composer-send').addEventListener('click', () => dictating && stopDictation(), true);
+$('#composer-mic').addEventListener('click', () => {
+  if ($('#composer-mic').classList.contains('busy')) return;
+  dictating ? stopDictation() : startDictation();
+});
+try {
+  const saved = localStorage.getItem('roswarm-voice');
+  if (saved && [...$('#voice-engine').options].some((o) => o.value === saved)) $('#voice-engine').value = saved;
+} catch {}
+$('#voice-engine').addEventListener('change', (e) => {
+  try {
+    localStorage.setItem('roswarm-voice', e.target.value);
+  } catch {}
+  if (e.target.value !== 'browser') whisperCall({ type: 'load', model: e.target.value }).catch(() => {});
+});
+
 $('#composer-text').addEventListener('input', autoGrow);
 $('#composer-text').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
