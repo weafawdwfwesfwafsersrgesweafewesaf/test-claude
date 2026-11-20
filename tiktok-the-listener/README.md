@@ -20,6 +20,21 @@ Voix off, sous-titres et montage : à faire de ton côté.
 
 Tu peux aussi ouvrir un `blend/plan_XX.blend` et faire Render > Render Animation (sortie PNG dans `frames/plan_XX/`).
 
+## Montage final automatique
+```bash
+python montage.py --audio "chemin/voix_elevenlabs.mp3" [--music musique.mp3] [--wait]
+```
+Cale chaque plan sur la vraie voix (détection des pauses + alignement des 35 phrases), ajoute les sous-titres
+mot par mot (Poppins Black, blanc contour noir, à 60 % de la hauteur), les onomatopées jaunes (HIC!, SPLASH!…),
+normalise le son à -14 LUFS → `final/the_listener_final.mp4`. `timing.json` donne le début/fin de chaque phrase.
+Voix utilisée : ElevenLabs « Johnny Kid – Serious and Calm Narrator », modèle Eleven v4.
+
+## Publication TikTok
+- **Titre / légende** : In this town, you can NEVER make a splash 🌊👂
+- **Description** : My hiccups almost got me caught by the Listener… #storytime
+- **Hashtags** : #roblox #robloxstory #inthisworld #dontsplash #storytime
+- Astuce : ajoute un son tendance discret (volume ~10 %) au moment de publier.
+
 ## Contenu
 | Dossier / fichier | Rôle |
 |---|---|
