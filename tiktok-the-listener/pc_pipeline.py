@@ -2,6 +2,10 @@
 Usage : python pc_pipeline.py "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" [options de render_all.py]
 Journal : pipeline.log (si lancé par le script d'amorçage)."""
 import os, subprocess, sys, time
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 blender = sys.argv[1]

@@ -8,6 +8,11 @@
 - Audio normalisé à -14 LUFS. Sortie : final/the_listener_final.mp4 (1080x1920, 30 fps, H.264 + AAC).
 Nécessite ffmpeg (avec libass) et numpy.
 """
+import sys as _s
+try:
+    _s.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import argparse, glob, json, os, shutil, subprocess, sys, time, urllib.request
 
 import numpy as np

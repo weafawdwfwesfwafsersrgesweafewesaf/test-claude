@@ -16,6 +16,11 @@ Sortie : renders/plan_XX.mp4 (H.264, 1080x1920, 30 fps, sans audio).
 Un plan déjà rendu (renders/plan_XX.mp4 présent) est sauté, sauf avec --force.
 Il faut Blender 5.3 ou plus récent.
 """
+import sys as _s
+try:
+    _s.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import argparse, glob, os, re, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -97,7 +102,7 @@ def main():
     ver = subprocess.run([blender, "--version"], capture_output=True, text=True).stdout.splitlines()
     print("Blender :", blender, "|", ver[0] if ver else "?")
     ffmpeg = shutil.which("ffmpeg")
-    print("ffmpeg  :", ffmpeg or "absent → MP4 écrit directement par Blender")
+    print("ffmpeg  :", ffmpeg or "absent, MP4 ecrit directement par Blender")
 
     blends = {int(re.findall(r"(\d+)", os.path.basename(b))[0]): b
               for b in glob.glob(os.path.join(HERE, "blend", "plan_*.blend"))}
@@ -131,7 +136,7 @@ def main():
             made = sorted(glob.glob(tmp + "*.mp4"))
             if made:
                 os.replace(made[-1], out)
-        print(f"    → {out} ({time.time() - t0:.0f} s)", flush=True)
+        print(f"    -> {out} ({time.time() - t0:.0f} s)", flush=True)
     print(f"Terminé en {(time.time() - t_all) / 60:.1f} min.")
 
 
